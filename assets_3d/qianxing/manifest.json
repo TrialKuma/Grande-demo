@@ -1,0 +1,20 @@
+{
+  "reference": "H:\\代码项目\\厂长\\grande-demo\\public\\art\\recruits.png",
+  "blend": "H:\\代码项目\\厂长\\grande-demo\\assets_3d\\qianxing\\qianxing-reference-study.blend",
+  "glb": "H:\\代码项目\\厂长\\grande-demo\\public\\models\\qianxing.glb",
+  "mesh_objects": 160,
+  "editable_mesh_vertices": 8089,
+  "evaluated_mesh_triangles_excluding_curves": 64444,
+  "materials": 16,
+  "animation_pivots": [
+    "head",
+    "rightArm",
+    "leftArm"
+  ],
+  "runtime_skinning": false,
+  "method": "Explicit lofted/contoured polygon meshes, subdivision, thickness and bevel modifiers; portrait used as a visual reference, not image reconstruction.",
+  "glb_bytes": 2139984,
+  "runtime_triangles": 107404,
+  "runtime_meshes": 242,
+  "runtime_nodes": 247
+}

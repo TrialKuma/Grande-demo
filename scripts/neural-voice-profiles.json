@@ -1,0 +1,46 @@
+{
+  "knibbs": {
+    "name": "尼布斯拉姆", "voice": "zh-CN-YunjianNeural", "rate": "+0%", "pitch": "+0Hz",
+    "reason": "成熟、厚实、爽朗的男声方向，对应身经百战而乐观的工会创始人。"
+  },
+  "ric": {
+    "name": "雷克老板", "voice": "zh-CN-YunxiNeural", "rate": "-8%", "pitch": "-12Hz",
+    "reason": "成年男声略放慢、少量降低音高，表现从容与圆滑；避免把老泥鳅直接演成衰老老人。"
+  },
+  "apeilia": {
+    "name": "艾佩莉雅", "voice": "zh-CN-XiaoyiNeural", "rate": "+4%", "pitch": "+0Hz",
+    "reason": "选择清亮、活泼的年轻女声基础，略加快让挖苦和接话更利落。"
+  },
+  "haart": {
+    "name": "哈特蒙斯", "voice": "zh-CN-YunxiNeural", "rate": "-6%", "pitch": "-4Hz",
+    "reason": "成年男性青年的声线，稍放慢、轻微降低音高，朝懒散、怕麻烦且有小脾气的方向选角；保留傲娇和嘴硬的性格。避免童声，也不压成低沉大叔。"
+  },
+  "qianxing": {
+    "name": "潜行", "voice": "zh-CN-YunyangNeural", "rate": "+0%", "pitch": "+0Hz",
+    "reason": "稳定、清楚、克制的男声基础，服务于沉着的青年机械师，不额外叠机器人滤镜。"
+  },
+  "youmu": {
+    "name": "游木", "voice": "zh-CN-YunxiNeural", "rate": "+3%", "pitch": "+3Hz",
+    "reason": "明亮成年男声略提速，表现二十五岁医生的认真、热血和关切，与船长形成明确区分。"
+  },
+  "youmu_inner": {
+    "name": "游墓", "voice": "zh-CN-YunjianNeural", "rate": "-7%", "pitch": "-16Hz",
+    "reason": "换用比医生更有力量感的基础男声，再少量放慢、压低，表现年长强势的船长。"
+  },
+  "patch": {
+    "name": "补丁Z", "voice": "zh-TW-YunJheNeural", "rate": "+0%", "pitch": "-3Hz",
+    "reason": "独立的台湾普通话男声基础，选择斯文、清楚的侦探方向；保留自然的地域发音差异。"
+  },
+  "narrator": {
+    "name": "旁白", "voice": "zh-CN-XiaoxiaoNeural", "rate": "-5%", "pitch": "+0Hz",
+    "reason": "温和的叙述女声，略慢于对白，让场景和动作交代有呼吸。"
+  },
+  "clerk": {
+    "name": "学院值班员", "voice": "zh-CN-XiaoxiaoNeural", "rate": "+0%", "pitch": "+0Hz",
+    "reason": "清楚的成年女声，以正常语速表达紧张但仍在履行职责的联络员。"
+  },
+  "student": {
+    "name": "林晏", "voice": "zh-CN-YunxiaNeural", "rate": "+3%", "pitch": "+0Hz",
+    "reason": "更年轻的男声基础，略快于平常，区别于同行的成年救援者。"
+  }
+}

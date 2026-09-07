@@ -1,0 +1,14 @@
+# 3.2 新角色美术
+
+图集保存于 `public/art/expedition-recruits.png`，三栏依次为游木、同一身体被游墓接管后的船长形态、补丁 Z。根据新上传的角色表设计服装、脸部与配色，外观细节属于本次视觉适配，不是原设已确定的立绘。
+
+使用内置图像生成工具生成，原始文件位于 `C:/Users/A/.codex/generated_images/01a0729c-6f1d-70c2-b7ea-295d67504b4d/exec-e39fd3b7-1f13-4347-9d61-a15e8e64d60e.png`。
+
+## 最终生成提示词
+
+Use case: stylized-concept. Asset type: a production-ready RPG character portrait atlas for a Chinese fantasy-steampunk turn-based game. Create ONE wide 1536x1024 image divided into exactly THREE EQUAL vertical portrait panels, no gaps or text. Each portrait has its own complete head and upper body centered at the middle of its third, same head height, face visible around 25% image height, enough margin above the hair. High quality hand-painted anime fantasy realism, nuanced faces, crisp garment details, cinematic rim light, muted slate backgrounds consistent across all three panels. NOT chibi, not a photograph, not a UI mockup.
+LEFT THIRD: Youmu, a 25-year-old male human physician with tidy dark chestnut hair, kind but determined eyes, handsome earnest face, practical ivory medical coat over a dark teal waistcoat, a leather field medicine satchel strap, holding a small silver scalpel safely downward and clean folded gauze. Compassionate focused expression, teal silver accents, no blood. He is an ethical passionate doctor, not a priest.
+MIDDLE THIRD: Youmu possessed by Youmu-the-captain, the SAME male face and dark hair as the left portrait but with cool sharp amber eyes, a self-assured unsettling half-smile; spectral deep-sea captain wearing a dark midnight navy maritime coat with antique brass clasps and muted crimson lining, a worn curved saber visible below shoulders and an antique flintlock at waist. Subtle pale teal spectral rim and ocean mist. No skull face, no eyepatch, no beard; preserve identity with the doctor.
+RIGHT THIRD: Patch Z #4399, a male-presenting humanoid mechanical construct, an apparently honest meticulous middle-aged detective and arcane merchant, narrow thoughtful brass-framed spectacles, dark graphite swept-back hair or fine metal filaments, warm porcelain and gunmetal face with restrained fine articulated seams (human readable expression), layered navy detective coat over brass segmented armor, high collar, small clockwork orb with two clock hands floating by shoulder, holding a slender key-shaped sword lowered at side. Amber clock light and violet arcane edge, precision-made mechanical details. No huge pointed wizard hat, no open book, no guns pointed at camera.
+Constraints: three clearly distinct readable faces; exactly equal thirds for CSS cropping; no written words, letters, logos, panel labels, watermarks, decorative frames, or extra people. All three must have consistent rendering quality and be useful both as portrait thumbnails and enlarged dialogue illustrations.
+

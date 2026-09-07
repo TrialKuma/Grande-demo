@@ -1,0 +1,153 @@
+/* Readable information layers: hovering should reveal, never spend an action. */
+#game-tooltip{position:fixed;z-index:60;width:392px;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;padding:20px;background:linear-gradient(135deg,#1b2a3c,#0d1828 80%);border:1px solid #cfb583b3;border-top:3px solid #e2c48e;border-radius:7px;color:#e4eaf2;box-shadow:0 12px 48px #000c,0 0 0 1px #050b14;font-size:14px;line-height:1.7;pointer-events:auto;overscroll-behavior:contain}
+#game-tooltip[hidden]{display:none!important}
+.tooltip-header{display:flex;align-items:center;gap:12px;padding-bottom:13px;margin-bottom:13px;border-bottom:1px solid #b8cbd430}
+.tooltip-header>.icon{width:32px;height:32px;color:#edcf91}
+.tooltip-header h3{font-size:19px;line-height:1.45;font-weight:600;color:#f3e4c6;margin:0 0 3px}
+.tooltip-header small{font-size:12px;color:#aebecf;display:block}
+.tooltip-description{font-size:14px;color:#d5e0ed;line-height:1.8;margin:10px 0}
+.tooltip-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:15px 0}
+.tooltip-stats>div{padding:8px 10px;border:1px solid #afc4d522;background:#34445d35;display:flex;flex-direction:column;gap:2px}
+.tooltip-stats small{color:#a4b6c8;font-size:12px}
+.tooltip-stats strong{font-size:15px;color:#f0d7a1;font-weight:500}
+.tooltip-notes{margin:12px 0 0;padding-left:18px;color:#b9d8dc}
+.tooltip-notes li{padding-left:2px;margin:7px 0;line-height:1.7;font-size:13px}
+.tooltip-blocked{margin:14px 0 0;padding:9px 11px;background:#67363766;border-left:3px solid #e99f89;color:#f0bda7;font-size:14px}
+.tooltip-footnote{font-size:12px;color:#92a5b9;margin-top:12px}
+.tooltip-empowered{padding:10px 12px;border-left:3px solid #e9c176;background:#725e293b;color:#ffe0a1}
+.finale-counts{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:10px 0;font-size:12px}
+.finale-counts>span{padding:7px;background:#24364d;border:1px solid #69839c66;display:flex;flex-direction:column;gap:3px;color:#c8d3df}
+.finale-counts>span.done{border-color:#a6d7b9;color:#baf1c8;background:#294d4344}
+.finale-counts>strong{grid-column:1/-1;font-size:12px;color:#f0cb8e;line-height:1.6;text-align:center}
+#app{--board-height:316px}
+#app.in-battle #scene{right:360px}
+.foe-hud{left:calc((100% - 360px)/2)}
+.field-note{right:375px}
+#app.in-battle #action-caption{left:calc((100% - 360px)/2)}
+.team-roster{grid-template-rows:repeat(3,78px)}
+.team-row{grid-template-columns:160px 180px minmax(0,1fr);gap:13px}
+.team-hero .portrait{height:61px;width:44px}
+.team-hero[data-tooltip]:hover .portrait{border-color:var(--hero);box-shadow:0 0 14px color-mix(in srgb,var(--hero) 30%,transparent)}
+.hero-name{font-size:13px}
+.hero-resource{padding-left:9px}
+.hero-statuses{display:flex;align-items:center;gap:5px;margin-top:8px;min-height:29px}
+.status-badge{position:relative;display:flex;justify-content:center;align-items:center;padding:4px 4px 9px;min-width:27px;width:29px;height:29px;border:1px solid #a8bdd852;border-radius:4px;background:#1a2b40;color:#aebfd0;cursor:help}
+.status-badge>.icon{width:17px;height:17px}
+.status-badge .badge-label{display:none}
+.status-badge .badge-count{position:absolute;right:0;bottom:-2px;min-width:17px;padding:0 2px;border-radius:2px;font:9px ui-monospace,monospace;line-height:12px;color:#f5f3e5;background:#101b29;box-shadow:0 0 0 1px #95a5b440}
+.status-badge.active{border-color:var(--hero);color:var(--hero);background:color-mix(in srgb,var(--hero) 12%,#101a2a)}
+.status-badge.active.good{box-shadow:inset 0 0 10px color-mix(in srgb,var(--hero) 13%,transparent)}
+.status-badge.warning{color:#eda1a2;border-color:#d79396;background:#42283b}
+.status-badge.inactive{opacity:.66}
+.status-badge:hover,.status-badge:focus-visible{opacity:1;border-color:#ffe1a8;box-shadow:0 0 10px #e4c58b55;z-index:1}
+.balance-meter+.hero-statuses{margin-top:13px}
+.balance-meter i>span{top:9px;font-size:7px}
+.team-skill{height:62px}
+.team-skill.empowered{border-color:#e8c075;background:linear-gradient(135deg,#69552a70,#223045);box-shadow:inset 0 0 18px #e8bd6026,0 0 8px #ddaf5526}
+.team-skill.empowered .skill-glyph{color:#ffdb8b}
+.empower-mark{font-size:9px;line-height:15px;color:#ffe3a4;border:1px solid #d7ac5477;background:#74582355;padding:0 3px;border-radius:2px;flex-shrink:0}
+.team-skill .skill-title{gap:5px}
+.team-skill .skill-title kbd{margin-left:auto}
+.board-footnote{height:23px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#95a9bd;letter-spacing:.25px}
+.tactics-panel{right:16px;width:332px;top:81px;bottom:calc(var(--board-height) + 11px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#72889d88 #122030;padding-right:6px}
+.telegraph{padding:12px}
+.telegraph-heading{display:flex;align-items:center;justify-content:space-between;gap:7px}
+.telegraph-heading .tiny-label{font-size:11px;letter-spacing:.6px}
+.telegraph-heading button{display:flex;align-items:center;gap:5px;padding:4px 6px;font-size:12px;color:#edd19c;border:1px solid #cfb07866;border-radius:3px;background:#6b542d22;white-space:nowrap}
+.telegraph-heading button .icon{width:14px;height:14px}
+.telegraph-heading kbd{font-size:9px;padding:0 3px;min-width:14px}
+.telegraph h2{font-size:18px;line-height:1.5;margin:9px 0 6px}
+.telegraph p{font-size:14px;line-height:1.7;color:#d2deea}
+.response-heading{font-size:14px;margin:11px 0 8px}
+.response-heading span{font-size:11px;color:#a6b7c8}
+.response-option{padding:8px;gap:8px}
+.response-option strong{font-size:14px;line-height:1.4;gap:5px;flex-wrap:wrap}
+.response-option small{font-size:12.5px;line-height:1.55;color:#c1cfde}
+.response-mitigation{font-size:11px;color:#b6cdd2}
+.response-option kbd{font-size:8px}
+.response-owner{font-size:12px;line-height:1.7;margin-top:8px;color:#dcc79f}
+.foe-summary{font-size:11px}
+.codex-modal{width:930px;max-width:calc(100vw - 32px)}
+.mission-links{display:flex;gap:23px}
+.portrait.haart,.portrait.qianxing{background-image:url('/art/recruits.png');background-size:300% auto}
+.portrait.haart{background-position:12.5% 10%}
+.portrait.qianxing{background-position:87.5% 10%}
+@media(min-width:901px) and (max-height:800px){
+ .tactics-panel{top:69px}
+ .telegraph{padding:8px}
+ .telegraph h2{margin:5px 0}
+ .telegraph p{max-height:48px;overflow-y:auto}
+ .telegraph-heading button{padding:2px 5px}
+ .response-heading{margin:7px 0 5px}
+ .response-option{padding:5px 8px}
+ .response-option>span:nth-child(2){gap:1px}
+ .response-option small{line-height:1.4}
+ .response-owner{display:none}
+}
+@media(min-width:1500px){#app{--board-height:332px}.team-roster{grid-template-rows:repeat(3,83px)}.team-row{grid-template-columns:200px 195px minmax(0,1fr)}.team-skill{height:68px}.hero-name{font-size:14px}.status-badge{width:32px;height:31px}.tactics-panel{width:336px}}
+@media(max-width:1150px) and (min-width:901px){.team-row{grid-template-columns:145px 165px minmax(0,1fr);gap:8px}.team-hero .portrait{width:38px}.hero-name{font-size:11px}.status-badge{width:26px;min-width:24px}.hero-statuses{gap:4px}.empower-mark{font-size:8px;padding:0 2px}.team-skill .skill-title{font-size:10px;gap:3px}.team-skill .skill-title kbd{display:none}.foe-hud{left:calc((100% - 350px)/2);width:min(450px,43vw)}}
+@media(max-width:900px){
+ #app{--board-height:351px}
+ #app.in-battle #scene{right:305px}
+ .tactics-panel{width:284px;right:12px}
+ .foe-hud{left:114px;right:317px;width:auto;transform:none}
+ .field-note{right:312px}
+ .telegraph p{font-size:13px}
+ .telegraph h2{font-size:16px}
+ .telegraph-heading .tiny-label{font-size:10px}
+ .telegraph-heading button{font-size:11px}
+ .response-option strong{font-size:13px}
+ .response-option small{font-size:12px}
+ .response-mitigation{font-size:10px}
+ .team-row{grid-template-columns:133px 147px minmax(0,1fr);gap:7px}
+ .team-roster{grid-template-rows:repeat(3,89px)}
+ .team-hero .portrait{width:33px;height:50px}
+ .hero-name{font-size:11px}
+ .hero-statuses{gap:3px}
+ .status-badge{width:24px;min-width:22px}
+ .status-badge .badge-count{font-size:8px}
+ .team-skill{height:77px}
+ .empower-mark{position:absolute;right:3px;bottom:3px;font-size:8px}
+ .board-footnote{font-size:9px}
+ #app.in-battle #action-caption{left:calc((100% - 305px)/2)}
+}
+@media(max-width:700px){
+ #app{min-height:1290px;--board-height:570px}
+ #app.in-battle #scene{right:0;top:215px;bottom:calc(var(--board-height) + 296px)}
+ .foe-hud{left:92px;right:13px}
+ .tactics-panel{left:12px;right:12px;width:auto;top:auto;bottom:calc(var(--board-height) + 12px);max-height:284px;padding-right:0;overflow-y:auto}
+ .telegraph{padding:9px 10px}
+ .telegraph h2{margin:5px 0;font-size:16px}
+ .telegraph p{font-size:13px;line-height:1.6}
+ .response-heading{font-size:13px;margin:8px 0 7px}
+ .response-list{gap:5px}
+ .response-option{padding:7px 5px;min-height:97px}
+ .response-option strong{font-size:12px}
+ .response-option small{font-size:11px;line-height:1.5}
+ .response-mitigation{font-size:9px}
+ .response-owner{font-size:11px;margin-top:7px}
+ .team-roster{grid-template-rows:repeat(3,155px)}
+ .team-row{grid-template-columns:1fr 1.2fr;grid-template-rows:59px 77px;padding:5px 7px;gap:6px 8px}
+ .team-hero .portrait{width:36px;height:51px}
+ .hero-resource{padding-left:0}
+ .resource-heading{margin-bottom:4px}
+ .resource-meter{height:6px}
+ .hero-statuses{margin-top:5px;gap:4px}
+ .balance-meter+.hero-statuses{margin-top:10px}
+ .status-badge{height:26px;min-width:23px;width:25px}
+ .status-badge>.icon{width:15px;height:15px}
+ .team-skill{height:76px}
+ .board-footnote{font-size:8px;line-height:1.5;text-align:center;max-width:100%}
+ #game-tooltip{padding:16px;font-size:14px}
+ .tooltip-header h3{font-size:18px}
+ #app.in-battle #action-caption{left:50%;top:26%}
+ .codex-modal{max-width:calc(100vw - 20px)}
+}
+
+/* Damage, cost and stagger stay visible without opening the tooltip. */
+.skill-bottom{display:flex;align-items:center;justify-content:space-between;gap:5px;min-width:0}
+.skill-bottom .skill-price{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.skill-stagger{flex-shrink:0;font-size:11px;line-height:16px;color:#e4c991;white-space:nowrap}
+.skill-stagger b{font-variant-numeric:tabular-nums;font-size:12px}
+.team-skill .skill-lines{gap:3px}
+@media(max-width:1150px) and (min-width:901px){.skill-stagger{font-size:10px}.skill-stagger b{font-size:11px}.team-skill{padding-left:6px;padding-right:6px}.team-skill .skill-glyph{display:none}.team-skill .skill-title,.team-skill .skill-outcome{font-size:11px}}

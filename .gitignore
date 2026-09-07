@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.vite/
+*.log
+test-results/
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+!.env.example
+*.blend1

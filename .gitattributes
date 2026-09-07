@@ -1,0 +1,7 @@
+* text=auto
+*.png binary
+*.mp3 binary
+*.glb binary
+*.blend binary
+# Keep the delivered standalone build byte-for-byte identical.
+/开始游戏.html -text -diff

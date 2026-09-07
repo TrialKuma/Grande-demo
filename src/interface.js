@@ -1,0 +1,126 @@
+import {statusBadges} from './status-details.js';
+import {HEROES, SKILLS, BOSSES, DIFFICULTIES, canUse, heroOf, intentInfo, responseOptions, skillPreview, resolvedSkill, heroStatus, bossSummary} from './combat.js';
+import {icon} from './icons.js';
+
+export const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export const portrait = id => `<span class="portrait ${id}" role="img" aria-label="${id==='youmu_inner'?'游墓':HEROES.find(h=>h.id===id)?.name || id}"></span>`;
+const signed = n => n > 0 ? '+' + n : String(n);
+const equippedSkills=(state,id)=>(state.loadouts?.[id]||SKILLS[id].filter(s=>!s.unlockKey).slice(0,5).map(s=>s.id)).map(key=>SKILLS[id].find(s=>s.id===key)).filter(Boolean);
+export const bossOf = state => BOSSES[state.boss.id] || BOSSES.golem;
+
+export function titleView(prefs, saved, toolbar, records, journeyMarkup='') {
+  const chosen = BOSSES[prefs.bossId] || BOSSES.golem;
+  return `<section class="title-screen expedition-title">
+    <div class="title-art"></div><div class="title-shade"></div>
+    <header class="topbar"><div class="brand">${icon('crystal')}<span>格朗德<small>G R A N D E</small></span></div><div class="top-location"><span class="live-dot"></span>远征档案 · 停机之前</div>${toolbar}</header>
+    <div class="title-content">
+      <div class="eyebrow"><span></span>THE CRYSTAL ECHO</div>
+      <h1>魔晶<span>回响</span></h1>
+      <p class="title-description">读懂敌人的下一步。<br>用你选择的方式，夺回主动。</p>
+      <div class="title-party">${HEROES.map(h=>`<div title="${h.name} · ${h.role}">${portrait(h.id)}<span>${h.short}</span></div>`).join('')}<div class="party-label">七人同行 · 三人出战<br><small>气息 · 魔力 · 连击 · 平衡</small></div></div>
+      <div class="difficulty-label">远征难度</div>
+      <div class="difficulty-select" role="group" aria-label="难度">${Object.entries(DIFFICULTIES).map(([id,d])=>`<button data-difficulty="${id}" class="${id===prefs.difficulty?'active':''}" aria-pressed="${id===prefs.difficulty}">${d.name}</button>`).join('')}</div>
+      <p class="difficulty-desc">${DIFFICULTIES[prefs.difficulty].desc}</p>
+      ${journeyMarkup}
+      ${saved?`<button class="continue-button" data-action="continue">继续 · ${bossOf(saved).name} · 第 ${saved.round} 回合 ${icon('arrow')}</button>`:''}
+      <div class="start-meta">${icon('clock')} 回合制战斗 <span>·</span> 全队自由行动 <span>·</span> 自动保存</div>
+    </div>
+    <section class="mission-select" aria-label="选择 BOSS">
+      <div class="mission-heading"><span class="tiny-label">ENCOUNTER ARCHIVE</span><span>选择挑战 <b>01 — 06</b></span></div>
+      ${Object.values(BOSSES).map((b,i)=>`<button class="mission-card ${b.id===chosen.id?'selected':''}" style="--encounter:${b.color}" data-boss="${b.id}" aria-pressed="${b.id===chosen.id}">
+        <span class="mission-number">0${i+1}</span><span class="mission-symbol">${icon(b.icon)}</span>
+        <span class="mission-copy"><small>${esc(b.subtitle)}</small><strong>${esc(b.name)}</strong><span>${esc(b.mechanic)}</span></span>
+        <span class="mission-check">${icon(b.id===chosen.id?'check':'chevron')}</span>
+      </button>`).join('')}
+      <div class="mission-brief" style="--encounter:${chosen.color}"><span class="tiny-label">${esc(chosen.region)}</span><p>${esc(chosen.brief)}</p><button class="primary free-start" data-action="start">${icon('play')}自由挑战 · ${chosen.name}</button><div class="mission-links"><button data-action="boss-codex">BOSS 全部招式 ${icon('book')}</button><button data-action="help">战斗手册 ${icon('arrow')}</button></div></div>
+    </section>
+    <footer class="title-footer"><span>GRANDE · EXPEDITION DEMO <b>03.2</b></span><button data-action="voice-cast">角色声音试听</button><button data-action="model-review">模型样件 · 潜行</button><button data-action="credits">世界观与制作记录 ${icon('arrow')}</button><span>${records.length ? '已完成 '+records.length+' 次远征' : '建议使用横屏 · 支持鼠标与键盘'}</span></footer>
+  </section>`;
+}
+
+function resourceMeter(h) {
+  const balance = h.id === 'ric', maximum=h.maxResource;
+  return `<div class="resource-heading"><span>${h.resourceName}</span><strong>${balance?signed(h.resource):h.resource}<small> / ${balance?'±'+maximum:maximum}</small></strong></div>
+    <div class="resource-meter ${balance?'balance-meter':''}" role="meter" aria-label="${h.short}的${h.resourceName}" aria-valuenow="${h.resource}" aria-valuemin="${balance?-maximum:0}" aria-valuemax="${maximum}">
+    ${balance ? Array.from({length:maximum*2+1},(_,i)=>i-maximum).map(n=>`<i class="${n===0?'zero ':''}${n===h.resource?'current ':''}${n&&Math.sign(n)===Math.sign(h.resource)&&Math.abs(n)<=Math.abs(h.resource)?'filled':''}"><span>${n===0?'0':n===-maximum?'−':n===maximum?'+':''}</span></i>`).join('') : Array.from({length:maximum},(_,i)=>`<i class="${i<h.resource?'filled':''}"></i>`).join('')}
+    </div>${balance?`<div class="balance-caption"><span>负域 · 制敌</span><span>正域 · 强身</span></div>`:''}`;
+}
+
+function skillCard(state, h, baseSkill, i, busy) {
+  const skill=resolvedSkill(state,h.id,baseSkill.id);
+  const reason = canUse(state,h.id,skill.id);
+  const preview = skillPreview(state,h.id,skill.id);
+  const boosted=preview.empowered || (h.id==='knibbs'&&h.intuition>=3&&['focus','scatter'].includes(skill.id)) || (h.id==='apeilia'&&h.lastKind&&skill.kind&&h.lastKind!==skill.kind);
+  const ap=preview.ap??skill.ap,resourceCost=preview.cost??skill.cost??0;
+  const cost = resourceCost ? ` · ${resourceCost}${h.resourceName}` : skill.shift ? ` · 平衡${signed(skill.shift)}` : '';
+  let output = preview.damage ? `预计 ${preview.damage} 伤害${preview.hits>1?' / '+preview.hits+'段':''}` : preview.shield ? (preview.selfShield?'自身':'全队')+'护盾 +'+preview.shield : preview.self ? '生命 +'+preview.heal+' · '+h.resourceName+' '+signed(preview.resourceAfter-preview.resourceBefore) : preview.heal ? '主疗 +'+preview.heal+' / 群疗 +'+(preview.allHeal||0) : preview.allHeal ? '全队生命 +'+preview.allHeal : skill.hint;
+  if(preview.allShield)output=`护盾 自身+${preview.shield+preview.allShield} / 其他+${preview.allShield}`;
+  if(state.boss.finale && skill.kind)output='终幕 · '+(skill.kind==='physical'?'物理':'魔法')+'登记 '+((skill.kind==='physical'?state.boss.finalePhysical:state.boss.finaleMagic)?'已完成':'+1');
+  if(state.boss.core && skill.kind)output = '核心 · '+(skill.kind==='physical'?'物理':'魔法')+'命中 +'+Math.max(0,Math.min(3-(skill.kind==='physical'?state.boss.corePhysical:state.boss.coreMagic),skill.hits||1));
+  const stagger=state.boss.core||state.boss.finale?'—':preview.stagger||0;
+  return `<button class="team-skill ${boosted?'empowered':''} ${reason?'unavailable':''}" data-owner="${h.id}" data-skill="${skill.id}" data-tooltip="skill" data-detail="${skill.id}" aria-label="${h.short} · ${skill.name}" aria-disabled="${!!reason||busy}" ${busy?'disabled':''}>
+    <span class="skill-glyph">${icon(skill.icon)}</span>
+    <span class="skill-lines"><span class="skill-title">${esc(skill.name)}${boosted?'<span class="empower-mark">强化</span>':''}<kbd>${['Q','W','E','R','T'][i]}</kbd></span><span class="skill-outcome">${esc(output)}</span><span class="skill-bottom"><span class="skill-price ${reason?'blocked':''}">${reason || ap+' AP'+cost}</span><span class="skill-stagger" aria-label="本次削韧 ${stagger}">削韧 <b>${stagger}</b></span></span></span>
+    <span class="ap-chip">${ap}</span>
+  </button>`;
+}
+
+function heroRow(state, h, i, busy) {
+  return `<div class="team-row ${h.id===state.selected?'selected':''} ${h.hp<=0?'down':''}" style="--hero:${h.color}">
+    <button class="team-hero" data-hero="${h.id}" data-owner="${h.id}" data-tooltip="hero" aria-label="选择${h.name}" aria-pressed="${state.selected===h.id}" ${busy?'disabled':''}>
+      ${portrait(h.id==='youmu'&&h.youmuForm==='captain'?'youmu_inner':h.id)}
+      <span class="hero-vitals"><span class="hero-name">${h.short}<kbd>${i+1}</kbd></span><span class="hero-health">${h.hp}<small> / ${h.maxHp}</small>${h.shield?`<b>${icon('shield')}${h.shield}</b>`:''}</span><span class="hp-track"><i style="width:${h.hp/h.maxHp*100}%"></i></span><span class="hero-effects">${h.hp<=0?'倒下 · 可用药剂救起':h.resonance?'共鸣 '+h.resonance+' / 5':h.guard?'防御中':'生命'}</span></span>
+    </button>
+    <div class="hero-resource">${resourceMeter(h)}<div class="hero-statuses" aria-label="${h.short}的被动与状态">${statusBadges(state,h)}</div></div>
+    <div class="team-skills" aria-label="${h.name}的技能">${equippedSkills(state,h.id).map((s,j)=>skillCard(state,h,s,j,busy)).join('')}</div>
+  </div>`;
+}
+
+export function inspect(state, owner, id) {
+  const h=heroOf(state,owner), s=resolvedSkill(state,owner,id), p=skillPreview(state,owner,s.id);
+  const delta=p.resourceAfter-p.resourceBefore;
+  return `<strong style="color:${h.color}">${h.short} · ${s.name}</strong><span>${esc(s.desc)}</span><b>${h.resourceName} ${p.resourceBefore} → ${p.resourceAfter} ${delta?'('+signed(delta)+')':''}${p.stagger?' · 削韧 '+p.stagger:''}</b>${p.notes?.length?`<em>${esc(p.notes.join(' · '))}</em>`:''}`;
+}
+
+export function battleView(state, busy, toolbar, time, lastSkill) {
+  const b=state.boss, meta=bossOf(state), h=heroOf(state,state.selected), intent=intentInfo(state);
+  const summary=bossSummary(state), responses=responseOptions(state);
+  const prepared=state.response;
+  const responseActor=prepared?heroOf(state,prepared.actor):h;
+  return `<section class="battle-screen battle-v2">
+    <header class="topbar"><button class="brand" data-action="pause">${icon('crystal')}<span>格朗德<small>G R A N D E</small></span></button><div class="top-location">${esc(meta.region)} <span>/</span> <b>${DIFFICULTIES[state.difficulty].name}</b></div><span class="battle-clock" id="elapsed">${time}</span>${toolbar}</header>
+    <div class="fight-round"><span class="tiny-label">ROUND</span><strong>${String(state.round).padStart(2,'0')}</strong><span>${busy?'行动演出中':state.mode==='playing'?'我方行动':state.mode==='victory'?'挑战完成':'挑战结束'}</span><div class="round-tools"><button data-action="log" title="战斗记录">${icon('book')}</button><button data-action="camera" title="重置视角">${icon('camera')}</button></div></div>
+    <section class="foe-hud" style="--encounter:${meta.color}" aria-label="BOSS 状态">
+      <div class="foe-title"><span class="foe-symbol">${icon(meta.icon)}</span><div><small>${esc(meta.subtitle)}</small><h1>${b.finale?'归零终幕':b.core?'魔晶核心':esc(meta.name)}</h1></div><span class="foe-phase">${b.finale?'终幕':b.core?'核心暴露':'阶段 '+(b.stage+1)}</span></div>
+      ${b.finale?`<div class="finale-counts"><span class="${b.finalePhysical?'done':''}">物理登记 <b>${b.finalePhysical?'✓':'待命中'}</b></span><span class="${b.finaleMagic?'done':''}">魔法登记 <b>${b.finaleMagic?'✓':'待命中'}</b></span><span class="${prepared?'done':''}">预备应对 <b>${prepared?'✓':'待选择'}</b></span><strong>剩余 ${b.finaleTurns} 回合 · 登记双系并应对最后一击</strong></div>`:b.core?`<div class="core-counts"><span>物理 <b>${b.corePhysical} / 3</b></span><span>魔法 <b>${b.coreMagic} / 3</b></span><strong>剩余 ${b.coreTurns} 回合</strong></div>`:`<div class="foe-health"><i style="width:${Math.max(0,b.hp/b.maxHp*100)}%"></i><span>${b.hp.toLocaleString()} / ${b.maxHp.toLocaleString()}</span></div><div class="foe-stagger"><span>${b.broken?'架势崩溃':b.exposed?'破绽 · 易伤50%':'韧性'}</span><div><i style="width:${b.stagger/b.maxStagger*100}%"></i></div><b>${b.stagger}</b></div>`}
+      <div class="foe-summary">${(b.finale?summary.filter(s=>s.label==='阶段'):summary).map(s=>`<span class="tone-${s.tone||'neutral'}">${esc(s.label)} <b>${esc(s.value)}</b></span>`).join('')}</div>
+    </section>
+    <aside class="tactics-panel" aria-label="敌方预告与应对">
+      <div class="telegraph ${intent.danger?'danger':''} ${intent.good?'good':''}">
+        <div class="telegraph-heading"><span class="tiny-label">下一步 · 敌方预告</span><button data-action="boss-codex">${icon('book')}全部招式 <kbd>B</kbd></button></div><h2>${icon(intent.icon)}${esc(intent.name)}</h2><p>${esc(intent.desc)}</p>
+      </div>
+      <div class="response-heading"><strong>应对 · ${responseActor.short}</strong><span>${prepared?'已支付 1 AP · 改选免费':'消耗 1 AP · 三选一'}</span></div>
+      <div class="response-list">${responses.map((r,i)=>`<button class="response-option ${prepared?.id===r.id?'prepared':''}" data-response="${r.id}" ${busy||b.core||b.broken||state.mode!=='playing'||(!prepared&&state.ap<1)||h.hp<=0?'disabled':''} title="${esc(r.description+'；'+r.reward)}"><span class="response-icon">${icon(r.icon)}</span><span><strong>${r.name}<span class="response-mitigation">${b.core||b.broken?'本轮无需应对':esc(r.description.replace("全队对本次主招","").replace("，受击者预计"," · ").replace("，每人预计承伤"," · 每人").replace("（护盾 / 防御前）","").replace("；本次主招无直接伤害"," · 无直伤"))}</span><kbd>${['Z','X','C'][i]}</kbd></strong><small>${esc(b.finale?r.reward.split('；')[0]:r.reward)}</small></span>${prepared?.id===r.id?icon('check'):''}</button>`).join('')}</div>
+      <div class="response-owner">${b.finale?'终幕：登记双系，准备应对后结束回合':b.core?'核心阶段 · 全力完成双系命中':b.broken?('敌方已中断 · 下轮恢复 6 AP'):prepared?'已预备：'+responseActor.short+' · '+(responses.find(r=>r.id===prepared.id)?.name||'应对'):'由选中队员执行：'+h.short}</div>
+      
+    </aside>
+    <div class="field-note">${icon('spark')}<span>${esc(state.log[0]?.text || '')}</span></div>
+    <section class="team-board" aria-label="全队战斗技能">
+      <div class="board-heading">
+        <div class="team-ap" role="status" aria-label="队伍行动点"><span>队伍行动点 <b>AP</b></span><strong>${state.ap}<small> / ${state.maxAp}</small></strong><div>${Array.from({length:state.maxAp},(_,i)=>`<i class="${i<state.ap?'filled':''}"></i>`).join('')}</div></div>
+        <span class="board-hint">全队技能直接点选 <span>·</span> 1 / 2 / 3 选择快捷键队员</span>
+        <div class="board-actions"><button data-action="potion" ${busy||!state.ap||!state.potions?'disabled':''} title="1 AP · 为选中队员回复65生命，也可救起倒下的队员">${icon('potion')}<span>药剂 ×${state.potions}</span><kbd>V</kbd></button><button data-action="guard" ${busy||!state.ap||h.guard||h.hp<=0?'disabled':''} title="1 AP · 选中队员本轮减伤55%">${icon('shield')}<span>防御</span><kbd>F</kbd></button><button class="finish-turn" data-action="end" ${busy||state.mode!=='playing'?'disabled':''}>${busy?'<i class="spinner"></i> 演出中':'结束回合'}${icon('arrow')}<kbd>空格</kbd></button></div>
+      </div>
+      <div class="team-roster">${state.heroes.map((p,i)=>heroRow(state,p,i,busy)).join('')}</div>
+      <div class="board-footnote">Q W E R T 使用选中队员技能 · V 药剂 · 拖动战场可 360° 旋转 · 发光或变名技能已满足条件</div>
+    </section>
+  </section>`;
+}
+
+export function helpView() {
+  return `<div class="modal-eyebrow">FIELD MANUAL · 03</div><h2>看清威胁，再选择收益。</h2><p class="modal-lead">每轮全队共享 <b>6 AP</b>。十五个技能始终可见，可直接点击任意角色的技能。敌人会在你结束回合后行动。</p>
+  <div class="manual-grid"><article>${icon('shield')}<h3>预备一种应对 · 1 AP</h3><p><b>招架 / 回避 / 迎击</b>对当前预告有不同收益，右侧实时写明。由选中队员执行，支付后可以免费改选。群体攻击的减伤低于单体攻击，具体承伤见预告。敌人被打断时应对不触发，下轮仍恢复 6 AP。</p></article><article>${icon('break')}<h3>破韧与行动顺序</h3><p>我方行动时破韧会取消本轮敌招，并获得 <b>50% 伤害加成</b>。敌方出招后被应对反击破韧，则下轮留下易伤破绽，<b>仍会继续攻击</b>。恢复架势后有一轮抗控，需重新安排防守。</p></article></div>
+  <div class="manual-heroes">${HEROES.map(h=>`<div>${portrait(h.id)}<span><b>${h.name} · ${h.passiveName}</b><small>${esc(h.passiveDesc)}</small></span></div>`).join('')}</div>
+  <div class="boss-manual">${Object.values(BOSSES).map(b=>`<article style="--encounter:${b.color}"><h3>${icon(b.icon)}${b.name}</h3><p>${esc(b.brief)}</p><small>${b.id==='golem'?'魔法命中驱散迷雾；躯壳归零后，在两个完整回合内完成 3 次物理 + 3 次魔法命中。':b.id==='duelist'?'每面镜片减免 10% 物理伤害，魔法每段拆一面。折镜架势下的物理攻击会反噬。':b.id==='cantor'?'物理每段清除一层孢压；高孢压抵抗魔法，裸冠时魔法易伤。孢压越高，绽放越危险。':b.id==='warden'?'物理每段释放 1 蓄电；蓄电越高攻击越强，招架可以接地。':b.id==='weaver'?'封页交替限制物理或魔法；用另一种伤害拆封，防止资源被抽空。':'物理与魔法交替完成同步。生命归零后还要各登记一次双系命中、准备应对并结束回合，抵住最后一击。'}</small></article>`).join('')}</div>
+  <p class="modal-lead">按 <b>B</b> 打开六名 BOSS 的完整招式档案。悬浮技能、状态图标与头像可查看详细说明。远征中每战后可从本场奖励中选一项，调整三人队伍和五个技能位；新主动技能默认装入第 5 位。</p><div class="manual-controls"><span><kbd>1 2 3</kbd>选择队员</span><span><kbd>Q W E R T</kbd>对应行技能</span><span><kbd>Z X C</kbd>预备应对</span><span><kbd>V / F</kbd>药剂 / 防御</span><span><kbd>空格</kbd>结束回合</span><span><kbd>Esc</kbd>暂停</span></div><button class="primary" data-action="close-modal">开始判断 ${icon('arrow')}</button>`;
+}
