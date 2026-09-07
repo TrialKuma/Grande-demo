@@ -29,7 +29,7 @@ def write_json(path, value):
 
 def read_story():
     module = (ROOT / 'src' / 'story.js').as_uri()
-    code = 'import { CHAPTERS } from ' + json.dumps(module) + '; process.stdout.write(JSON.stringify(CHAPTERS));'
+    code = 'import * as story from ' + json.dumps(module) + '; process.stdout.write(JSON.stringify(typeof story.allStoryLines === "function" ? [{before:story.allStoryLines(),after:[]}] : story.CHAPTERS));'
     completed = subprocess.run(['node', '--input-type=module', '-e', code], cwd=ROOT, check=True, capture_output=True, encoding='utf-8')
     return json.loads(completed.stdout)
 

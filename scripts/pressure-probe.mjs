@@ -1,11 +1,11 @@
 // Public-API balance probe. Policies never edit battle HP, AP, intentions or resources.
-const {BOSSES,createBattle,activeSkills,canUse,heroOf,skillPreview,useSkill,usePotion,prepareResponse,endRound,intentInfo}=await import(process.env.PRESSURE_COMBAT_MODULE||new URL('../src/combat.js',import.meta.url));
+const {BOSSES,createBattle,activeSkills,canUse,heroOf,skillPreview,useSkill,usePotion,guard,prepareResponse,endRound,intentInfo}=await import(process.env.PRESSURE_COMBAT_MODULE||new URL('../src/combat.js',import.meta.url));
 
 const names=['pass-only','raw-damage','parry-greedy','tactical'];
 const totalHp=s=>s.heroes.reduce((n,h)=>n+h.hp,0);
 const minRatio=s=>Math.min(...s.heroes.map(h=>h.hp/h.maxHp));
 const living=s=>s.heroes.filter(h=>h.hp>0);
-const healingSkills=new Set(['mend','bloomheal','shelter','prism','bulwark','breathe','vent','equilibrium','veil']);
+const healingSkills=new Set(['shelter','breathe','reboot','equilibrium','firstaid','suture','repair']);
 function outgoing(s,stats,result){
   if(!result.ok)throw new Error(result.error);
   for(const e of result.events){
@@ -21,7 +21,7 @@ function outgoing(s,stats,result){
 }
 function cast(s,stats,id,k){if(canUse(s,id,k))return false;const p=skillPreview(s,id,k);if(healingSkills.has(k))stats.recoveryAp+=p.ap;outgoing(s,stats,useSkill(s,id,k));stats.actions.push(`R${s.round} ${id}/${k}`);return true;}
 function response(s,stats,id){
-  if(s.response||s.boss.core||s.boss.broken||!s.ap)return false;
+  if(s.response||s.boss.core||s.boss.broken||s.boss.hardControl||!s.ap)return false;
   let actor=living(s).find(h=>h.id==='knibbs')||living(s)[0];
   if(id==='evade')actor=living(s).find(h=>h.id==='apeilia')||actor;
   outgoing(s,stats,prepareResponse(s,id,actor.id));stats.responses[id]++;stats.actions.push(`R${s.round} ${id}`);return true;
@@ -41,9 +41,12 @@ function terminal(s,stats,policy){
   if(!b.core&&!b.finale)return false;
   if(!stats.firstExposure)stats.firstExposure={round:s.round,hp:s.heroes.map(h=>h.hp)};
   const p=b.core?b.corePhysical<3:!b.finalePhysical,m=b.core?b.coreMagic<3:!b.finaleMagic;
-  if(p&&(cast(s,stats,'knibbs','scatter')||cast(s,stats,'apeilia','blade')||cast(s,stats,'knibbs','shot')))return true;
-  if(m&&(cast(s,stats,'apeilia','purify')||cast(s,stats,'ric','rune')||cast(s,stats,'apeilia','sentinel')))return true;
+  const needed=living(s).flatMap(h=>activeSkills(s,h.id).map(k=>({h:h.id,k:k.id,preview:skillPreview(s,h.id,k.id)})))
+    .filter(c=>!canUse(s,c.h,c.k)&&c.preview.hits>0&&(c.preview.kind==='physical'?p:m))
+    .sort((a,c)=>c.preview.hits/c.preview.ap-a.preview.hits/a.preview.ap);
+  if(needed.length){cast(s,stats,needed[0].h,needed[0].k);return true;}
   if(b.finale&&policy!=='raw-damage'&&response(s,stats,policy==='tactical'?'evade':'parry'))return true;
+  if(b.finale&&policy==='tactical'&&!p&&!m&&s.ap&&s.potions){const hurt=[...living(s)].sort((a,b)=>a.hp-b.hp)[0];if(hurt?.hp<35){stats.recoveryAp++;outgoing(s,stats,usePotion(s,hurt.id));stats.actions.push(`R${s.round} potion/${hurt.id}`);return true;}}
   next(s,stats);return true;
 }
 function tactical(s,stats){
@@ -54,12 +57,17 @@ function tactical(s,stats){
     const finisher=bestDamage(s,{lethal:true});
     if(finisher){cast(s,stats,finisher.h,finisher.k);return;}
   }
-  if(low.hp<45&&s.ap&&s.potions){stats.recoveryAp++;outgoing(s,stats,usePotion(s,low.id));return;}
+  if(b.finale&&response(s,stats,'evade'))return;
+  // Complete the exposed mechanism before spending the shared AP on optional
+  // healing. The terminal round is won by registration plus a live response.
   if(terminal(s,stats,'tactical'))return;
+  if(low.hp<45&&s.ap&&s.potions){stats.recoveryAp++;outgoing(s,stats,usePotion(s,low.id));return;}
   if(!b.broken&&!b.controlImmune&&(b.charging||['pierce','duel','drain','bloom','storm','silence','rewrite','zero_pulse'].includes(b.intent))&&cast(s,stats,'ric','bind'))return;
   if(!b.broken&&low.hp/low.maxHp<Number(process.env.PRESSURE_HEAL_THRESHOLD||.5)){
-    if(cast(s,stats,'ric','mend'))return;
-    if(heroOf(s,'ric')?.resource<-1&&cast(s,stats,'ric','shelter'))return;
+    if(low.id==='knibbs'&&cast(s,stats,'knibbs','breathe'))return;
+    if(low.id==='apeilia'&&cast(s,stats,'apeilia','reboot'))return;
+    if(!b.weakened&&cast(s,stats,'ric','mend'))return;
+    if(low.id==='ric'&&heroOf(s,'ric')?.resource<-1&&cast(s,stats,'ric','shelter'))return;
   }
   if(!s.response&&!b.broken&&s.ap){
     const key=b.charging?'quake':b.intent;

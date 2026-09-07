@@ -16,7 +16,7 @@ function refuse(state, action) {
   assert.deepEqual(state,before,'a refused action must be atomic');
 }
 function valid(state) {
-  assert.equal(state.version,5);
+  assert.equal(state.version,7);
   assert.ok(Object.hasOwn(BOSSES,state.boss.id));
   assert.ok(['playing','victory','defeat'].includes(state.mode));
   assert.equal(state.maxAp,6);
@@ -182,7 +182,7 @@ test('v2: alternating damage types increases Apeilia damage and refund while rep
   const result=useSkill(state,'apeilia','purify');assert.equal(result.ok,true);
   assert.equal(heroOf(state,'apeilia').resource,7);assert.equal(heroOf(state,'apeilia').lastKind,'magic');
   assert.equal(result.events.find(event=>event.type==='attack').amount,2*Math.round(27*1.25*.82));
-  state=createBattle();heroOf(state,'apeilia').resource=4;heroOf(state,'apeilia').lastKind='physical';
+  state=createBattle();heroOf(state,'apeilia').resource=6;heroOf(state,'apeilia').lastKind='physical';
   const preview=skillPreview(state,'apeilia','sentinel');useSkill(state,'apeilia','sentinel');
   assert.equal(preview.damage,130);assert.equal(heroOf(state,'apeilia').resource,1);valid(state);
 });

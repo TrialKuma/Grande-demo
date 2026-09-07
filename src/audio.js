@@ -2,13 +2,11 @@
  * Original procedural score and sound design for the Grande battle demo.
  * All audio is synthesized locally. The context is created only after a gesture.
  */
+import {scoreTheme,scoreFrame} from './audio-score.js';
+import {attackSoundPlan,soundLayers} from './audio-sound-design.js';
 const midi = (note) => 440 * 2 ** ((note - 69) / 12);
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-const CHORDS = [
-  [50, 53, 57], [46, 50, 53], [43, 46, 50], [45, 48, 52],
-  [50, 53, 57], [48, 52, 55], [46, 50, 53], [45, 49, 52],
-];
-const MELODY = [74, 77, 79, 76, 81, 79, 77, 73];
+export const MAX_AUDIO_VOICES=192;
 
 export class GameAudio {
   constructor() {
@@ -26,11 +24,15 @@ export class GameAudio {
     this._step = 0;
     this._voices = new Set();
     this._noiseBuffers = new Map();
+    this._scene={bossId:'golem',screen:'title'};
+    this._theme=scoreTheme(this._scene);
+    this._sfxEpoch=0;
     this._hidden = typeof document !== 'undefined' && document.hidden;
     this._gesture = () => { void this.unlock(); };
     this._visibility = () => {
       this._hidden = document.hidden;
       if (this._hidden) {
+        this._sfxEpoch++;
         this._stopMusic();
         this._stopVoices('sfx');
       } else if (this.unlocked) {
@@ -91,8 +93,22 @@ export class GameAudio {
     this._musicBus = ctx.createGain();
     this._musicBus.gain.value = 0;
     this._sfxBus = ctx.createGain();
-    this._sfxBus.gain.value = 0.88;
-    this._musicBus.connect(this._master);
+    this._sfxBus.gain.value = 1.36;
+    // Keep occasional music percussion peaks below the skill transients. This
+    // compressor is music-only; effects retain their short impact envelopes.
+    this._musicLimiter=ctx.createDynamicsCompressor();
+    this._musicLimiter.threshold.value=-17;
+    this._musicLimiter.knee.value=8;
+    this._musicLimiter.ratio.value=6;
+    this._musicLimiter.attack.value=.004;
+    this._musicLimiter.release.value=.16;
+    // Web Audio's compressor includes makeup gain. A post-compressor trim keeps
+    // its peak control from inadvertently making the entire score louder.
+    this._musicTrim=ctx.createGain();
+    this._musicTrim.gain.value=.45;
+    this._musicBus.connect(this._musicLimiter);
+    this._musicLimiter.connect(this._musicTrim);
+    this._musicTrim.connect(this._master);
     this._sfxBus.connect(this._master);
 
     // A quiet stereo chamber gives glass, strings, and magic a shared space.
@@ -104,7 +120,7 @@ export class GameAudio {
     this._musicSend.gain.value = 0.55;
     this._sfxSend = ctx.createGain();
     this._sfxSend.gain.value = 0.27;
-    this._musicBus.connect(this._musicSend);
+    this._musicTrim.connect(this._musicSend);
     this._sfxBus.connect(this._sfxSend);
     this._musicSend.connect(this._reverb);
     this._sfxSend.connect(this._reverb);
@@ -144,6 +160,7 @@ export class GameAudio {
     if (!this.context) return;
     this._setGain(this._master.gain, this.muted ? 0 : this.volume, 0.06);
     if (this.muted) {
+      this._sfxEpoch++;
       this._stopMusic();
       this._stopVoices('sfx');
     } else {
@@ -169,20 +186,30 @@ export class GameAudio {
     if(this._musicBus&&this._timer!==null)this._setGain(this._musicBus.gain,this.dialogue ? .14 : .66,.2);
   }
 
+  setScene({bossId=this._scene.bossId,screen=this._scene.screen,phase=this.phase}={}) {
+    const sceneChanged=bossId!==this._scene.bossId||screen!==this._scene.screen;
+    const theme=scoreTheme({bossId,screen}),changed=theme!==this._theme;
+    this._scene={bossId,screen};this._theme=theme;
+    if(sceneChanged){this._sfxEpoch++;this._stopVoices('sfx');}
+    if(changed){this._stopMusic();this._step=0;}
+    this.setPhase(screen==='battle'?phase:0);
+    if(changed)this._startMusic();
+  }
+
   setPhase(value) {
-    const next = value === 'core' || value === 'victory'
+    const next = value === 'core' || value === 'finale' || value === 'victory' || value === 'defeat'
       ? value
       : clamp(Math.round(Number(value) || 0), 0, 4);
     const changed = next !== this.phase;
     const wasEnded = this._ended;
     this.phase = next;
-    this._ended = next === 'victory';
-    if (next === 'victory') {
+    this._ended = next === 'victory' || next === 'defeat';
+    if (this._ended) {
       this._stopMusic();
     } else if (changed || wasEnded) {
       // Align the next phrase with the changed battle state, without overlap.
       this._stopMusic();
-      this._step = next === 'core' ? 0 : Number(next) * 16;
+      this._step = 0;
       this._startMusic();
     }
   }
@@ -212,77 +239,45 @@ export class GameAudio {
     const now = this.context.currentTime;
     // Timer throttling must never cause a burst of missed notes on foregrounding.
     if (this._nextNoteTime < now - 0.1) this._nextNoteTime = now + 0.05;
-    const intensity = typeof this.phase === 'number' ? this.phase : 1;
-    const bpm = this.phase === 'core' ? 68 : 74 + intensity * 2;
-    const stepLength = 60 / bpm / 4;
     let budget = 8;
     while (this._nextNoteTime < now + 0.28 && budget-- > 0) {
-      this._musicStep(this._step, this._nextNoteTime, stepLength, intensity);
+      const frame=scoreFrame(this._theme,this._step,this.phase),stepLength=60/frame.bpm/4;
+      this._musicStep(this._step, this._nextNoteTime, stepLength);
       this._nextNoteTime += stepLength;
-      this._step = (this._step + 1) % 128;
+      this._step = (this._step + 1) % frame.loopSteps;
     }
   }
 
-  _musicStep(index, time, tick, intensity) {
-    const bar = Math.floor(index / 16);
-    const beat = index % 16;
-    const chord = CHORDS[bar];
-    const core = this.phase === 'core';
-    if (beat === 0) {
-      this._strings(chord, time, tick * 15.7, core ? 0.65 : 1);
-      this._bell(midi(MELODY[bar] + (core ? 12 : 0)), time + 0.025,
-        tick * (core ? 8 : 5), 0.027, 'music', bar % 2 ? 0.35 : -0.35);
-    }
-    if (beat === 0 || beat === 8) {
-      const root = midi(chord[0] - 12);
-      this._tone(root, time, tick * 7.4, {
-        bus: 'music', wave: 'triangle', amp: core ? 0.035 : 0.075,
-        attack: 0.035, release: 0.35, cutoff: 330, endCutoff: 130,
-      });
-      if (!core) this._drum(time, 'music', 0.8 + intensity * 0.07, beat === 8);
-    }
-    if (!core && (beat === 4 || beat === 12)) {
-      this._noise(time, 0.14, {
-        bus: 'music', amp: 0.018, filter: 'bandpass', frequency: 1250,
-        endFrequency: 700, q: 0.6, attack: 0.012, pan: beat === 4 ? -0.24 : 0.24,
-      });
-    }
-    const arpBeat = core ? beat % 4 === 2
-      : intensity >= 2 ? beat % 2 === 0 : beat % 4 === 2;
-    if (arpBeat) {
-      const pattern = bar % 2 ? [2, 1, 0, 1, 2, 0, 1, 2] : [0, 2, 1, 2, 0, 1, 2, 1];
-      const slot = Math.floor(beat / 2);
-      const note = chord[pattern[slot % 8]] + 12 + (slot > 4 && bar % 3 === 1 ? 12 : 0);
-      this._tone(midi(note), time, tick * 3.9, {
-        bus: 'music', wave: 'triangle', amp: core ? 0.021 : 0.029,
-        attack: 0.012, release: tick * 2.4, cutoff: 1300,
-        endCutoff: 450, pan: Math.sin(index * 0.8) * 0.35,
-      });
-    }
-    if ((bar === 1 || bar === 3 || bar === 6 || core) && beat === 12) {
-      this._bell(midi(MELODY[bar] - 5 + (core ? 12 : 0)), time, tick * 5,
-        0.018, 'music', 0.28);
-    }
-    if (!core && intensity >= 3 && (beat === 6 || beat === 14)) {
-      this._noise(time, 0.065, {
-        bus: 'music', amp: 0.009, filter: 'highpass', frequency: 2700, pan: -0.1,
-      });
-    }
+  _musicStep(index,time,tick) {
+    for(const note of scoreFrame(this._theme,index,this.phase).notes)this._instrument(note,time+(note.offset||0)*tick*4,note.beats*tick*4);
   }
 
-  _strings(chord, time, duration, scale = 1) {
-    chord.forEach((note, index) => {
-      this._tone(midi(note), time + index * 0.018, duration, {
-        bus: 'music', wave: 'sawtooth', amp: 0.019 * scale,
-        attack: 0.43, release: 0.75, cutoff: 670 + index * 100,
-        endCutoff: 380, detune: -4, pan: -0.37 + index * 0.37,
-      });
-      this._tone(midi(note), time + 0.025, duration, {
-        bus: 'music', wave: 'triangle', amp: 0.022 * scale,
-        attack: 0.5, release: 0.8, cutoff: 950,
-        detune: 5, pan: 0.34 - index * 0.34,
-      });
-    });
+  _instrument(note,time,length) {
+    const {instrument:voice,amp,pan}=note,bus='music',frequencies=(Array.isArray(note.note)?note.note:[note.note]).map(midi);
+    if(['kick','tom'].includes(voice)){this._drum(time,bus,amp*.65,voice==='tom');return;}
+    if(['brush','tick','gear','flow','paper'].includes(voice)){
+      this._noise(time,voice==='flow'?.3:voice==='paper'?.12:voice==='brush'?.1:.035,{bus,amp,pan,filter:voice==='tick'?'highpass':'bandpass',frequency:{brush:1500,tick:4700,gear:2500,flow:780,paper:3300}[voice],endFrequency:voice==='flow'?1400:voice==='paper'?1400:undefined,q:voice==='gear'?3:.6,attack:voice==='flow'?.05:.003});
+      if(voice==='gear')this._tone(2100,time,.045,{bus,amp:amp*.7,pan});return;
+    }
+    for(const [i,f]of frequencies.entries()){
+      const p=frequencies.length>1?(i-(frequencies.length-1)/2)*.22:pan,a=frequencies.length>1?amp*.65:amp;
+      if(voice==='glass'||voice==='metal'){this._bell(f,time,Math.min(1.1,length+ .2),a,bus,p);if(voice==='metal')this._tone(f*2.73,time,.13,{bus,amp:a*.16,pan:p});}
+      else if(voice==='wood'){this._tone(f,time,length,{bus,amp:a*1.2,pan:p,wave:'sine',attack:.003,release:length});this._tone(f*3.99,time,.09,{bus,amp:a*.22,pan:p});}
+      else if(voice==='bass')this._tone(f,time,length,{bus,amp:a,pan:p,wave:'triangle',attack:.015,cutoff:280,endCutoff:100});
+      else if(voice==='pluck')this._tone(f,time,length,{bus,amp:a*1.15,pan:p,wave:'sawtooth',attack:.004,cutoff:2100,endCutoff:300,release:length});
+      else if(voice==='pulse')this._tone(f,time,Math.min(.24,length),{bus,amp:a*.85,pan:p,wave:'square',cutoff:1350,endCutoff:340,attack:.006});
+      else if(['flute','reed','breath'].includes(voice)){
+        this._tone(f,time,length,{bus,amp:a,pan:p,wave:voice==='reed'?'triangle':'sine',attack:Math.min(.1,length*.2),release:Math.min(.22,length*.45),cutoff:voice==='reed'?2000:1100});
+        if(voice!=='reed')this._noise(time,Math.min(length,.4),{bus,amp:a*.16,pan:p,frequency:f*2,q:1.4,attack:.045});
+      }else if(voice==='organ'){
+        this._tone(f,time,length,{bus,amp:a,pan:p,wave:'sine',attack:.035,release:.18});this._tone(f*2,time,length,{bus,amp:a*.3,pan:-p,wave:'triangle',attack:.06,cutoff:1800});
+      }else if(voice==='brass')this._tone(f,time,length,{bus,amp:a*.78,pan:p,wave:'sawtooth',attack:.045,cutoff:1350,endCutoff:490,release:.2});
+      else{
+        const warm=voice==='warm',short=voice==='bowShort'||voice==='chamber';
+        this._tone(f,time,short?Math.min(length,.58):length,{bus,amp:a,pan:p,wave:warm?'triangle':'sawtooth',attack:short?.025:.26,release:short?.16:.55,cutoff:voice==='choir'?850:650,endCutoff:380,detune:-3});
+        if(!short)this._tone(f*(voice==='choir'?2:1),time+.014,length,{bus,amp:a*.48,pan:-p,wave:'sine',attack:.28,release:.6,detune:4});
+      }
+    }
   }
 
   _track(source, gain, nodes, bus, stopTime) {
@@ -324,7 +319,7 @@ export class GameAudio {
   }
 
   _tone(frequency, time, duration, options = {}) {
-    if (!this.context || this._disposed) return;
+    if (!this.context || this._disposed || this._voices.size>=MAX_AUDIO_VOICES) return;
     const ctx = this.context;
     const start = Math.max(time, ctx.currentTime);
     const length = Math.max(0.025, duration);
@@ -381,7 +376,7 @@ export class GameAudio {
   }
 
   _noise(time, duration, options = {}) {
-    if (!this.context || this._disposed) return;
+    if (!this.context || this._disposed || this._voices.size>=MAX_AUDIO_VOICES) return;
     const ctx = this.context;
     const start = Math.max(time, ctx.currentTime);
     const length = Math.max(0.02, duration);
@@ -389,7 +384,7 @@ export class GameAudio {
     source.buffer = this._getNoise(options.brown);
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.linearRampToValueAtTime(options.amp ?? 0.08, start + (options.attack || 0.003));
+    gain.gain.linearRampToValueAtTime(options.amp ?? 0.08, start + Math.min(options.attack || 0.003,length*.45));
     gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
     const filter = ctx.createBiquadFilter();
     filter.type = options.filter || 'bandpass';
@@ -424,20 +419,21 @@ export class GameAudio {
     });
   }
 
-  play(eventOrString) {
+  play(eventOrString,{speed=1}={}) {
     if (this._disposed || this.muted || this._hidden || !this.context || !this.unlocked) return;
     const event = typeof eventOrString === 'string' ? { type: eventOrString } : eventOrString;
     if (!event || typeof event !== 'object') return;
+    const epoch=this._sfxEpoch;
     if (this.context.state === 'suspended') {
       this.context.resume().then(() => {
-        if (!this._disposed && !this.muted && !this._hidden) this._playEvent(event);
+        if (!this._disposed && !this.muted && !this._hidden && this._sfxEpoch===epoch)this._playEvent(event,{speed});
       }).catch(() => {});
       return;
     }
-    if (this.context.state === 'running') this._playEvent(event);
+    if (this.context.state === 'running') this._playEvent(event,{speed});
   }
 
-  _playEvent(event) {
+  _playEvent(event,{speed=1}={}) {
     const time = this.context.currentTime + 0.006;
     const type = event.type;
     if (type === 'click' || type === 'select') {
@@ -454,13 +450,19 @@ export class GameAudio {
       this.setPhase('victory');
       this._victory(time);
     } else if (type === 'defeat') {
-      this._ended = true;
-      this._stopMusic();
+      this.setPhase('defeat');
       [62, 60, 57, 50].forEach((note, index) => this._tone(midi(note), time + index * 0.24,
         1.0, { amp: 0.075, wave: 'triangle', attack: 0.025, release: 0.9, cutoff: 950 }));
       this._tone(58, time + 0.15, 1.4, { amp: 0.1, endPitch: 30 });
+    } else if(type==='response'&&event.style==='parry'){
+      this._renderCue({kind:'ward',at:0,weight:.72,pan:-.15},time+.23/clamp(Number(speed)||1,.5,3),1);
+      this._tone(410,time+.24/clamp(Number(speed)||1,.5,3),.13,{amp:.04,endPitch:180,wave:'triangle'});
+    } else if((type==='response'&&event.style==='evade')||type==='buff'){
+      this._noise(time,.22,{amp:.055,frequency:2200,endFrequency:400,pan:.4,attack:.025});
+      this._tone(660,time+.12,.14,{amp:.025,endPitch:990});
     } else if (type === 'heal') {
-      [62, 65, 69, 74].forEach((note, index) => this._bell(midi(note), time + index * 0.09,
+      const transpose={haart:5,youmu:-2,qianxing:7,patch:9}[event.actor]||0;
+      [62, 65, 69, 74].forEach((note, index) => this._bell(midi(note+transpose), time + index * 0.09,
         0.9, 0.054, 'sfx', (index - 1.5) * 0.16));
       this._noise(time, 0.48, { amp: 0.026, frequency: 2600, endFrequency: 4600, attack: 0.12 });
     } else if (type === 'shield' || event.style === 'guard') {
@@ -479,25 +481,17 @@ export class GameAudio {
       this._quake(time, 0.75);
       this._noise(time, 0.85, { amp: 0.08, frequency: 350, endFrequency: 2300, attack: 0.2 });
       this._bell(466, time + 0.3, 0.95, 0.055);
-    } else if (type === 'attack' || type === 'boss') {
-      const style = event.style || (type === 'boss' ? 'quake' : event.kind === 'magic' ? 'rune' : 'shot');
-      const count = clamp(Math.floor(Number(event.hits) || 1), 1, 6);
-      const pan = type === 'boss' ? 0.2 : -0.14;
-      if (style === 'quake') this._quake(time, 1);
-      else if (style === 'mist') this._mist(time);
-      else if (style === 'burst') {
-        this._tone(120, time, 0.19, { amp: 0.1, endPitch: 360, wave: 'triangle' });
-        this._noise(time, 0.28, { amp: 0.09, frequency: 550, endFrequency: 4200, attack: 0.08 });
-        this._quake(time + 0.18, 0.6);
-        this._magic(time + 0.19, count, pan);
-      } else {
-        for (let hit = 0; hit < count; hit++) {
-          const at = time + hit * (style === 'slash' ? 0.11 : 0.09);
-          if (style === 'shot') this._shot(at, pan);
-          else if (style === 'slash') this._slash(at, pan + hit * 0.06);
-          else this._magic(at, 1, pan + hit * 0.045);
-        }
-      }
+    } else if (type === 'attack' || type === 'boss' || type==='response'&&event.style==='counter') {
+      const plan=attackSoundPlan(event,{speed,bossId:this._scene.bossId});
+      for(const cue of plan.events)this._renderCue(cue,time,plan.speed);
+    }
+  }
+
+  _renderCue(cue,time,speed=1){
+    for(const layer of soundLayers(cue)){
+      const at=time+cue.at+(layer.offset||0)/speed,duration=layer.duration/speed;
+      if(layer.type==='noise')this._noise(at,duration,layer.options);
+      else this._tone(layer.frequency,at,duration,layer.options);
     }
   }
 
@@ -578,6 +572,7 @@ export class GameAudio {
     if (this._disposed) return;
     this._stopMusic();
     this._stopVoices();
+    this._sfxEpoch++;
     this._disposed = true;
     this.unlocked = false;
     if (typeof document !== 'undefined') {
@@ -589,7 +584,7 @@ export class GameAudio {
     this.context = null;
     this._noiseBuffers.clear();
     this._voices.clear();
-    if (ctx && ctx.state !== 'closed') void ctx.close().catch(() => {});
+    if (ctx && ctx.state !== 'closed' && ctx.close) void ctx.close().catch(() => {});
   }
 }
 

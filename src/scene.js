@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import {branchEnemy,branchEnvironment,formationFor} from './scene-expansion.js';
+import {impactTiming,damagingEvent,attackTheme} from './battle-feedback.js';
+import {impactSchedule,reactionPose,dispatchImpacts,actorStanding,IMPACT_COLORS} from './scene-feedback.js';
+import {SceneAtmosphere} from './scene-atmosphere.js';
+import {contactEffect} from './scene-impact.js';
 
 // Original local geometry, plus one reference-guided Blender character sample.
 const TAU = Math.PI * 2;
@@ -867,7 +872,9 @@ function finalCore() {
 }
 
 const PARTY_IDS = ['knibbs', 'apeilia', 'ric', 'haart', 'qianxing', 'youmu', 'patch'];
-const ENEMY_FACTORIES = { golem, duelist, cantor, warden, weaver, final: finalCore };
+const geometryKit={material,mesh,box,orb,rod,plate,ring,finishEnemy};
+const ENEMY_FACTORIES = { golem, duelist, cantor, warden, weaver, final: finalCore,
+  ...Object.fromEntries(['tide','furnace','orrery','arbiter'].map(id=>[id,()=>branchEnemy(id,geometryKit)]))};
 const PARTY_PLACEMENTS = [[-4.2, .48, 2.4], [4.2, .48, 2.4], [0, .48, -4.8]];
 const BOSS_POSITION = [0, .48, 0];
 const facingCenter = position => Math.atan2(-position.x, -position.z);
@@ -882,6 +889,13 @@ export class BattleScene {
     this.effects = [];
     this.actions = [];
     this.shake = 0;
+    this.motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    this.reducedMotion = !!this.motionPreference?.matches;
+    this.onMotionPreference = event => {
+      this.reducedMotion=event.matches;this.shake=0;
+      this.setAtmosphere(this.actors.get('boss')?.modelId||'golem');
+    };
+    this.motionPreference?.addEventListener?.('change',this.onMotionPreference);
     this.random = seeded(18275);
     this.state = { mode: 'title', selected: 'knibbs' };
     this.scene = new THREE.Scene();
@@ -950,6 +964,7 @@ export class BattleScene {
     this.createActorMarker(boss);
     this.actors.set('boss', boss);
     this.bossCache.set('golem', boss);
+    this.setAtmosphere('golem');
     this.resetCamera();
     this.resize = this.resize.bind(this);
     this.resizeObserver = new ResizeObserver(this.resize);
@@ -1191,6 +1206,7 @@ export class BattleScene {
     if (!entry) {
       if (id === 'storm') this.createStormEnvironment();
       else if (id === 'sanctum') this.createSanctumEnvironment();
+      else if (id === 'floodworks'||id==='observatory') branchEnvironment(id,geometryKit,this);
       this.rememberEnvironment(id);
       entry = this.environmentCache.get(id);
     }
@@ -1199,7 +1215,11 @@ export class BattleScene {
     this.flames = entry.flames; this.dust = entry.dust; this.fogSprites = entry.fogSprites;
     this.environmentAnimated = entry.animated;
     this.environmentId = id;
-    const palette = id === 'storm'
+    const palette = id === 'floodworks'
+      ? {background:'#0c252b',fog:'#16363c',density:.019,sky:'#a4c9cd',ground:'#1e3c43',key:'#d7e8d7',rim:'#52bdbe',warm:'#e2bd83',cyan:'#64d3ca',violet:'#8ac5c9'}
+      : id === 'observatory'
+      ? {background:'#0b1026',fog:'#161d38',density:.011,sky:'#b4c3e5',ground:'#212341',key:'#d1dbff',rim:'#8c8ddb',warm:'#d4ba8b',cyan:'#8ba8fc',violet:'#b997ef'}
+      : id === 'storm'
       ? { background: '#152938', fog: '#1b3342', density: .016, sky: '#b7d3ea', ground: '#283f53', key: '#c9e4ff', rim: '#6d9cd5', warm: '#a9d4ff', cyan: '#65bafa', violet: '#84b4ff' }
       : id === 'sanctum'
         ? { background: '#151321', fog: '#251c32', density: .023, sky: '#b9abbf', ground: '#372134', key: '#edcfad', rim: '#a178da', warm: '#ffb587', cyan: '#9179cf', violet: '#c877b3' }
@@ -1426,7 +1446,9 @@ export class BattleScene {
     }
     this.camera.position.set(10.8, 12.4, 18.2);
     this.camera.zoom = 1;
-    this.controls.target.set(0, 1.65, 0);
+    const focus=V();let count=0;for(const actor of this.actors.values()){focus.add(actor.basePosition);count++;}
+    if(count)focus.divideScalar(count);focus.y=1.65;
+    this.controls.target.copy(focus);
     this.camera.lookAt(this.controls.target);
     this.controls.update();
     this.camera.updateProjectionMatrix();
@@ -1434,6 +1456,46 @@ export class BattleScene {
 
   setSpeed(speed) { this.speed = clamp(Number(speed) || 1, .25, 4); }
   setPaused(paused) { this.paused = Boolean(paused); }
+
+  setAtmosphere(bossId) {
+    this.atmosphere?.dispose();
+    this.atmosphere=new SceneAtmosphere(this.scene,this.glowTexture,bossId,this.reducedMotion);
+    // The themed fixed-buffer layer replaces the old drifting dust cloud.
+    for(const entry of this.environmentCache.values())if(entry.dust)entry.dust.visible=false;
+    if(this.environmentId==='floodworks'&&this.stageLights){
+      this.stageLights.warm.color.set(bossId==='furnace'?'#ff9954':'#e2bd83');
+      this.stageLights.rim.color.set(bossId==='furnace'?'#dc7860':'#52bdbe');
+    }
+  }
+
+  clearReactionOverlay(actor) {
+    for(const delta of actor.reactionOverlay||[]){
+      delta.object.position.x-=delta.x||0;delta.object.position.y-=delta.y||0;delta.object.position.z-=delta.z||0;
+      delta.object.rotation.x-=delta.rx||0;delta.object.rotation.y-=delta.ry||0;delta.object.rotation.z-=delta.rz||0;
+    }
+    actor.reactionOverlay=[];
+  }
+
+  applyReaction(actor,dt) {
+    const reaction=actor.reaction;if(!reaction)return;
+    reaction.age+=dt;
+    const pose=reactionPose(reaction.age,{...reaction,reducedMotion:this.reducedMotion,boss:actor.id==='boss'});
+    if(pose.done){actor.reaction=null;return;}
+    const add=(object,delta)=>{if(!object)return;actor.reactionOverlay.push({object,...delta});object.position.x+=delta.x||0;object.position.y+=delta.y||0;object.position.z+=delta.z||0;object.rotation.x+=delta.rx||0;object.rotation.y+=delta.ry||0;object.rotation.z+=delta.rz||0;};
+    add(actor.root,{x:reaction.worldDirection.x*pose.step,z:reaction.worldDirection.z*pose.step});
+    add(actor.body,{y:pose.crouch,rx:pose.pitch,rz:pose.roll});
+    add(actor.bones?.head,{rx:pose.headPitch,rz:pose.headRoll});
+    add(actor.bones?.leftArm,{rx:pose.leftArm,rz:pose.armSpread});
+    add(actor.bones?.rightArm,{rx:pose.rightArm,rz:-pose.armSpread});
+    // The crystal golem has separate armor pieces instead of humanoid bones.
+    // Their rotations supplement its weighted body bend without disturbing
+    // the independent core-opening positions and scales.
+    if(!actor.bones&&actor.armor)for(const part of actor.armor){
+      const base=part.userData.basePosition;
+      if(base.y>3.7&&Math.abs(base.x)<.55)add(part,{rx:pose.headPitch,rz:pose.headRoll});
+      else if(Math.abs(base.x)>1.1)add(part,{rx:base.x<0?pose.leftArm*.35:pose.rightArm*.35,rz:Math.sign(base.x)*pose.armSpread*.4});
+    }
+  }
 
   loadDetailedHero(hero) {
     if (hero.modelPromise) return hero.modelPromise;
@@ -1552,7 +1614,7 @@ export class BattleScene {
     const modelId = Object.hasOwn(ENEMY_FACTORIES, requestedId) ? requestedId : 'golem';
     const current = this.actors.get('boss');
     if (current.modelId === modelId) return current;
-    // Keep only the six designed enemies. Cached meshes remain owned by the
+    // Cached meshes remain owned by the
     // scene and are disposed with it, including their hidden ground markers.
     this.clearCombatEffects();
     current.root.visible = false;
@@ -1582,7 +1644,8 @@ export class BattleScene {
     next.shield.visible = false;
     next.marker.material.color.set(next.accent);
     this.actors.set('boss', next);
-    this.switchEnvironment(modelId === 'warden' ? 'storm' : ['weaver', 'final'].includes(modelId) ? 'sanctum' : 'ruins');
+    this.switchEnvironment(['tide','furnace'].includes(modelId)?'floodworks':modelId==='orrery'?'observatory':modelId === 'warden' ? 'storm' : ['weaver', 'final','arbiter'].includes(modelId) ? 'sanctum' : 'ruins');
+    this.setAtmosphere(modelId);
     this.arenaPulse.material.color.set(next.accent);
     if (this.environmentId === 'ruins') {
       const colors = modelId === 'duelist' ? ['#37656c', '#72aa9c'] : modelId === 'cantor' ? ['#5e4a73', '#ab709e'] : ['#5b389a', '#a061dd'];
@@ -1595,6 +1658,7 @@ export class BattleScene {
   }
 
   clearCombatEffects() {
+    for(const actor of this.actors.values()){this.clearReactionOverlay(actor);actor.reaction=null;actor.flash=0;}
     for (const action of this.actions) action.finish();
     this.actions.length = 0;
     for (const effect of this.effects) this.removeEffect(effect.object);
@@ -1667,6 +1731,7 @@ export class BattleScene {
       }
     }
     const boss = state.boss ? this.switchBoss(state.boss.id) : this.actors.get('boss');
+    this.applyFormation(state.boss?.id||boss.modelId);
     if (state.boss) {
       boss.hp = state.boss.hp ?? boss.hp;
       boss.stage = state.boss.stage || 0;
@@ -1679,12 +1744,32 @@ export class BattleScene {
     }
   }
 
+  applyFormation(bossId){
+    const key=(`${bossId}:${this.activePartyIds.join(',')}`);
+    if(this.formationKey===key)return;
+    this.formationKey=key;
+    const layout=formationFor(bossId,this.activePartyIds.length),boss=this.actors.get('boss');
+    this.formationName=layout.name;
+    boss.basePosition.set(...layout.boss);boss.root.position.copy(boss.basePosition);boss.markerRoot.position.copy(boss.basePosition);
+    this.activePartyIds.forEach((id,i)=>{
+      const actor=this.actors.get(id);actor.basePosition.set(...layout.party[i]);
+      actor.root.position.copy(actor.basePosition);actor.markerRoot.position.copy(actor.basePosition);
+      actor.baseRotation=Math.atan2(boss.basePosition.x-actor.basePosition.x,boss.basePosition.z-actor.basePosition.z);
+      actor.root.rotation.y=actor.baseRotation;
+    });
+    // A common focus keeps a frontal line and a split flank equally visible.
+    const focus=boss.basePosition.clone();for(const id of this.activePartyIds)focus.add(this.actors.get(id).basePosition);
+    focus.divideScalar(this.activePartyIds.length+1);focus.y=1.6;
+    const delta=focus.clone().sub(this.controls.target);this.camera.position.add(delta);this.controls.target.copy(focus);this.controls.update();
+  }
+
   positionOf(id, y = 1.2) {
     const actor = this.actors.get(id) || this.actors.get('boss');
     return actor.root.position.clone().add(V(0, y * (actor.visualScale?.y || 1), 0));
   }
 
   addEffect(object, duration, update, delay = 0) {
+    if(this.effects.length>=180){const retired=this.effects.shift();this.removeEffect(retired.object);}
     this.effectRoot.add(object);
     object.visible = delay <= 0;
     this.effects.push({ object, duration, update, elapsed: -delay });
@@ -1692,6 +1777,8 @@ export class BattleScene {
   }
 
   burst(position, color = '#cea0ff', count = 22, power = 1, delay = 0, debris = false) {
+    count=Math.min(this.reducedMotion?6:40,count);
+    if(this.reducedMotion)power*=.3;
     const geometry = debris ? new THREE.IcosahedronGeometry(.065, 0) : new THREE.SphereGeometry(.034, 4, 3);
     const mat = debris ? material('#9c81af') : new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending });
     const group = new THREE.Group();
@@ -1713,6 +1800,7 @@ export class BattleScene {
   }
 
   flashAt(position, color, size = 2, delay = 0) {
+    size=Math.min(size,this.reducedMotion?1.1:3.2);
     const glow = this.glow(color, size, 1);
     glow.position.copy(position);
     this.addEffect(glow, .33, t => {
@@ -1786,13 +1874,14 @@ export class BattleScene {
     group.position.copy(position);
     group.quaternion.copy(this.camera.quaternion);
     group.rotation.z += -.6;
+    const startRotation=group.rotation.z;
     const mat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending });
     const arc = mesh(group, new THREE.RingGeometry(.85, 1.01, 45, 1, -.35, Math.PI * 1.32), mat);
     arc.castShadow = false;
     const thin = mesh(group, new THREE.RingGeometry(1.04, 1.07, 45, 1, -.2, Math.PI * 1.1), mat);
     this.addEffect(group, .38, t => {
       group.scale.setScalar(scale * (.5 + t * .65));
-      group.rotation.z += .08;
+      group.rotation.z=startRotation+t*.8;
       mat.opacity = (1 - t) ** .6;
     }, delay);
   }
@@ -1815,21 +1904,27 @@ export class BattleScene {
     }, delay);
   }
 
-  play(event = {}) {
+  play(event = {}, {onImpact} = {}) {
     if (this.disposed || this.modelReview) return Promise.resolve();
     const type = event.type || 'attack';
+    if(type==='shield-expire'){
+      onImpact?.(0);
+      for(const id of event.targets||[])this.floatingText(this.positionOf(id,2.2),`护盾到期 −${event.amounts?.[id]||event.amount||0}`,'#9daab8',0,false);
+      return Promise.resolve();
+    }
     const partyLead = this.activePartyIds[0];
     const actor = this.actors.get(event.actor) || this.actors.get(type === 'boss' ? 'boss' : partyLead);
     const targets = (Array.isArray(event.targets) && event.targets.length ? event.targets : [actor.id === 'boss' ? partyLead : 'boss']).map(id => typeof id === 'string' ? id : id.id).filter(id => this.actors.has(id));
     const primary = this.actors.get(targets[0]) || this.actors.get('boss');
     const style = event.style || (actor.id === 'knibbs' ? 'shot' : ['apeilia', 'qianxing'].includes(actor.id) ? 'slash' : actor.id === 'boss' ? 'quake' : 'rune');
-    const hitCount = clamp(Number(event.hits) || 1, 1, 6);
+    event={...event,type,style,actor:actor.id,targets,bossId:event.bossId||this.actors.get('boss')?.modelId};
+    const timing=impactTiming(event),hitCount=timing.hits,interval=timing.interval;
     const isHealing = type === 'heal';
-    const isShield = type === 'shield' || (style === 'guard' && !isHealing);
+    const isShield = type === 'shield' || (style === 'guard' && type!=='buff' && !isHealing && !damagingEvent(event));
     const response = ['parry', 'evade', 'counter'].includes(style);
-    const color = response ? style === 'counter' ? '#ffcc86' : style === 'parry' ? '#88fff1' : '#a8d7ff' : isHealing ? '#91ffc2' : isShield ? '#84e9ff' : actor.id === 'knibbs' ? '#ffd594' : actor.id === 'haart' ? '#c3b0ff' : actor.id === 'qianxing' ? '#9fe8ff' : actor.id === 'apeilia' && style === 'slash' ? '#86fff0' : actor.id === 'boss' ? actor.accent : '#d6a5ff';
-    let duration = hitCount > 2 ? 1.12 : .82;
-    let impactAt = .32;
+    const color = response ? style === 'counter' ? '#ffcc86' : style === 'parry' ? '#88fff1' : '#a8d7ff' : isHealing ? '#91ffc2' : isShield ? '#84e9ff' : IMPACT_COLORS[attackTheme(event)];
+    let duration = timing.duration;
+    const impactAt = timing.impactAt;
     actor.action = true;
     const origin = actor.root.position.clone();
     const targetPosition = this.positionOf(primary.id, primary.id === 'boss' ? 2.9 : 1.3);
@@ -1862,8 +1957,6 @@ export class BattleScene {
       this.shake = .09;
       duration = 1.0;
     } else if (response) {
-      duration = style === 'counter' ? .92 : .78;
-      impactAt = style === 'counter' ? .33 : .23;
       if (style === 'parry') {
         movement = 'parry';
         const intercept = from.clone().addScaledVector(direction, .40);
@@ -1909,10 +2002,10 @@ export class BattleScene {
         this.bolt(from, targetPosition, '#fff0be', .17, .04, .19);
         this.slash(targetPosition, color, .28, 1.85);
         this.slash(targetPosition.clone().add(V(.08, .14, .02)), '#fff4d6', .36, 1.3);
-        this.flashAt(targetPosition, '#ffe5b1', 3, .32);
-        this.burst(targetPosition, color, 30, 1.0, .32);
       }
       if (event.label) this.floatingText(this.positionOf(actor.id, actor.height + .15), event.label, color, .14, true);
+    } else if(type==='buff'){
+      for(const id of targets){this.runeCircle(this.positionOf(id,.15),color,.08,.8,id==='boss'?1.7:.85);this.floatingText(this.positionOf(id,id==='boss'?3.6:2.2),event.label||'状态改变',color,.2,true);}
     } else if (isHealing || isShield) {
       this.runeCircle(origin, color, 0, .83, .93);
       for (const [i, id] of targets.entries()) {
@@ -1931,33 +2024,25 @@ export class BattleScene {
         }
         const actualAmount = event.amounts?.[id] ?? event.amount;
         const text = actualAmount ? `+${Math.round(actualAmount)}${isShield ? '  盾' : ''}` : isShield ? '护盾' : '恢复';
-        this.floatingText(this.positionOf(id, 2.25), text, color, .25 + i * .04, isShield);
+        this.floatingText(this.positionOf(id, 2.25), text, color, impactAt, isShield);
       }
     } else if (style === 'shot') {
       movement = 'shot';
-      impactAt = .28;
       for (let h = 0; h < hitCount; h++) {
-        const delay = .13 + h * .115;
+        const delay = impactAt-.16+h*interval;
         const muzzle = from.clone().add(direction.clone().multiplyScalar(.75));
         const impact = targetPosition.clone().add(V((Math.random() - .5) * .3, (Math.random() - .5) * .35, 0));
         this.flashAt(muzzle, color, 1.3, delay);
         this.bolt(muzzle, impact, color, delay, .035, .16);
-        this.flashAt(impact, '#ffe6af', 1.8, delay + .14);
-        this.burst(impact, color, 15, .65, delay + .14);
       }
     } else if (style === 'slash') {
       movement = 'dash';
-      impactAt = .31;
       for (let h = 0; h < hitCount; h++) {
         const p = targetPosition.clone().add(V(0, (h % 2) * .32 - .1, 0));
-        this.slash(p, color, .26 + h * .12, 1.5 + (h % 2) * .2);
-        this.flashAt(p, color, 2.4, .30 + h * .12);
-        this.burst(p, color, 18, .9, .31 + h * .12);
+        this.slash(p, color, impactAt-.05+h*interval, 1.25+(h%2)*.2);
       }
     } else if (style === 'quake') {
       movement = 'slam';
-      impactAt = .43;
-      duration = 1.02;
       const groundPosition = origin.clone();
       groundPosition.y = .54;
       this.shockwave(groundPosition, color, 6.9, .39);
@@ -1965,18 +2050,14 @@ export class BattleScene {
       this.burst(origin.clone().add(V(0, .2, 0)), color, 30, 1.55, .4, true);
       for (const id of targets) {
         const p = this.positionOf(id, .13);
-        this.runeCircle(p, '#b174dc', .05, .5, .75);
-        this.burst(p, color, 20, 1.1, .45, true);
-        this.flashAt(p.clone().add(V(0, .8, 0)), color, 2.1, .44);
+        this.runeCircle(p, color, .05, .5, .75);
       }
     } else if (style === 'mist') {
-      duration = .96;
-      impactAt = .38;
       this.runeCircle(origin, color, 0, .9, 2.15);
       for (const id of targets) {
         const p = this.positionOf(id, 1.0);
         for (let j = 0; j < 5; j++) {
-          const sprite = this.glow('#a25be2', 3, .35);
+          const sprite = this.glow(color, 3, .35);
           const a = j / 5 * TAU;
           sprite.position.copy(p).add(V(Math.cos(a) * .7, j * .2, Math.sin(a) * .7));
           this.addEffect(sprite, .85, t => {
@@ -1985,13 +2066,12 @@ export class BattleScene {
             sprite.position.y += .004;
           }, j * .045);
         }
-        this.burst(p, color, 18, .5, .38);
       }
     } else {
       this.runeCircle(origin, color, 0, .8, actor.id === 'boss' ? 1.75 : .85);
-      impactAt = .38;
       for (let h = 0; h < hitCount; h++) {
-        const delay = .19 + h * .105;
+        const travel=style==='burst'&&actor.id==='boss'?.25:.22;
+        const delay=impactAt-travel+h*interval;
         for (const id of targets) {
           const p = this.positionOf(id, id === 'boss' ? 2.9 : 1.35);
           if (style === 'burst' && actor.id === 'boss') {
@@ -2000,32 +2080,20 @@ export class BattleScene {
           } else {
             this.bolt(from.clone().add(V(0, .23, 0)), p, color, delay, style === 'burst' ? .11 : .075, .22);
           }
-          this.flashAt(p, color, style === 'burst' ? 3.7 : 2.5, delay + .2);
-          this.burst(p, color, 24, 1.15, delay + .2);
-          this.shockwave(p, color, 1.3, delay + .22, true);
         }
       }
     }
 
-    const damaging = !isHealing && !isShield && (['attack', 'boss'].includes(type) || type === 'response' && targets.some(id => (event.amounts?.[id] ?? event.amount ?? 0) > 0));
-    if (damaging) {
-      for (let h = 0; h < hitCount; h++) {
-        for (const id of targets) {
-          const actualAmount = event.amounts?.[id] ?? event.amount;
-          const amount = typeof actualAmount === 'number' ? Math.max(0, Math.round(actualAmount / hitCount)) : null;
-          if (amount) this.floatingText(this.positionOf(id, id === 'boss' ? 3.9 : 2.1).add(V((h % 2 ? .2 : -.2), 0, 0)), String(amount), color, impactAt + h * .115);
-          else if (this.actors.get(id)?.coreOpen) this.floatingText(this.positionOf(id, 3.9), event.kind === 'magic' ? '魔法命中' : '物理命中', color, impactAt + h * .115, true);
-        }
-      }
-    }
+    const beats=impactSchedule(event);
+    duration=Math.max(duration,timing.duration);
     return new Promise(resolve => {
       this.actions.push({
-        actor, elapsed: 0, duration, impactAt, hit: false,
+        actor, elapsed: 0, duration, impactAt, interval, hitCount, nextHit:0,
         update: (t, age) => {
           const attackPulse = Math.sin(Math.min(1, t * 1.5) * Math.PI);
           if (movement === 'evade') {
             const travel = t < .30 ? ease(t / .30) : t > .58 ? 1 - ease((t - .58) / .42) : 1;
-            actor.root.position.copy(origin).addScaledVector(V(direction.z, 0, -direction.x), travel * 1.0);
+            actor.root.position.copy(origin).addScaledVector(V(direction.z, 0, -direction.x), travel * (this.reducedMotion?.25:1));
             actor.body.rotation.z = -.17 * attackPulse;
           } else if (movement === 'parry') {
             actor.body.position.z = -.12 * attackPulse;
@@ -2035,9 +2103,12 @@ export class BattleScene {
             }
           } else if (movement === 'dash') {
             const travel = t < .27 ? ease(t / .27) : t > .66 ? 1 - ease((t - .66) / .34) : 1;
-            actor.root.position.copy(origin).addScaledVector(direction, dashDistance * travel);
+            actor.root.position.copy(origin).addScaledVector(direction, dashDistance * travel * (this.reducedMotion?.15:1));
             actor.body.rotation.z = -.10 * attackPulse;
-            if (actor.bones) actor.bones.rightArm.rotation.x = -1.8 * Math.sin(t * Math.PI);
+            if (actor.bones) {
+              const swing=age<impactAt?Math.min(1,age/impactAt):age<impactAt+(hitCount-1)*interval+.12?.68+.32*Math.cos((age-impactAt)/interval*TAU):Math.max(0,(duration-age)/.38);
+              actor.bones.rightArm.rotation.x=-1.8*swing;
+            }
           } else if (movement === 'shot') {
             actor.body.position.z = -.11 * Math.max(0, Math.sin(age * 36)) * attackPulse;
             if (actor.bones) actor.bones.rightArm.rotation.x = -1.25 * Math.min(1, t * 7) * Math.min(1, (1 - t) * 5);
@@ -2049,13 +2120,26 @@ export class BattleScene {
             actor.bones.rightArm.rotation.x = -.55 * attackPulse;
           }
         },
-        impact: () => {
-          if (!damaging) return;
-          for (const id of targets) {
-            const target = this.actors.get(id);
-            if (target) target.flash = .33;
+        impact: index => {
+          onImpact?.(index);
+          for(const beat of beats.filter(beat=>beat.index===index)){
+            const target=this.actors.get(beat.id);if(!target)continue;
+            const point=this.positionOf(beat.id,beat.id==='boss'?2.8:1.38).add(V((index%2?.08:-.08),index%2*.12,0));
+            const away=target.basePosition.clone().sub(origin).setY(0).normalize();
+            if(away.lengthSq()<.001)away.copy(direction);
+            contactEffect(this,beat,point,away);
+            if(beat.reaction){
+              const local=away.clone().applyAxisAngle(V(0,1,0),-target.root.rotation.y);
+              target.reaction={age:0,strength:beat.strength,index,worldDirection:away,direction:[local.x,local.z]};
+              target.flash=this.reducedMotion?.055:.14;target.flashColor=color;
+              if(!this.reducedMotion)this.shake=Math.max(this.shake,Math.min(.065,.020+beat.strength*.020));
+              this.floatingText(this.positionOf(beat.id,beat.id==='boss'?3.9:2.1).add(V(index%2?.18:-.18,0,0)),String(beat.hpLoss),color);
+            }else if(beat.absorbed>0){
+              this.floatingText(this.positionOf(beat.id,beat.id==='boss'?3.9:2.1),`吸收 ${beat.absorbed}`,'#a4e7ff',0,true);
+            }else if(target.coreOpen){
+              this.floatingText(this.positionOf(beat.id,3.9),event.kind==='magic'?'魔法命中':'物理命中',color,0,true);
+            }
           }
-          this.shake = Math.max(this.shake, movement === 'slam' ? .18 : hitCount > 2 ? .09 : .045);
         },
         finish: () => {
           actor.action = false;
@@ -2082,7 +2166,8 @@ export class BattleScene {
     const t = this.time;
     this.controls.update();
     for (const actor of this.actors.values()) {
-      const alive = actor.id === 'boss' ? (actor.hp > 0 || actor.coreOpen || actor.finaleOpen) && this.state.mode !== 'victory' : actor.hp > 0;
+      this.clearReactionOverlay(actor);
+      const alive = actorStanding(actor,this.state.mode);
       const fallen = actor.id === 'boss' ? .25 : 1;
       const visualScale = actor.visualScale || V(1, 1, 1);
       actor.root.scale.lerp(V(visualScale.x, visualScale.y * (alive ? 1 : fallen), visualScale.z), Math.min(1, dt * 4));
@@ -2168,8 +2253,8 @@ export class BattleScene {
       actor.flash = Math.max(0, actor.flash - dt);
       for (const mat of actor.mats) {
         if (actor.flash > 0) {
-          mat.emissive.set('#faf0ff');
-          mat.emissiveIntensity = actor.flash * 2.5;
+          mat.emissive.set(actor.flashColor||'#f6dbb5');
+          mat.emissiveIntensity = Math.min(2.5,mat.userData.originalIntensity+actor.flash*5);
         } else {
           mat.emissive.copy(mat.userData.originalEmissive);
           mat.emissiveIntensity = mat.userData.originalIntensity;
@@ -2186,7 +2271,7 @@ export class BattleScene {
     boss.coreGem.rotation.z = Math.sin(t * .6) * .1;
     boss.coreOrbit.rotation.z = t * .48;
     boss.coreOrbit.material.opacity = .28 + cp * .64;
-    boss.coreLight.intensity = (4 + cp * 6 + Math.sin(t * 3)) * (this.state.mode !== 'victory' && (boss.hp > 0 || boss.coreOpen) ? 1 : .18);
+    boss.coreLight.intensity = (4 + cp * 6 + Math.sin(t * 3)) * (actorStanding(boss,this.state.mode) ? 1 : .18);
     for (const part of boss.armor) {
       const base = part.userData.basePosition;
       const seed = part.userData.seed;
@@ -2205,6 +2290,8 @@ export class BattleScene {
     }
     this.dust.rotation.y = t * .012;
     this.dust.position.y = Math.sin(t * .25) * .2;
+    this.atmosphere.root.visible=!this.modelReview;
+    this.atmosphere.update(this.modelReview?0:dt);
     for (const fog of this.fogSprites) {
       fog.object.position.x = fog.x + Math.sin(t * .14 + fog.phase) * 1.7;
       fog.object.material.opacity = (fog.opacity || .027) + Math.sin(t * .3 + fog.phase) * .01 + (boss.fog ? .018 : 0);
@@ -2222,15 +2309,13 @@ export class BattleScene {
       action.elapsed += dt;
       const progress = Math.min(1, action.elapsed / action.duration);
       action.update(progress, action.elapsed);
-      if (!action.hit && action.elapsed >= action.impactAt) {
-        action.hit = true;
-        action.impact();
-      }
+      dispatchImpacts(action,action.elapsed);
       if (progress >= 1) {
         this.actions.splice(i, 1);
         action.finish();
       }
     }
+    for(const actor of this.actors.values())this.applyReaction(actor,dt);
     for (let i = this.effects.length - 1; i >= 0; i--) {
       const effect = this.effects[i];
       effect.elapsed += dt;
@@ -2245,10 +2330,11 @@ export class BattleScene {
     }
     // Shake only the rendered view: OrbitControls never inherits drift.
     const originalPosition = this.camera.position.clone();
-    if (this.shake > .001 && !this.paused) {
-      this.camera.position.x += (Math.random() - .5) * this.shake;
-      this.camera.position.y += (Math.random() - .5) * this.shake;
-      this.shake *= Math.exp(-rawDt * 10);
+    if (this.shake > .001 && !this.paused && !this.reducedMotion) {
+      const pulse=Math.min(.065,this.shake);
+      this.camera.position.x += Math.sin(this.time*48)*pulse;
+      this.camera.position.y += Math.cos(this.time*48)*pulse*.45;
+      this.shake *= Math.exp(-dt*19);
     }
     this.renderer.render(this.scene, this.camera);
     this.camera.position.copy(originalPosition);
@@ -2277,9 +2363,11 @@ export class BattleScene {
     cancelAnimationFrame(this.raf);
     this.resizeObserver.disconnect();
     window.removeEventListener('resize', this.resize);
+    this.motionPreference?.removeEventListener?.('change',this.onMotionPreference);
     this.controls.dispose();
     for (const action of this.actions) action.finish();
     this.actions.length = 0;
+    this.atmosphere.dispose();
     this.removeEffect(this.scene);
     this.scene.clear();
     this.actors.clear();

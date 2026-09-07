@@ -2,11 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {HEROES,SKILLS,BOSSES,REWARDS,createBattle,heroOf,canUse,useSkill,usePotion,guard,endRound,prepareResponse,skillPreview,activeSkills,normalizeLoadouts} from '../src/combat.js';
 import {normalizeSave} from '../src/save.js';
+import {grantShield} from '../src/shields.js';
 
 const clone=value=>structuredClone(value);
 function partyFor(id){return [id,...HEROES.filter(h=>h.id!==id).slice(0,2).map(h=>h.id)];}
 function valid(state){
-  assert.equal(state.version,5);assert.equal(state.heroes.length,3);assert.equal(new Set(state.heroes.map(h=>h.id)).size,3);
+  assert.equal(state.version,7);assert.equal(state.heroes.length,3);assert.equal(new Set(state.heroes.map(h=>h.id)).size,3);
   assert.ok(state.ap>=0&&state.ap<=state.maxAp);assert.ok(state.boss.hp>=0&&state.boss.hp<=state.boss.maxHp);
   for(const h of state.heroes){assert.ok(h.hp>=0&&h.hp<=h.maxHp);assert.ok(h.resource>=(h.id==='ric'?-10:0)&&h.resource<=h.maxResource);assert.ok(h.reflect>=0&&h.reflect<=2);assert.equal(activeSkills(state,h.id).length,5);}
   if(state.mode==='playing')assert.ok(normalizeSave(state),'live state must restore');
@@ -20,7 +21,7 @@ function castPreview(state,id,skill){
 }
 
 test('expansion: the ten original-roster three-person combinations preserve identity, slot order and saves',()=>{
-  assert.equal(HEROES.length,7);assert.equal(Object.keys(BOSSES).length,6);
+  assert.equal(HEROES.length,7);assert.equal(Object.keys(BOSSES).length,10);
   for(let a=0;a<3;a++)for(let b=a+1;b<4;b++)for(let c=b+1;c<5;c++){
     const ids=[HEROES[c].id,HEROES[a].id,HEROES[b].id],state=createBattle('standard','warden',{partyIds:ids});valid(state);
     assert.deepEqual(state.heroes.map(h=>h.id),ids);assert.deepEqual(normalizeSave(state).heroes.map(h=>h.id),ids);
@@ -38,6 +39,7 @@ test('expansion: every reward skill requires its reward and an equipped slot, th
     const loadouts=normalizeLoadouts([reward.id]);loadouts[reward.heroId][3]=reward.skillId;
     state=createBattle('standard','warden',{partyIds:partyFor(reward.heroId),upgrades:[reward.id],loadouts});
     const h=heroOf(state,reward.heroId);h.resource=h.id==='ric'?2:h.maxResource;h.hp-=30;
+    if(h.resourceName==='魔力'){h.resource=1;h.secondary=6;if(h.id==='patch')h.records=6;}
     assert.equal(activeSkills(state,h.id).length,5);assert.ok(activeSkills(state,h.id).some(s=>s.id===reward.skillId));
     castPreview(state,h.id,reward.skillId);
   }
@@ -50,14 +52,14 @@ const CONDITIONS=[
   ['apeilia_zero','sentinel',h=>{h.resource=6;h.lastKind='physical';},p=>assert.equal(p.ap,1)],
   ['ric_grace','shelter',h=>h.grace=true,p=>{assert.equal(p.ap,1);assert.equal(p.shield,38);} ],
   ['ric_verdict','rune',h=>h.verdict=true,p=>{assert.equal(p.hits,3);assert.equal(p.damage,72);} ],
-  ['haart_triage','soothe',(h,s)=>{s.heroes.find(p=>p.id!==h.id).used.push('shot');},p=>{assert.equal(p.heal,58);assert.equal(p.allHeal,22);assert.equal(p.cleanse,2);} ],
-  ['haart_echo','page',h=>h.shield=1,p=>{assert.equal(p.hits,2);assert.equal(p.damage,48);} ],
-  ['qianxing_reinforce','armor',(h,s)=>{s.heroes.find(p=>p.id!==h.id).used.push('shot');},p=>{assert.equal(p.cost,5);assert.equal(p.shield,36);assert.equal(p.allShield,14);} ],
-  ['qianxing_focus','beam',h=>h.shield=1,p=>{assert.equal(p.damage,118);assert.equal(p.stagger,44);assert.equal(p.mark,false);} ]
+  ['haart_triage','soothe',(h,s)=>{s.heroes.find(p=>p.id!==h.id).used.push('shot');},p=>{assert.equal(p.heal,0);assert.equal(p.allHeal,0);assert.ok(p.notes.some(n=>n.includes('剥除')));} ],
+  ['haart_echo','page',(h,s)=>s.boss.weakened=1,p=>{assert.equal(p.hits,2);assert.equal(p.damage,36);} ],
+  ['qianxing_reinforce','armor',h=>h.used.push('spike'),p=>{assert.equal(p.cost,2);assert.equal(p.shield,22);assert.equal(p.allShield,0);assert.equal(p.reflect,2);} ],
+  ['qianxing_focus','beam',h=>grantShield(h,1),p=>{assert.equal(p.damage,84);assert.equal(p.stagger,30);assert.ok(p.notes.some(n=>n.includes('剥除')));} ]
 ];
 for(const [rewardId,skill,condition,check] of CONDITIONS)test(`expansion conditional upgrade ${rewardId}: ownership and trigger are both required`,()=>{
   const id=REWARDS[rewardId].heroId;
-  const make=owned=>{const s=createBattle('standard','warden',{partyIds:partyFor(id),upgrades:owned?[rewardId]:[]});const h=heroOf(s,id);h.resource=id==='ric'?0:['haart','qianxing'].includes(id)?10:3;h.hp-=50;return s;};
+  const make=owned=>{const s=createBattle('standard','warden',{partyIds:partyFor(id),upgrades:owned?[rewardId]:[]});const h=heroOf(s,id);h.resource=id==='ric'?0:['haart','qianxing'].includes(id)?10:3;if(id==='haart'&&skill==='soothe')h.secondary=1;if(id==='qianxing'&&skill==='beam')h.secondary=3;h.hp-=50;return s;};
   const absent=make(false);condition(heroOf(absent,id),absent);assert.equal(skillPreview(absent,id,skill).empowered,false);
   const dormant=make(true);
   assert.equal(skillPreview(dormant,id,skill).empowered,false);
@@ -65,29 +67,30 @@ for(const [rewardId,skill,condition,check] of CONDITIONS)test(`expansion conditi
   const {preview}=castPreview(active,id,skill);assert.equal(preview.empowered,true);assert.ok(preview.empowerReason);check(preview);
 });
 
-test('expansion: Haart links paid damage, explicit recovery and healing without automatic round mana',()=>{
+test('expansion: Haart links conversion, small cash-outs and enemy debuffs without automatic mana',()=>{
   const state=createBattle('standard','warden',{partyIds:['haart','knibbs','ric']}),h=heroOf(state,'haart');
   assert.equal(h.resource,10);
-  const relay=castPreview(state,'haart','relay');assert.equal(relay.preview.hits,3);assert.equal(h.resource,6);
-  castPreview(state,'haart','soothe');assert.equal(h.resource,3);
-  castPreview(state,'haart','page');assert.equal(h.resource,4);
-  castPreview(state,'haart','rest');assert.equal(h.resource,8);
+  castPreview(state,'haart','page');assert.equal(h.resource,7);assert.equal(h.secondary,2);
+  castPreview(state,'haart','soothe');assert.equal(h.resource,9);assert.equal(state.boss.weakened,1);
+  castPreview(state,'haart','relay');assert.equal(h.resource,10);assert.equal(h.secondary,0);
+  castPreview(state,'haart','anchor');castPreview(state,'haart','rest');assert.equal(h.resource,5);assert.equal(h.secondary,3);
   const afterMana=h.resource;endRound(state);assert.equal(h.resource,afterMana);valid(state);
-  castPreview(state,'haart','relay');assert.equal(h.resource,4);
-  const before=clone(state);assert.match(canUse(state,'haart','soothe'),/魔力不足/);
+  castPreview(state,'haart','relay');assert.equal(h.resource,9);assert.equal(h.secondary,0);
+  const before=clone(state);assert.match(canUse(state,'haart','soothe'),/念线不足/);
   assert.equal(useSkill(state,'haart','soothe').ok,false);assert.deepEqual(state,before);
 });
 
 test('expansion: Qianxing armor survives saves, retaliates against physical hits and never gains mana from damage',()=>{
   const state=createBattle('standard','duelist',{partyIds:['qianxing','haart','ric']}),h=heroOf(state,'qianxing');
-  castPreview(state,'qianxing','armor');assert.equal(h.resource,7);assert.equal(h.reflect,1);
-  assert.equal(guard(state,'qianxing').ok,true);assert.equal(h.resource,7);
+  castPreview(state,'qianxing','armor');assert.equal(h.resource,8);assert.equal(h.secondary,1);assert.equal(h.reflect,1);
+  assert.equal(guard(state,'qianxing').ok,true);assert.equal(h.resource,8);
   const saved=normalizeSave(state);assert.equal(heroOf(saved,'qianxing').reflect,1);
-  const result=endRound(state);assert.equal(h.resource,7);assert.equal(h.reflect,0);
+  const result=endRound(state);assert.equal(h.resource,8);assert.equal(h.reflect,0);
   assert.equal(result.events.filter(e=>e.label==='钉刺反击').length,1);valid(state);
-  castPreview(state,'qianxing','beam');assert.equal(h.resource,3);
-  castPreview(state,'qianxing','repair');assert.equal(h.resource,7);
-  castPreview(state,'qianxing','spike');assert.equal(h.resource,8);
+  castPreview(state,'qianxing','spike');assert.equal(h.resource,5);assert.equal(h.secondary,3);
+  castPreview(state,'qianxing','beam');assert.equal(h.resource,9);
+  castPreview(state,'qianxing','repair');assert.equal(h.resource,6);
+  castPreview(state,'qianxing','pulse');assert.equal(h.resource,8);
   state.boss.intent='duel';state.boss.intentTarget='haart';const hp=h.hp;endRound(state);
   assert.equal(h.hp,hp,'a full mana bar never inflicts overheat damage');assert.equal(h.resource,8);valid(state);
 });
@@ -108,29 +111,29 @@ test('expansion: Warden physical hits discharge, and Weaver changes its sealed d
   endRound(weaver);assert.equal(weaver.boss.sealedKind,'magic');assert.equal(weaver.boss.seals,2);valid(weaver);
 });
 
-test('expansion: Qianxing preview grants only the base attack mana with either surviving or lethal mirror strikes',()=>{
+test('expansion: Qianxing pays conversion mana with either surviving or lethal mirror strikes',()=>{
   for(const lethal of [false,true]){
-    const state=createBattle('standard','duelist',{partyIds:['qianxing','haart','ric']});state.boss.intent='mirror';heroOf(state,'qianxing').resource=2;
+    const state=createBattle('standard','duelist',{partyIds:['qianxing','haart','ric']});state.boss.intent='mirror';heroOf(state,'qianxing').resource=3;
     if(lethal)state.boss.hp=1;
-    const {preview}=castPreview(state,'qianxing','spike');assert.equal(preview.resourceAfter,3);
+    const {preview}=castPreview(state,'qianxing','spike');assert.equal(preview.resourceAfter,0);assert.equal(preview.secondaryAfter,2);
   }
 });
 
 test('expansion: total skill damage preview includes a surviving mirror-backlash physical retaliation',()=>{
   const state=createBattle('standard','duelist',{partyIds:['qianxing','haart','ric']});state.boss.intent='mirror';
-  const h=heroOf(state,'qianxing');h.resource=2;h.reflect=1;
-  const {preview,result}=castPreview(state,'qianxing','spike');assert.equal(preview.damage,48);assert.equal(h.reflect,0);
+  const h=heroOf(state,'qianxing');h.resource=3;h.reflect=1;
+  const {preview,result}=castPreview(state,'qianxing','spike');assert.ok(preview.damage>0);assert.equal(result.events.filter(e=>e.label==='钉刺反击').length,1);assert.equal(h.reflect,0);
   assert.ok(result.events.filter(e=>e.type==='attack').every(e=>e.kind==='physical'));
 });
 
-test('expansion: unlocked extinction beam requires the full eight mana and keeps its triple piercing result',()=>{
+test('expansion: unlocked extinction beam requires six converted silverflames and keeps its triple piercing result',()=>{
   const loadouts=normalizeLoadouts(['qianxing_nova']);loadouts.qianxing[3]='nova';
   for(const shield of [0,1]){
     const state=createBattle('standard','warden',{partyIds:partyFor('qianxing'),upgrades:['qianxing_nova'],loadouts});
-    const h=heroOf(state,'qianxing');h.resource=7;h.shield=shield;
-    assert.match(canUse(state,'qianxing','nova'),/魔力不足/);h.resource=8;
+    const h=heroOf(state,'qianxing');grantShield(h,shield);
+    assert.match(canUse(state,'qianxing','nova'),/银焱不足/);for(let i=0;i<3;i++)castPreview(state,'qianxing','spike');assert.equal(h.resource,1);assert.equal(h.secondary,6);
     const {preview}=castPreview(state,'qianxing','nova');
-    assert.equal(preview.hits,3);assert.equal(preview.damage,120);assert.equal(preview.resourceAfter,2);assert.equal(preview.empowered,false);
+    assert.equal(preview.hits,3);assert.equal(preview.damage,141);assert.equal(preview.resourceAfter,7);assert.equal(preview.secondaryAfter,0);assert.equal(preview.empowered,false);
   }
 });
 

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { DialogueVoice } from '../src/voice.js';
-import { CHAPTERS } from '../src/story.js';
+import { allStoryLines } from '../src/story.js';
 
 const first = { speaker: 'youmu', text: '我先检查伤员。' };
 const second = { speaker: 'patch', text: '我把原始记录带上。' };
@@ -266,7 +266,7 @@ test('voice: current media errors and completion are reported, and replay is ava
 test('voice assets: every story line has exactly one matching, non-empty MP3 with a current text hash', async () => {
   const manifest = JSON.parse(await readFile(new URL('../public/voices/manifest.json', import.meta.url), 'utf8'));
   assert.equal(manifest.version, 1);
-  const lines = CHAPTERS.flatMap(chapter => [...chapter.before, ...chapter.after]);
+  const lines = allStoryLines();
   const expectedKeys = new Set(lines.map(line => `${line.speaker}\0${line.text}`));
   const actualKeys = new Set();
   for (const clip of manifest.clips) {

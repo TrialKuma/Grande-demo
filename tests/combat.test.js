@@ -60,9 +60,10 @@ test('resources gain and spend correctly, with caps and once-per-round restorati
 test('Apeilia repeated blades gain reduced combo and multi-hit skills spend it once',()=>{
   const s=createBattle();act(s,'apeilia','blade');act(s,'apeilia','blade');assert.equal(heroOf(s,'apeilia').resource,3);
   rejected(s,()=>useSkill(s,'apeilia','eden'));act(s,'apeilia','blade');assert.equal(heroOf(s,'apeilia').resource,4);
+  rejected(s,()=>useSkill(s,'apeilia','eden'));act(s,'apeilia','reboot');assert.equal(heroOf(s,'apeilia').resource,6);
   const result=act(s,'apeilia','eden');assert.equal(heroOf(s,'apeilia').resource,0);assert.equal(result.events.find(e=>e.type==='attack').hits,4);
   rejected(s,()=>useSkill(s,'apeilia','sentinel'));
-  next(s);heroOf(s,'apeilia').resource=9;act(s,'apeilia','purify');assert.equal(heroOf(s,'apeilia').resource,10);act(s,'apeilia','sentinel');assert.equal(heroOf(s,'apeilia').resource,6);
+  next(s);heroOf(s,'apeilia').resource=9;act(s,'apeilia','purify');assert.equal(heroOf(s,'apeilia').resource,10);act(s,'apeilia','sentinel');assert.equal(heroOf(s,'apeilia').resource,4);
 });
 
 test('Ric can reach either balance boundary but cannot overshoot it',()=>{
@@ -79,7 +80,7 @@ test('bind cooldown blocks exactly two subsequent player rounds',()=>{
 
 test('magic resistance, piercing and mark affect damage without overflow',()=>{
   let s=createBattle();assert.equal(act(s,'apeilia','purify').events.find(e=>e.type==='attack').amount,44);
-  s=createBattle();heroOf(s,'apeilia').resource=4;assert.equal(act(s,'apeilia','sentinel').events.find(e=>e.type==='attack').amount,104);
+  s=createBattle();heroOf(s,'apeilia').resource=6;assert.equal(act(s,'apeilia','sentinel').events.find(e=>e.type==='attack').amount,104);
   s=createBattle();act(s,'knibbs','focus');assert.equal(act(s,'knibbs','shot').events.find(e=>e.type==='attack').amount,31);
 });
 
@@ -137,9 +138,9 @@ test('shelter caps shields at sixty and cleanses living party members',()=>{
   assert.equal(heroOf(s,'ric').shield,60);assert.equal(heroOf(s,'ric').resonance,2);for(const h of s.heroes.filter(h=>h.id!=='ric')){assert.equal(h.shield,50);assert.equal(h.resonance,3);}
 });
 
-test('mend prioritizes lowest HP ratio, heals remaining survivors, cleanses and does not revive',()=>{
+test('negative domain weakens the enemy and exposes it without duplicating the doctor healing role',()=>{
   const s=createBattle();heroOf(s,'knibbs').hp=70;heroOf(s,'apeilia').hp=0;heroOf(s,'ric').hp=100;s.heroes.forEach(h=>h.resonance=3);
-  act(s,'ric','mend');assert.equal(heroOf(s,'knibbs').hp,106);assert.equal(heroOf(s,'ric').hp,110);assert.equal(heroOf(s,'apeilia').hp,0);assert.equal(heroOf(s,'knibbs').resonance,1);
+  act(s,'ric','mend');assert.equal(heroOf(s,'knibbs').hp,70);assert.equal(heroOf(s,'ric').hp,100);assert.equal(heroOf(s,'apeilia').hp,0);assert.equal(heroOf(s,'knibbs').resonance,2);assert.equal(s.boss.weakened,1);assert.equal(s.boss.vulnerable,2);assert.equal(s.stats.healed,0);
 });
 
 test('potions revive fallen heroes, clear resonance and spend one AP and one supply',()=>{
@@ -167,8 +168,8 @@ test('crossing another HP phase while broken cannot re-arm ground rupture next r
 
 test('healing events expose exact per-target HP gains including capped overheal',()=>{
   const s=createBattle();heroOf(s,'knibbs').hp=70;heroOf(s,'apeilia').hp=140;heroOf(s,'ric').hp=100;
-  const result=act(s,'ric','mend'),event=result.events.find(e=>e.type==='heal');
-  assert.deepEqual(event.amounts,{knibbs:36,apeilia:5,ric:10});assert.equal(Object.values(event.amounts).reduce((a,b)=>a+b,0),s.stats.healed);
+  heroOf(s,'ric').resource=2;const result=act(s,'ric','crossing'),event=result.events.find(e=>e.type==='heal');
+  assert.deepEqual(event.amounts,{knibbs:8,apeilia:5,ric:8});assert.equal(Object.values(event.amounts).reduce((a,b)=>a+b,0),s.stats.healed);
   next(s);heroOf(s,'knibbs').hp=168;const self=act(s,'knibbs','breathe').events.find(e=>e.type==='heal');assert.deepEqual(self.amounts,{knibbs:2});
 });
 

@@ -36,3 +36,13 @@
 @media(prefers-reduced-motion:reduce){.boss-codex *{scroll-behavior:auto!important}}
 @media(max-width:760px){.codex-tabs button{font-size:14px;min-height:49px}.codex-tabs button span{overflow-wrap:anywhere}}
 @media(max-width:540px){.codex-tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.codex-tabs button{justify-content:flex-start;padding:11px 12px;gap:8px}.codex-rules p,.boss-codex .codex-skill-body>p,.boss-codex .codex-response p,.boss-codex .codex-extras p,.boss-codex .codex-common p{font-size:14px}}
+
+/* Longer encounter archives need a reading width, not narrower type. */
+.modal.codex-modal{width:min(1180px,calc(100vw - 48px));max-width:none;padding:32px 36px;scrollbar-gutter:stable;scroll-padding-top:24px}
+.boss-codex{font-size:15px;line-height:1.85}.boss-codex .codex-intro{font-size:15px;line-height:1.85;max-width:920px}
+.codex-tabs{grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.codex-tabs button{font-size:15px;line-height:1.5;min-height:56px;padding:12px 8px;gap:7px}.codex-tabs button small{display:none}
+.codex-rules{gap:0 28px}.codex-rules article{padding:16px 0}.codex-rules h4{font-size:17px;margin-bottom:8px}.codex-rules p,.boss-codex .codex-live p,.boss-codex .codex-cycle,.boss-codex .codex-number-note,.boss-codex .codex-skill-body>p,.boss-codex .codex-response p,.boss-codex .codex-extras p,.boss-codex .codex-common p{font-size:15px;line-height:1.85}
+.codex-skill-body{padding:0 20px 20px}.codex-response-grid{gap:12px}.codex-response{padding:14px}.codex-response h4{font-size:16px}.codex-extras{gap:16px}.codex-extras article{padding:18px}.codex-extras small{font-size:14px;line-height:1.65}.codex-skill-heading small,.codex-interrupt{font-size:14px;line-height:1.65}
+@media(max-width:1000px){.codex-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}.codex-tabs button{font-size:14px}.modal.codex-modal{padding:28px 24px}}
+@media(max-width:760px){.modal.codex-modal{width:calc(100vw - 24px);padding:26px 18px}.codex-rules,.codex-response-grid,.codex-extras{grid-template-columns:1fr}.codex-skill-body{padding:0 14px 16px}}
+@media(max-width:540px){.codex-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.codex-tabs button{min-height:50px;padding:10px}.codex-rules p,.boss-codex .codex-live p,.boss-codex .codex-skill-body>p,.boss-codex .codex-response p,.boss-codex .codex-extras p,.boss-codex .codex-common p{font-size:15px}}

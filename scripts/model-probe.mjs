@@ -38,7 +38,8 @@ gltf.scene.traverse(node => {
 // Import a temporary module view with factory exports, leaving runtime source unchanged.
 let source = await fs.readFile(new URL('src/scene.js', base), 'utf8');
 source = source.replace(/from '(three(?:\/[^']+)?)'/g, (_, specifier) => `from '${pathToFileURL(require.resolve(specifier)).href}'`);
-source += '\nexport { person, PARTY_PLACEMENTS, BOSS_POSITION, facingCenter };';
+source = source.replace(/from '(\.\/[^']+)'/g,(_,specifier)=>`from '${new URL('src/'+specifier,base).href}'`);
+source += '\nexport { person, PARTY_PLACEMENTS, BOSS_POSITION, facingCenter, ENEMY_FACTORIES };';
 const scene = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const actors = ['youmu', 'patch'].map(scene.person);
 for (const actor of actors) {
@@ -53,4 +54,17 @@ for (const p of scene.PARTY_PLACEMENTS) {
   const direction = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), scene.facingCenter(position));
   assert(direction.dot(position.clone().setY(0).normalize().negate()) > .99999);
 }
-console.log(JSON.stringify({bytes: file.length, triangles, gltf_meshes: json.meshes.length, gltf_nodes: json.nodes.length, materials: json.materials.length, bounds: size.toArray(), pivots: ['head', 'rightArm', 'leftArm'], new_hero_factories: 'passed', boss_at_party_centroid: true, heroes_face_boss: true}, null, 2));
+console.log(JSON.stringify({bytes: file.length, triangles, gltf_meshes: json.meshes.length, gltf_nodes: json.nodes.length, materials: json.materials.length, bounds: size.toArray(), pivots: ['head', 'rightArm', 'leftArm'], new_hero_factories: 'passed', legacy_formation_facing: 'passed'}, null, 2));
+const {formationFor}=await import('../src/scene-expansion.js');
+for(const id of ['tide','furnace','orrery','arbiter']){
+  const enemy=scene.ENEMY_FACTORIES[id]();
+  const bounds=new THREE.Box3().setFromObject(enemy.root).getSize(new THREE.Vector3());
+  assert(bounds.y>3&&bounds.y<6,id+' silhouette');
+  let meshes=0;enemy.root.traverse(node=>{if(node.geometry){meshes++;assert([...node.geometry.attributes.position.array].every(Number.isFinite));}});
+  assert(meshes>20,id+' designed geometry');
+}
+for(const id of Object.keys(scene.ENEMY_FACTORIES))for(const count of [1,3]){
+  const layout=formationFor(id,count);assert.equal(layout.party.length,count);
+  for(const position of layout.party)assert(new THREE.Vector3(...position).distanceTo(new THREE.Vector3(...layout.boss))>2.8,id+' separation');
+}
+console.log('Ten boss factories and distinct scene formations, including solo, passed.');
