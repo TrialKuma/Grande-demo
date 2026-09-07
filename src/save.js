@@ -1,6 +1,7 @@
 import {HEROES,SKILLS,SKILL_SLOTS,SOLO_RULES,DIFFICULTIES,BOSSES,BOSS_INTENTS,REWARDS,createBattle,isSkillUnlocked,normalizeLoadouts} from './combat.js';
 import {migrateRoster} from './legacy-roster.js';
 import {grantShield} from './shields.js';
+import {ACTION_POINT_RULES,baseActionPoints} from './action-points.js';
 
 const HERO_IDS = new Set(HEROES.map(hero => hero.id));
 const LOG_TONES = new Set(['normal','system','good','warning','bad']);
@@ -12,11 +13,13 @@ const boolean = value => typeof value === 'boolean';
 
 /** Restore only validated combat data; current definitions own names and visual metadata. */
 export function normalizeSave(value) {
-  if (!object(value) || ![1,2,3,4,5,6,7].includes(value.version) || value.mode !== 'playing' || typeof value.difficulty !== 'string' || !Object.hasOwn(DIFFICULTIES,value.difficulty)) return null;
+  if (!object(value) || ![1,2,3,4,5,6,7,8].includes(value.version) || value.mode !== 'playing' || typeof value.difficulty !== 'string' || !Object.hasOwn(DIFFICULTIES,value.difficulty)) return null;
   const legacy=value.version===1,expansion=value.version>=3,oldBalance=value.version<4;
   if(value.version>=6&&!['solo','party'].includes(value.challengeMode))return null;
   if(value.version<6&&value.challengeMode!==undefined&&value.challengeMode!=='party')return null;
-  const solo=value.version>=6&&value.challengeMode==='solo',partySize=solo?1:3,maxAp=solo?SOLO_RULES.ap:6;
+  const solo=value.version>=6&&value.challengeMode==='solo',partySize=solo?1:3,roundCarry=value.version>=8?value.roundCarry:0;
+  if(!integer(roundCarry,0,ACTION_POINT_RULES.carryLimit)||value.version>=8&&value.round===1&&roundCarry!==0)return null;
+  const maxAp=baseActionPoints(solo?'solo':'party')+roundCarry;
   if(value.version===3)value=migrateRoster(value);
   const bossId=legacy?'golem':value.boss?.id;
   if(typeof bossId!=='string'||!Object.hasOwn(BOSSES,bossId))return null;
@@ -61,9 +64,13 @@ export function normalizeSave(value) {
     if(value.version>=7){
       if(!Array.isArray(saved.shieldLayers)||saved.shieldLayers.length>60||saved.shieldLayers.some(x=>!object(x)||!integer(x.amount,1,60)||!integer(x.turns,1,2))||saved.shieldLayers.reduce((n,x)=>n+x.amount,0)!==saved.shield)return null;
       hero.shieldLayers=saved.shieldLayers.map(x=>({amount:x.amount,turns:x.turns}));
-      for(const [key,max]of Object.entries({attackBuff:50,attackBuffTurns:2,tauntTurns:2,regenTurns:2,regenAmount:64})){if(!integer(saved[key],0,max))return null;hero[key]=saved[key];}
+      for(const [key,max]of Object.entries({attackBuff:value.version>=8?60:50,attackBuffTurns:2,tauntTurns:2,regenTurns:2,regenAmount:64})){if(!integer(saved[key],0,max))return null;hero[key]=saved[key];}
       if(!!hero.attackBuff!==!!hero.attackBuffTurns||!!hero.regenTurns!==!!hero.regenAmount||hero.tauntTurns&&hero.id!=='youmu')return null;
-      if(hero.resourceName==='魔力'){if(!integer(saved.secondary,0,6))return null;hero.secondary=saved.secondary;}
+      if(hero.resourceName==='魔力'){
+        const oldMaximum=value.version>=8?hero.maxSecondary:6;
+        if(!integer(saved.secondary,0,oldMaximum))return null;
+        hero.secondary=value.version<8&&hero.maxSecondary<6?Math.ceil(saved.secondary*hero.maxSecondary/6):saved.secondary;
+      }
       else if(saved.secondary!==undefined&&saved.secondary!==0)return null;
     }else{hero.shield=0;grantShield(hero,saved.shield);if(hero.id==='patch')hero.secondary=saved.records||0;}
     if(hero.id==='ric'&&value.version<5)hero.resource=Math.round(saved.resource*10/3);
@@ -78,7 +85,7 @@ export function normalizeSave(value) {
       Object.assign(hero,{grace:saved.grace,verdict:saved.verdict,reflect:saved.reflect});
     }
     if(value.version>=5){
-      const ranges={ricEdge:[0,2],captainTurns:[0,2],exhaustedTurns:[0,2],records:[0,6],recordProgress:[0,1]};
+      const ranges={ricEdge:[0,2],captainTurns:[0,2],exhaustedTurns:[0,2],records:[0,value.version>=8&&hero.id==='patch'?hero.maxSecondary:6],recordProgress:[0,1]};
       for(const [key,[lo,hi]] of Object.entries(ranges))if(!integer(saved[key],lo,hi))return null;
       for(const key of ['surgicalReady','captainUsed','exhaustionFresh','patchRetaliation','patchObserved','patchRecorded'])if(!boolean(saved[key]))return null;
       if(!['doctor','captain'].includes(saved.youmuForm)||!['observe','record'].includes(saved.patchForm)||![null,'mirror','spores','charge','seals','fog'].includes(saved.specimen))return null;
@@ -170,6 +177,6 @@ export function normalizeSave(value) {
   if (!Array.isArray(value.log) || value.log.length > 80) return null;
   if (value.log.some(entry => !object(entry) || typeof entry.text !== 'string' || entry.text.length > 1000 || !LOG_TONES.has(entry.tone))) return null;
   state.log = value.log.map(({text,tone}) => ({text,tone}));
-  Object.assign(state,{round:value.round,ap:Math.min(value.ap,maxAp),maxAp,selected:value.selected,potions:value.potions,serial:value.serial,elapsed});
+  Object.assign(state,{round:value.round,roundCarry,ap:Math.min(value.ap,maxAp),maxAp,selected:value.selected,potions:value.potions,serial:value.serial,elapsed});
   return state;
 }

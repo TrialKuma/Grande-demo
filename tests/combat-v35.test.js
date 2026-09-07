@@ -27,14 +27,14 @@ test('v3.5 shields: cancelled enemy actions still age protection; harmony create
 
 test('v3.5 saves: old shields get two rounds once; current layer duration cannot be forged',()=>{
   const old=solo('patch');old.version=6;old.heroes[0].shield=31;old.heroes[0].records=4;delete old.heroes[0].shieldLayers;delete old.heroes[0].secondary;
-  const migrated=normalizeSave(old);assert.ok(migrated);assert.equal(migrated.version,7);assert.equal(migrated.heroes[0].secondary,4);assert.deepEqual(migrated.heroes[0].shieldLayers,[{amount:31,turns:2}]);
+  const migrated=normalizeSave(old);assert.ok(migrated);assert.equal(migrated.version,8);assert.equal(migrated.heroes[0].secondary,4);assert.deepEqual(migrated.heroes[0].shieldLayers,[{amount:31,turns:2}]);
   ageShields(migrated.heroes[0]);const saved=normalizeSave(migrated);assert.deepEqual(saved.heroes[0].shieldLayers,[{amount:31,turns:1}]);
-  for(const mutate of [s=>s.heroes[0].shieldLayers[0].turns=3,s=>s.heroes[0].shieldLayers[0].amount=30,s=>s.heroes[0].secondary=7,s=>s.boss.hardControl=1.5,s=>s.heroes[0].regenAmount=50]){const bad=structuredClone(saved);mutate(bad);assert.equal(normalizeSave(bad),null);}
+  for(const mutate of [s=>s.heroes[0].shieldLayers[0].turns=3,s=>s.heroes[0].shieldLayers[0].amount=30,s=>{s.heroes[0].secondary=11;s.heroes[0].records=11;},s=>s.boss.hardControl=1.5,s=>s.heroes[0].regenAmount=50]){const bad=structuredClone(saved);mutate(bad);assert.equal(normalizeSave(bad),null);}
 });
 
-test('v3.5 control: a three-silverflame lock skips one ordinary action without giving a break multiplier, then enforces immunity',()=>{
+test('v3.5 control: a two-charge lock skips one ordinary action without giving a break multiplier, then enforces immunity',()=>{
   const s=solo('qianxing','warden',['qianxing_lock']);s.loadouts.qianxing=['spike','beam','armor','repair','lock'];
-  cast(s,'qianxing','spike');cast(s,'qianxing','armor');const before=s.heroes[0].hp;
+  cast(s,'qianxing','spike');cast(s,'qianxing','spike');const before=s.heroes[0].hp;
   cast(s,'qianxing','lock');assert.equal(s.boss.hardControl,1);assert.equal(s.boss.broken,false);assert.equal(s.heroes[0].resource,9);assert.equal(s.heroes[0].secondary,0);
   assert.match(intentInfo(s).name,/封锁/);assert.equal(prepareResponse(s,'parry').ok,false);
   endRound(s);assert.equal(s.heroes[0].hp,before);assert.equal(s.boss.controlImmune,1);assert.equal(s.boss.hardControl,0);assert.equal(s.boss.exposed,false);
@@ -44,7 +44,7 @@ test('v3.5 control: a three-silverflame lock skips one ordinary action without g
 test('v3.5 control: core and terminal rules cannot be bypassed by dispelling or locking',()=>{
   for(const boss of ['golem','final']){
     const s=solo('qianxing',boss,['qianxing_lock']);s.loadouts.qianxing=['spike','beam','armor','repair','lock'];s.boss.hp=1;
-    cast(s,'qianxing','spike');cast(s,'qianxing','armor');const before=structuredClone(s.boss);
+    cast(s,'qianxing','spike');cast(s,'qianxing','spike');const before=structuredClone(s.boss);
     cast(s,'qianxing','lock');assert.equal(s.boss.core,before.core);assert.equal(s.boss.finale,before.finale);assert.equal(s.boss.hardControl,0);assert.equal(s.boss.coreHits,before.coreHits);assert.equal(s.boss.finaleHits,before.finaleHits);assert.equal(s.heroes[0].secondary,0);assert.equal(s.heroes[0].resource,9);
   }
 });
@@ -73,10 +73,10 @@ test('v3.5 wound DOT: prepared surgery leaves a finite wound and never supplies 
 });
 
 test('v3.5 mind buffs: each ally consumes its own charge once; a recovery action cannot spend it',()=>{
-  const s=createBattle('standard','duelist',{partyIds:['haart','knibbs','apeilia']});cast(s,'haart','anchor');
-  assert.ok(s.heroes.every(h=>h.attackBuff===10));const p=skillPreview(s,'knibbs','shot');cast(s,'knibbs','breathe');assert.equal(heroOf(s,'knibbs').attackBuff,10);
-  const result=cast(s,'knibbs','shot');assert.equal(result.events.find(e=>e.type==='attack').amount,p.damage);assert.equal(heroOf(s,'knibbs').attackBuff,0);assert.equal(heroOf(s,'apeilia').attackBuff,10);
-  cast(s,'apeilia','blade');assert.equal(heroOf(s,'apeilia').attackBuff,0);assert.equal(heroOf(s,'haart').attackBuff,10);
+  const s=createBattle('standard','duelist',{partyIds:['haart','knibbs','apeilia']});cast(s,'haart','page');cast(s,'haart','anchor');
+  assert.ok(s.heroes.every(h=>h.attackBuff===25));const p=skillPreview(s,'knibbs','shot');cast(s,'knibbs','breathe');assert.equal(heroOf(s,'knibbs').attackBuff,25);
+  const result=cast(s,'knibbs','shot');assert.equal(result.events.find(e=>e.type==='attack').amount,p.damage);assert.equal(heroOf(s,'knibbs').attackBuff,0);assert.equal(heroOf(s,'apeilia').attackBuff,25);
+  cast(s,'apeilia','blade');assert.equal(heroOf(s,'apeilia').attackBuff,0);assert.equal(heroOf(s,'haart').attackBuff,25);
 });
 
 test('v3.5 mana evasion never bypasses secondary spending by returning free mana',()=>{

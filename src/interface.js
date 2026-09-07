@@ -2,6 +2,7 @@ import {statusBadges,heroResourceDescription,skillTypeBadge} from './status-deta
 import {HEROES, SKILLS, BOSSES, DIFFICULTIES, SOLO_RULES, canUse, heroOf, intentInfo, responseOptions, skillPreview, resolvedSkill, heroStatus, bossSummary, victoryRequirements} from './combat.js';
 import {icon} from './icons.js';
 import {normalizeChallengeParty} from './gm-tools.js';
+import {actionPointInfo,baseActionPoints,ACTION_POINT_RULES} from './action-points.js';
 
 export const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const portrait = id => `<span class="portrait ${id}" role="img" aria-label="${id==='youmu_inner'?'游墓':HEROES.find(h=>h.id===id)?.name || id}"></span>`;
@@ -9,16 +10,18 @@ const signed = n => n > 0 ? '+' + n : String(n);
 const equippedSkills=(state,id)=>(state.loadouts?.[id]||SKILLS[id].filter(s=>!s.unlockKey).slice(0,5).map(s=>s.id)).map(key=>SKILLS[id].find(s=>s.id===key)).filter(Boolean);
 export const bossOf = state => BOSSES[state.boss.id] || BOSSES.golem;
 
-const soloRuleDescription=()=>`每轮获得 ${SOLO_RULES.ap} AP，全部由这一名角色使用。敌方生命为同难度小队模式的 ${Math.round(SOLO_RULES.bossHp*100)}%，伤害为 ${Math.round(SOLO_RULES.bossDamage*100)}%；韧性上限为 ${SOLO_RULES.stagger}，每轮恢复 ${SOLO_RULES.staggerRegen} 点。巨人核心只需任意属性命中 ${SOLO_RULES.coreHits} 次；最终终幕需要任意属性命中 ${SOLO_RULES.finaleHits} 次，并准备应对、存活至最后一击结束。`;
+const soloRuleDescription=()=>`每轮基础 ${SOLO_RULES.ap} AP，全部由这一名角色使用；结束时最多保留 ${ACTION_POINT_RULES.carryLimit} 点到下一轮，因此下一轮最多 ${SOLO_RULES.ap+ACTION_POINT_RULES.carryLimit} AP。敌方生命为同难度小队模式的 ${Math.round(SOLO_RULES.bossHp*100)}%，伤害为 ${Math.round(SOLO_RULES.bossDamage*100)}%；韧性上限为 ${SOLO_RULES.stagger}，每轮恢复 ${SOLO_RULES.staggerRegen} 点。巨人核心只需任意属性命中 ${SOLO_RULES.coreHits} 次；最终终幕需要任意属性命中 ${SOLO_RULES.finaleHits} 次，并准备应对、存活至最后一击结束。`;
 function encounterDescription(b,solo){
   if(solo&&b.id==='golem')return {...b,brief:`击碎逐层解体的岩铠，再以任意属性累计命中核心 ${SOLO_RULES.coreHits} 次，完成净化。`,mechanic:'延迟地裂 · 共鸣驱散 · 任意属性净化核心'};
   if(solo&&b.id==='final')return {...b,brief:`核心即将切断避难室的供气。先击碎屏障与躯壳；进入终幕后，以任意属性累计命中 ${SOLO_RULES.finaleHits} 次，并准备应对抵住最后一次放电。`,mechanic:'归零屏障 · 任意属性命中 · 终幕应对'};
   return b;
 }
 
-export function titleView(prefs, saved, toolbar, records, journeyMarkup='', {unlockedHeroes=[]}={}) {
+export function titleView(prefs, saved, toolbar, records, journeyMarkup='', {unlockedHeroes=[],unlockedBosses=[]}={}) {
   const available=new Set(['knibbs','apeilia','ric',...(Array.isArray(unlockedHeroes)?unlockedHeroes:[])]),solo=prefs.challengeMode==='solo';
-  const chosen = encounterDescription(BOSSES[prefs.bossId] || BOSSES.golem,solo);
+  const availableBosses=Object.values(BOSSES).filter(b=>Array.isArray(unlockedBosses)&&unlockedBosses.includes(b.id));
+  const chosenBoss=availableBosses.find(b=>b.id===prefs.bossId)||availableBosses[0];
+  const chosen=chosenBoss?encounterDescription(chosenBoss,solo):null;
   const selectable=HEROES.filter(hero=>available.has(hero.id)),soloHero=selectable.find(hero=>hero.id===prefs.soloHero)||selectable[0];
   const difficulty=DIFFICULTIES[prefs.difficulty]||DIFFICULTIES.standard;
   const challengeParty=normalizeChallengeParty(prefs.partyIds,[...available]);
@@ -43,15 +46,15 @@ export function titleView(prefs, saved, toolbar, records, journeyMarkup='', {unl
       <div class="challenge-mode" role="group" aria-label="自由挑战模式"><button data-mode="party" aria-pressed="${!solo}" class="${solo?'':'active'}">三人小队</button><button data-mode="solo" aria-pressed="${solo}" class="${solo?'active':''}">独狼挑战</button></div>
       ${solo?'':`<button class="challenge-party-entry" data-action="challenge-party" aria-label="调整自由挑战队伍">${icon('people')}${challengeParty.map(id=>HEROES.find(h=>h.id===id).short).join(' · ')}<span>调整队伍 →</span></button>`}
       ${solo?`<div class="solo-selection"><p>选择一名已解锁角色，独自应对整场战斗。</p><div class="solo-heroes" role="group" aria-label="选择独狼角色">${selectable.map(hero=>`<button data-solo-hero="${hero.id}" class="${soloHero.id===hero.id?'selected':''}" aria-pressed="${soloHero.id===hero.id}">${portrait(hero.id)}<span>${esc(hero.short)}</span></button>`).join('')}</div><small>${soloRuleDescription()}</small></div>`:''}
-      <div class="mission-heading"><span class="tiny-label">敌人档案</span><span>选择挑战 <b>01 — ${String(Object.keys(BOSSES).length).padStart(2,'0')}</b></span></div>
-      <div class="mission-list">${Object.values(BOSSES).map(b=>encounterDescription(b,solo)).map((b,i)=>`<button class="mission-card ${b.id===chosen.id?'selected':''}" style="--encounter:${b.color}" data-boss="${b.id}" aria-pressed="${b.id===chosen.id}">
+      <div class="mission-heading"><span class="tiny-label">敌人档案</span><span>可挑战 <b>${availableBosses.length} / ${Object.keys(BOSSES).length}</b></span></div>
+      <div class="mission-list">${availableBosses.map(b=>encounterDescription(b,solo)).map((b,i)=>`<button class="mission-card ${b.id===chosen.id?'selected':''}" style="--encounter:${b.color}" data-boss="${b.id}" aria-pressed="${b.id===chosen.id}">
         <span class="mission-number">${String(i+1).padStart(2,'0')}</span><span class="mission-symbol">${icon(b.icon)}</span>
         <span class="mission-copy"><small>${esc(b.subtitle)}</small><strong>${esc(b.name)}</strong><span>${esc(b.mechanic)}</span></span>
         <span class="mission-check">${icon(b.id===chosen.id?'check':'chevron')}</span>
       </button>`).join('')}</div>
-      <div class="mission-brief" style="--encounter:${chosen.color}"><span class="tiny-label">${esc(chosen.region)}</span><p>${esc(chosen.brief)}</p><button class="primary free-start" data-action="start">${icon('play')}${solo?`${esc(soloHero.short)}独自挑战`:'小队挑战'} · ${chosen.name}</button><div class="mission-links"><button data-action="boss-codex">BOSS 全部招式 ${icon('book')}</button><button data-action="help">战斗手册 ${icon('arrow')}</button></div></div>
+      ${chosen?`<div class="mission-brief" style="--encounter:${chosen.color}"><span class="tiny-label">${esc(chosen.region)}</span><p>${esc(chosen.brief)}</p><button class="primary free-start" data-action="start">${icon('play')}${solo?`${esc(soloHero.short)}独自挑战`:'小队挑战'} · ${chosen.name}</button><div class="mission-links"><button data-action="boss-codex">BOSS 全部招式 ${icon('book')}</button><button data-action="help">战斗手册 ${icon('arrow')}</button></div></div>`:`<div class="mission-empty"><h3>还没有解锁自由挑战</h3><p>在剧情远征中击败 BOSS 后，它就会出现在这里，之后可以反复挑战。想直接测试敌人，可以在 GM 里单独开放 BOSS。</p><button class="primary" data-action="journey-start">${icon('play')}开始新的剧情远征</button><button data-action="gm">打开 GM 试玩开关 ${icon('arrow')}</button></div>`}
     </section>
-    <footer class="title-footer"><span>GRANDE · EXPEDITION DEMO <b>03.5</b></span><button class="gm-entry" data-action="gm">GM · 角色全开</button><button data-action="voice-cast">角色声音试听</button><button data-action="model-review">模型样件 · 潜行</button><button data-action="credits">世界观与制作记录 ${icon('arrow')}</button><span>${records.length ? '已完成 '+records.length+' 次挑战' : '建议使用横屏 · 支持鼠标与键盘'}</span></footer>
+    <footer class="title-footer"><span>GRANDE · EXPEDITION DEMO <b>03.6</b></span><button class="gm-entry" data-action="gm">GM · 试玩开关</button><button data-action="voice-cast">角色声音试听</button><button data-action="model-review">模型样件 · 潜行</button><button data-action="credits">世界观与制作记录 ${icon('arrow')}</button><span>${records.length ? '已完成 '+records.length+' 次挑战' : '建议使用横屏 · 支持鼠标与键盘'}</span></footer>
   </section>`;
 }
 
@@ -62,8 +65,8 @@ function resourceMeter(h) {
     ${balance ? Array.from({length:maximum*2+1},(_,i)=>i-maximum).map(n=>`<i class="${n===0?'zero ':''}${n===h.resource?'current ':''}${n&&Math.sign(n)===Math.sign(h.resource)&&Math.abs(n)<=Math.abs(h.resource)?'filled':''}"><span>${n===0?'0':n===-maximum?'−':n===maximum?'+':''}</span></i>`).join('') : Array.from({length:maximum},(_,i)=>`<i class="${i<h.resource?'filled':''}"></i>`).join('')}
     </div>${balance?`<div class="balance-caption"><span>负域 · 制敌</span><span>正域 · 强身</span></div>`:''}`;
   if(!h.secondaryName)return primary;
-  const value=h.secondary||0,max=h.maxSecondary||6;
-  return `<div class="resource-pair"><div class="primary-resource">${primary}</div><button class="secondary-resource ${value>=3?'ready':''}" data-tooltip="status" data-detail="secondary" data-owner="${h.id}" aria-label="${esc(h.secondaryName)} ${value} / ${max}，悬浮查看魔力循环"><span>${esc(h.secondaryName)}</span><strong>${value}<small> / ${max}</small></strong><span class="secondary-pips" role="meter" aria-label="${esc(h.short)}的${esc(h.secondaryName)}" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${value}">${Array.from({length:max},(_,i)=>`<i class="${i<value?'filled':''}"></i>`).join('')}</span></button></div>`;
+  const value=h.secondary||0,max=h.maxSecondary;
+  return `<div class="resource-pair"><div class="primary-resource">${primary}</div><button class="secondary-resource ${value>=max?'ready':''}" data-tooltip="status" data-detail="secondary" data-owner="${h.id}" aria-label="${esc(h.secondaryName)} ${value} / ${max}，悬浮查看回魔被动"><span>${esc(h.secondaryName)}</span><strong>${value}<small> / ${max}</small></strong><span class="secondary-pips" role="meter" aria-label="${esc(h.short)}的${esc(h.secondaryName)}" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${value}">${Array.from({length:max},(_,i)=>`<i class="${i<value?'filled':''}"></i>`).join('')}</span></button></div>`;
 }
 
 function skillCard(state, h, baseSkill, i, busy) {
@@ -74,14 +77,15 @@ function skillCard(state, h, baseSkill, i, busy) {
   const ap=preview.ap??skill.ap,resourceCost=preview.cost??skill.cost??0;
   const secondarySpend=preview.secondarySpend??skill.secondaryCost??0;
   const cost = resourceCost ? ` · ${resourceCost}${h.resourceName}` : secondarySpend ? ` · ${secondarySpend}${h.secondaryName||'二级资源'}` : skill.shift ? ` · 平衡${signed(skill.shift)}` : '';
-  let output = preview.damage ? `预计 ${preview.damage} 伤害${preview.hits>1?' / '+preview.hits+'段':''}` : preview.shield ? (preview.selfShield?'自身':'全队')+'护盾 +'+preview.shield : preview.heal ? (preview.self?'自身生命 +':preview.allHeal?'主疗 +':'单体生命 +')+preview.heal+(preview.allHeal&&!preview.self&&preview.heal!==preview.allHeal?' / 其余 +'+preview.allHeal:'') : preview.allHeal ? '全队生命 +'+preview.allHeal : preview.secondaryGain ? `${h.secondaryName} +${preview.secondaryGain}` : preview.refund ? `魔力 +${preview.refund}` : skill.hint;
+  const passiveGain=Math.max(0,preview.resourceAfter-preview.resourceBefore+(preview.cost||0));
+  let output = preview.damage ? `预计 ${preview.damage} 伤害${preview.hits>1?' / '+preview.hits+'段':''}` : preview.shield ? (preview.selfShield?'自身':'全队')+'护盾 +'+preview.shield : preview.heal ? (preview.self?'自身生命 +':preview.allHeal?'主疗 +':'单体生命 +')+preview.heal+(preview.allHeal&&!preview.self&&preview.heal!==preview.allHeal?' / 其余 +'+preview.allHeal:'') : preview.allHeal ? '全队生命 +'+preview.allHeal : preview.secondaryGain ? `${h.secondaryName} +${preview.secondaryGain}` : preview.refund ? `被动回魔 +${passiveGain}` : skill.hint;
   if(preview.allShield)output=`护盾 自身+${preview.shield+preview.allShield} / 其他+${preview.allShield}`;
   if(skill.regenTurns)output=`单体回合末 +${skill.regenAmount||32} × ${skill.regenTurns}轮`;
   if(skill.revive)output=`单体抢救 +${preview.heal} / 救起 ${skill.revive}`;
   if((skill.attackBuff||skill.selfAttackBuff)&&!skill.damage)output=`${skill.selfAttackBuff?'自身':'每人'}下次攻击 +${skill.selfAttackBuff||skill.attackBuff}%`;
   if(!skill.damage&&!preview.shield&&!preview.heal&&!preview.allHeal&&!skill.regenTurns&&!skill.attackBuff&&!skill.selfAttackBuff){
     const effects=[skill.hardControl?'封锁行动':'',skill.weaken?'敌伤 −20%':'',skill.vulnerable?'敌方承伤 +15%':'',skill.stripBuffs?`驱散 ${skill.stripBuffs} 层`:'',skill.mark?'标记 · 后续伤害 +15%':'',(preview.allCleanse||skill.allCleanse)?`全队净化 ${preview.allCleanse||skill.allCleanse} 层`:preview.cleanse?`${preview.self?'自身':'全队'}净化 ${preview.cleanse} 层`:''].filter(Boolean);
-    if(effects.length)output=effects.slice(0,2).join(' · ')+(preview.refund?` · 回魔 +${preview.refund}`:'');
+    if(effects.length)output=effects.slice(0,2).join(' · ');
   }
   const requirement=victoryRequirements(state);
   if(state.boss.finale && skill.damage)output=requirement.solo?`终幕命中 +${Math.max(0,Math.min(requirement.finaleHits-(state.boss.finaleHits||0),preview.hits||1))}`:'终幕 · '+(skill.kind==='physical'?'物理':'魔法')+'登记 '+((skill.kind==='physical'?state.boss.finalePhysical:state.boss.finaleMagic)?'已完成':'+1');
@@ -123,7 +127,7 @@ function specialProgress(state){
 
 export function battleView(state, busy, toolbar, time, lastSkill) {
   const b=state.boss, meta=bossOf(state), h=heroOf(state,state.selected), intent=intentInfo(state);
-  const summary=bossSummary(state), responses=responseOptions(state);
+  const summary=bossSummary(state), responses=responseOptions(state), ap=actionPointInfo(state);
   const prepared=state.response;
   const responseActor=prepared?heroOf(state,prepared.actor):h;
   return `<section class="battle-screen battle-v2 battle-v3 ${state.challengeMode==='solo'?'is-solo':''} battle-layout">
@@ -140,15 +144,15 @@ export function battleView(state, busy, toolbar, time, lastSkill) {
       </div>
       <div class="response-heading"><strong>应对 · ${responseActor.short}</strong><span>${prepared?'已支付 1 AP · 改选免费':'消耗 1 AP · 三选一'}</span></div>
       <div class="response-list">${responses.map((r,i)=>`<button class="response-option ${prepared?.id===r.id?'prepared':''}" data-response="${r.id}" title="${esc(r.description)}" ${busy||b.core||b.broken||b.hardControl||state.mode!=='playing'||(!prepared&&state.ap<1)||h.hp<=0?'disabled':''}><span class="response-icon">${icon(r.icon)}</span><span><strong>${r.name}<kbd>${['Z','X','C'][i]}</kbd></strong><small class="response-description">${b.core||b.broken||b.hardControl?'敌人本轮不会使用主招，无需准备应对。':esc(r.description)}</small><small class="response-compact">${b.core||b.broken||b.hardControl?'本轮没有敌方主招。':r.baseDamage>0?`护盾前${r.group?'每人':'目标'}承伤 ${r.damage} · 减伤 ${Math.round((1-r.damageFactor)*100)}%`:'本招没有直接伤害。'}</small><small>${esc(b.finale?r.reward.split('；')[0]:r.reward)}</small></span>${prepared?.id===r.id?icon('check'):''}</button>`).join('')}</div>
-      <div class="response-owner">${b.finale?'完成命中要求并准备应对后，结束回合抵住最后一击。':b.core?'核心阶段需要完成上方显示的命中次数。':b.broken||b.hardControl?`敌方行动已取消，下一轮恢复到 ${state.maxAp} AP。`:prepared?'已预备：'+responseActor.short+' · '+(responses.find(r=>r.id===prepared.id)?.name||'应对'):'由选中队员执行：'+h.short}</div>
+      <div class="response-owner">${b.finale?'完成命中要求并准备应对后，结束回合抵住最后一击。':b.core?'核心阶段需要完成上方显示的命中次数。':b.broken||b.hardControl?`敌方行动已取消。现在结束，下轮 ${ap.nextTotal} AP（保留 ${ap.nextCarry} 点）。`:prepared?'已预备：'+responseActor.short+' · '+(responses.find(r=>r.id===prepared.id)?.name||'应对'):'由选中队员执行：'+h.short}</div>
       
     </aside>
     <div class="field-note">${icon('spark')}<span>${esc(state.log[0]?.text || '')}</span></div>
     <section class="team-board" aria-label="全队战斗技能">
       <div class="board-heading">
-        <div class="team-ap" role="status" aria-label="队伍行动点"><span>${state.challengeMode==='solo'?'独狼行动点':'队伍行动点'} <b>AP</b></span><strong>${state.ap}<small> / ${state.maxAp}</small></strong><div>${Array.from({length:state.maxAp},(_,i)=>`<i class="${i<state.ap?'filled':''}"></i>`).join('')}</div></div>
+        <div class="team-ap" role="status" aria-label="队伍行动点"><span>${state.challengeMode==='solo'?'独狼行动点':'队伍行动点'} <b class="ap-source">基础 ${ap.base}${ap.carry?` ＋ 保留 ${ap.carry}`:''} AP</b></span><strong>${state.ap}<small> / ${state.maxAp}</small></strong><div>${Array.from({length:state.maxAp},(_,i)=>`<i class="${i<state.ap?'filled':''}"></i>`).join('')}</div></div>
         <span class="board-hint">${state.heroes.length===1?'一人应战，五项技能。悬浮查看完整效果。':'直接点击任意队员的技能。按 1 / 2 / 3 切换快捷键队员。'}</span>
-        <div class="board-actions"><button data-action="potion" ${busy||!state.ap||!state.potions?'disabled':''} title="1 AP · 为选中队员回复65生命，也可救起倒下的队员">${icon('potion')}<span>药剂 ×${state.potions}</span><kbd>V</kbd></button><button data-action="guard" ${busy||!state.ap||h.guard||h.hp<=0?'disabled':''} title="1 AP · 选中队员本轮减伤55%">${icon('shield')}<span>防御</span><kbd>F</kbd></button><button class="finish-turn" data-action="end" ${busy||state.mode!=='playing'?'disabled':''}>${busy?'<i class="spinner"></i> 演出中':'结束回合'}${icon('arrow')}<kbd>空格</kbd></button></div>
+        <div class="board-actions"><button data-action="potion" ${busy||!state.ap||!state.potions?'disabled':''} title="1 AP · 为选中队员回复65生命，也可救起倒下的队员">${icon('potion')}<span>药剂 ×${state.potions}</span><kbd>V</kbd></button><button data-action="guard" ${busy||!state.ap||h.guard||h.hp<=0?'disabled':''} title="1 AP · 选中队员本轮减伤55%">${icon('shield')}<span>防御</span><kbd>F</kbd></button><button class="finish-turn" data-action="end" aria-label="${busy?'行动演出中':'结束回合'}" aria-describedby="next-round-ap" ${busy||state.mode!=='playing'?'disabled':''}><span class="finish-copy">${busy?'<i class="spinner"></i> 演出中':'结束回合'}<small id="next-round-ap">下轮 ${ap.nextTotal} AP · 保留 ${ap.nextCarry}</small></span>${icon('arrow')}<kbd>空格</kbd></button></div>
       </div>
       <div class="team-roster">${state.heroes.map((p,i)=>heroRow(state,p,i,busy)).join('')}</div>
       <div class="board-footnote">Q W E R T 使用选中队员技能 · V 药剂 · 拖动战场可 360° 旋转 · 发光或变名技能已满足条件</div>
@@ -158,7 +162,7 @@ export function battleView(state, busy, toolbar, time, lastSkill) {
 
 export function helpView(state) {
   const solo=state?.challengeMode==='solo';
-  return `<div class="battle-manual"><header class="manual-introduction"><div class="modal-eyebrow">战斗手册</div><h2>看清威胁，再选择收益。</h2><p>${state?`${solo?'独狼挑战由一名角色使用全部行动点':'小队模式由三名角色共享行动点'}，本场每轮恢复到 <b>${state.maxAp} AP</b>。`:'小队模式由三名角色共享行动点；独狼挑战由一名角色独自使用。当前行动点上限会显示在技能面板。'}每名角色携带五项技能，出战队员的技能始终同屏。敌人会在你结束回合后行动。</p>${solo?`<p class="manual-mode-rules">${soloRuleDescription()}</p>`:''}</header>
+  return `<div class="battle-manual"><header class="manual-introduction"><div class="modal-eyebrow">战斗手册</div><h2>看清威胁，再选择收益。</h2><p>${state?`${solo?'独狼挑战由一名角色使用全部行动点':'小队模式由三名角色共享行动点'}，每轮基础 <b>${baseActionPoints(state)} AP</b>。`:'小队模式由三名角色共享每轮基础 6 AP；独狼挑战由一名角色使用每轮基础 5 AP。'}每名角色携带五项技能，出战队员的技能始终同屏。敌人会在你结束回合后行动。</p><p>回合结束时，最多保留 <b>${ACTION_POINT_RULES.carryLimit} 点未使用 AP</b> 到下一轮，与基础行动点相加${state?`，本场下一轮最多 ${baseActionPoints(state)+ACTION_POINT_RULES.carryLimit} AP`:'，小队最多 8 AP、独狼最多 7 AP'}。例如本轮剩 1 点，下轮便多 1 点；剩 3 点也只能保留 2 点。预备应对已经付出的 AP 不会退还，保留行动点也不会延长护盾、核心或终幕的回合期限。</p>${solo?`<p class="manual-mode-rules">${soloRuleDescription()}</p>`:''}</header>
   <nav class="manual-navigation" aria-label="手册章节"><a href="#manual-decisions">回合判断</a><a href="#manual-companions">角色与资源</a><a href="#manual-enemies">敌人机制</a><a href="#manual-controls">操作与远征</a></nav>
   <section class="manual-section" id="manual-decisions"><div class="manual-section-title"><span>01</span><h3>先决定怎样接住下一招</h3></div><div class="manual-principles"><article>${icon('shield')}<h4>预备应对，保留选择</h4><p>花费 <b>1 AP</b>，从招架、回避和迎击中选择一种。右侧会写明当前预告下的承伤和收益。由选中队员执行，支付后可以免费更换方式与执行者。</p><p>群体攻击更难完全避开。护盾与个人防御可以继续降低伤害；敌人被打断时，应对不会触发。</p></article><article>${icon('break')}<h4>分清破韧发生的时机</h4><p>在我方行动时打空韧性，会取消本轮敌招，并获得 <b>50% 伤害加成</b>。用敌方出招后的反击破韧，只会在下轮留下易伤破绽，敌人仍会继续攻击。</p><p>敌人恢复架势后有一轮抗控。这时需要重新安排防守，不能靠连续打断跳过所有攻击。</p></article></div></section>
   <section class="manual-section" id="manual-companions"><div class="manual-section-title"><span>02</span><h3>每个人都有自己的资源循环</h3><button data-action="hero-journal">完整角色图鉴 ${icon('arrow')}</button></div><div class="manual-roster">${HEROES.map(h=>`<article class="manual-hero-card" data-manual-hero="${h.id}" style="--hero:${h.color}"><header>${portrait(h.id)}<div><h4>${esc(h.name)}</h4><span>${esc(h.role)}</span><strong>${esc(h.resourceName)} · ${esc(h.passiveName)}</strong></div></header><p>${esc(heroResourceDescription(h))}</p><p class="manual-passive">${esc(h.passiveDesc)}</p></article>`).join('')}</div></section>

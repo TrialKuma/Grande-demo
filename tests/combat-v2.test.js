@@ -16,10 +16,10 @@ function refuse(state, action) {
   assert.deepEqual(state,before,'a refused action must be atomic');
 }
 function valid(state) {
-  assert.equal(state.version,7);
+  assert.equal(state.version,8);
   assert.ok(Object.hasOwn(BOSSES,state.boss.id));
   assert.ok(['playing','victory','defeat'].includes(state.mode));
-  assert.equal(state.maxAp,6);
+  assert.equal(state.maxAp,6+state.roundCarry);
   assert.ok(Number.isInteger(state.ap)&&state.ap>=0&&state.ap<=state.maxAp);
   assert.ok(state.boss.hp>=0&&state.boss.hp<=state.boss.maxHp);
   assert.ok(state.boss.stagger>=0&&state.boss.stagger<=state.boss.maxStagger);
@@ -151,15 +151,15 @@ test('v2: a prepared response survives save restoration and resolves determinist
   }
 });
 
-test('v2: breaking a prepared enemy cancels its response without generating a seventh AP',()=>{
+test('v2: breaking a prepared enemy cancels its response and only carries unspent AP',()=>{
   for(const bossId of Object.keys(BOSSES)){
     const state=createBattle('standard',bossId);state.boss.stagger=8;
     assert.equal(prepareResponse(state,'parry','knibbs').ok,true);
     assert.equal(useSkill(state,'knibbs','shot').ok,true);assert.equal(state.boss.broken,true);
     const health=state.heroes.map(hero=>hero.hp);
     assert.equal(endRound(state).ok,true);assert.deepEqual(state.heroes.map(hero=>hero.hp),health);
-    assert.equal(state.response,null);assert.equal(state.ap,6);assert.equal(state.maxAp,6);valid(state);
-    assert.equal(endRound(state).ok,true);assert.equal(state.ap,6);assert.equal(state.maxAp,6);valid(state);
+    assert.equal(state.response,null);assert.equal(state.ap,8);assert.equal(state.maxAp,8);assert.equal(state.roundCarry,2);valid(state);
+    assert.equal(endRound(state).ok,true);assert.equal(state.ap,8);assert.equal(state.maxAp,8);assert.equal(state.roundCarry,2);valid(state);
   }
 });
 
@@ -252,7 +252,7 @@ test('v2: recovery grants one full round of control immunity and then permits a 
 test('v2: a response-induced break exposes a damage window but does not skip a second enemy action',()=>{
   const state=createBattle('standard','duelist');state.boss.stagger=15;prepareResponse(state,'parry','knibbs');
   const attacked=endRound(state);assert.ok(attacked.events.some(event=>event.type==='boss'));
-  assert.equal(state.boss.broken,false);assert.equal(state.boss.exposed,true);assert.equal(state.boss.controlImmune,1);assert.equal(state.ap,6);valid(state);
+  assert.equal(state.boss.broken,false);assert.equal(state.boss.exposed,true);assert.equal(state.boss.controlImmune,1);assert.equal(state.ap,8);assert.equal(state.roundCarry,2);valid(state);
   const attack=useSkill(state,'knibbs','shot');assert.equal(attack.ok,true);assert.equal(state.boss.exposed,true);
   // Two remaining mirrors apply 20% physical resistance, then the 50% opening.
   assert.equal(attack.events.find(event=>event.type==='attack').amount,Math.round(27*.8*1.5));

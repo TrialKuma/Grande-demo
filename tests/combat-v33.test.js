@@ -85,11 +85,11 @@ test('3.3: arbiter checks actual empowered AP once per attack and clears judgeme
   cast(s,'knibbs','shot');assert.equal(s.boss.violations,1);
 });
 
-test('3.3: solo owns one hero, separate boss numbers, and exactly five AP after cancellation',()=>{
+test('3.3: solo owns one hero, separate boss numbers, and five base AP plus capped carry',()=>{
   for(const h of HEROES){const s=solo(h.id);assert.equal(s.heroes.length,1);assert.equal(s.heroes[0].id,h.id);assert.equal(s.heroes[0].maxHp,h.maxHp);assert.equal(s.boss.maxHp,576);assert.equal(s.boss.maxStagger,120);assert.equal(s.maxAp,5);}
   assert.equal(solo('missing').heroes[0].id,'knibbs');assert.equal(createBattle().maxAp,6);assert.equal(createBattle().boss.maxStagger,160);
   const s=solo('knibbs','tide');s.boss.stagger=1;prepareResponse(s,'parry');cast(s,'knibbs','shot');endRound(s);
-  assert.equal(s.ap,5);assert.equal(s.maxAp,5);assert.equal(s.response,null);assert.ok(normalizeSave(s));
+  assert.equal(s.ap,7);assert.equal(s.maxAp,7);assert.equal(s.roundCarry,2);assert.equal(s.response,null);assert.ok(normalizeSave(s));
   assert.deepEqual(victoryRequirements(s),{solo:true,coreHits:4,corePhysical:0,coreMagic:0,finaleHits:2,finalePhysical:0,finaleMagic:0});
 });
 
@@ -113,7 +113,7 @@ test('3.3: solo synergy requires a different prior skill and never starts enable
   const q=solo('qianxing','tide',{upgrades:['qianxing_reinforce']});cast(q,'qianxing','spike');assert.equal(resolvedSkill(q,'qianxing','armor').reflect,2);assert.equal(resolvedSkill(q,'qianxing','armor').allShield,undefined);
 });
 
-test('3.3: v7 state and existing v5 saves roundtrip without changing damage or mode',()=>{
+test('3.3: current state and existing v5 saves roundtrip without changing damage or mode',()=>{
   for(const mode of ['party','solo'])for(const id of added){
     const s=createBattle('standard',id,{mode,partyIds:mode==='solo'?['patch']:['patch','youmu','ric']});
     cast(s,'patch','keyblade');cast(s,'patch','chargedslash');prepareResponse(s,'evade','patch');
@@ -122,7 +122,7 @@ test('3.3: v7 state and existing v5 saves roundtrip without changing damage or m
   }
   const old=createBattle('standard','final');old.version=5;delete old.challengeMode;
   for(const key of ['coreHits','finaleHits','waterLevel','valveHits','heat','furnaceOpen','prediction','forecastSkill','decree','violations'])delete old.boss[key];
-  const restored=normalizeSave(old);assert.ok(restored);assert.equal(restored.version,7);assert.equal(restored.challengeMode,'party');assert.equal(restored.maxAp,6);assert.equal(restored.boss.maxHp,old.boss.maxHp);
+  const restored=normalizeSave(old);assert.ok(restored);assert.equal(restored.version,8);assert.equal(restored.challengeMode,'party');assert.equal(restored.maxAp,6);assert.equal(restored.boss.maxHp,old.boss.maxHp);
 });
 
 test('3.3: save validation rejects mode swaps, foreign mechanics and impossible new counters',()=>{
@@ -136,7 +136,7 @@ test('3.3: save validation rejects mode swaps, foreign mechanics and impossible 
 test('3.3: switching dossiers preserves solo numbers and removes party-only core/terminal gates',()=>{
   const s=solo('haart','tide');
   for(const id of Object.keys(BOSSES)){
-    const markup=bossCodexView(s,id);assert.ok(markup.includes(`最大韧性 ${SOLO_RULES.stagger}`));assert.ok(markup.includes('正常恢复 5 AP'));
+    const markup=bossCodexView(s,id);assert.ok(markup.includes(`最大韧性 ${SOLO_RULES.stagger}`));assert.ok(markup.includes('基础 5 AP'));assert.ok(markup.includes('最多 2 点未使用 AP'));
     assert.ok(markup.includes(`>${Math.round(900*BOSSES[id].hpMultiplier*SOLO_RULES.bossHp)}</b>`));
     assert.ok(!markup.includes('物理与魔法各 3 次'),id);assert.ok(!markup.includes('先完成物理与魔法各 1 次'),id);assert.ok(!markup.includes('undefined'),id);
   }

@@ -108,10 +108,10 @@ test('interface 3.2: Patch collection enhancement has the same visible name and 
   const state=createBattle('standard','warden',{partyIds:['youmu','patch','ric']});
   assert.equal(useSkill(state,'patch','bookward').ok,true);
   assert.equal(useSkill(state,'patch','bookward').ok,true);
-  const patch=heroOf(state,'patch');assert.equal(patch.patchForm,'record');assert.equal(patch.secondary,4);
+  const patch=heroOf(state,'patch');assert.equal(patch.patchForm,'record');assert.equal(patch.secondary,6);
   const html=renderBattle(state),card=skillButtons(html,'patch').find(b=>b.attrs.includes('data-skill="chargedslash"'));
-  assert.ok(card.body.includes('充能斩 · 反证'));assert.ok(card.attrs.includes('empowered'));
-  assert.ok(tooltipView(state,'skill','patch','chargedslash').includes('充能斩 · 反证'));
+  assert.ok(card.body.includes('充能斩 · 镜反'));assert.ok(card.attrs.includes('empowered'));
+  assert.ok(tooltipView(state,'skill','patch','chargedslash').includes('充能斩 · 镜反'));
   assert.match(text(html),/收录/);clean(html);
 });
 

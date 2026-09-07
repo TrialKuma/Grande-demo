@@ -248,3 +248,8 @@
  .battle-layout .resource-heading{margin-bottom:3px}.battle-layout .resource-heading>strong{font-size:20px}.battle-layout .resource-heading>span{font-size:12px}.battle-layout .resource-heading small{font-size:10px}.battle-layout .resource-meter{height:5px}.battle-layout .hero-statuses{min-height:23px;margin-top:3px;padding-bottom:2px}.battle-layout .status-badge{height:22px;min-height:22px;width:24px;min-width:24px}.battle-layout .status-badge>.icon{width:14px;height:14px}.battle-layout .status-badge .badge-count{font-size:8px}
  .battle-layout .team-skill{height:58px;padding:4px 7px}.battle-layout .skill-glyph{display:none}.battle-layout .skill-lines{gap:3px}.battle-layout .skill-title{font-size:12px;line-height:1.2}.battle-layout .skill-title kbd{font-size:8px}.battle-layout .skill-outcome{font-size:10px;line-height:1.25}.battle-layout .skill-price,.battle-layout .skill-stagger{font-size:10px;line-height:1.2}.battle-layout .skill-bottom{gap:3px}.battle-layout .empower-mark{font-size:8px;line-height:1.3}.battle-layout .board-footnote{height:20px;font-size:10px}
 }
+
+/* AP rollover stays visible on the existing meter and end-turn button. */
+.battle-layout .team-ap>span>.ap-source{font-size:10px;line-height:1.25;letter-spacing:0;color:#c5bda9;white-space:nowrap}
+.battle-layout .finish-copy{display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.15}
+.battle-layout .finish-copy>small{font-size:10px;font-weight:500;opacity:.85;white-space:nowrap}

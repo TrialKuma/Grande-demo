@@ -27,28 +27,55 @@ test('all seven five-slot rows show the actual attack type; restorative and cont
  }
 });
 
-test('each mana loop shows primary and secondary payment before and after a real conversion and cashout',()=>{
- for(const [id,convert,cashout,name]of [['haart','page','relay','念线'],['qianxing','spike','pulse','银焱'],['patch','keyblade','chargedslash','记录']]){
+test('each mana loop shows its distinct capacity and separates spell payment from actual passive recovery',()=>{
+ for(const [id,convert,cashout,name,cost,cap,refund]of [['haart','page','soothe','念线',2,4,3],['qianxing','spike','pulse','充能',3,3,4],['patch','keyblade','chargedslash','记录',1,10,2]]){
   const s=make(id),h=heroOf(s,id),before=words(tooltipView(s,'skill',id,convert));
-  assert.match(before,/3 点魔力/);assert.ok(before.includes(`生成 2 点${name}`));assert.equal(useSkill(s,id,convert).ok,true);
-  assert.equal(h.secondary,2);assert.equal(h.resource,7);
+  assert.ok(before.includes(`${cost} 点魔力`));assert.ok(before.includes(`生成 1 点${name}`));assert.equal(useSkill(s,id,convert).ok,true);
+  assert.equal(h.maxSecondary,cap);assert.equal(h.secondary,1);assert.equal(h.resource,10-cost);
   const html=render(s),tip=words(tooltipView(s,'skill',id,cashout));
   assert.ok(html.includes(`aria-label="${h.short}的${name}"`));assert.ok(html.includes(`aria-label="${h.short}的魔力"`));
-  assert.ok(tip.includes(`1 点${name}`));assert.match(tip,/返还 2 点魔力/);assert.match(tip,/2 → 1 \/ 6/);assert.match(tip,/7 → 9/);
+  assert.ok(tip.includes(`1 点${name}`));assert.match(tip,/被动回魔/);assert.ok(tip.includes(`1 → 0 / ${cap}`));assert.ok(tip.includes(`${10-cost} → 10`));
+  assert.ok(tip.includes(`+${Math.min(cost,refund)}${refund>cost?`（溢出 ${refund-cost}）`:''}`));
+  assert.doesNotMatch(skillExplanation(s,id,cashout).cost,/返还|回魔/);
   assert.doesNotMatch(tip,/必须先拥有足额魔力|每轮第一次攻击会额外回复|受击会增加/);
-  assert.equal(useSkill(s,id,cashout).ok,true);assert.equal(h.secondary,1);assert.equal(h.resource,9);
+  assert.equal(useSkill(s,id,cashout).ok,true);assert.equal(h.secondary,0);assert.equal(h.resource,10);
   valid(html);valid(tip);
  }
 });
 
-test('Patch stance changes damage type and the resource-three variant in both button and tooltip',()=>{
+test('each bulk conversion spends two AP on preparation and discloses its own mana-to-stock ratio',()=>{
+ for(const [id,skill,cost,gain]of [['haart','rest',8,4],['qianxing','repair',9,3],['patch','collate',8,6]]){
+  const s=make(id),h=heroOf(s,id),explanation=skillExplanation(s,id,skill),tip=words(tooltipView(s,'skill',id,skill));
+  assert.match(explanation.cost,new RegExp(`2 点行动点和 ${cost} 点魔力`));
+  assert.ok(tip.includes(`生成 ${gain} 点${h.secondaryName}`));
+  assert.match(card(s,id,skill).body,/data-skill-type="support"/);
+  assert.doesNotMatch(explanation.effects.join(' '),/造成.*伤害|提供.*护盾|恢复.*生命|清除.*共鸣/);
+  assert.equal(useSkill(s,id,skill).ok,true);assert.equal(s.ap,4);assert.equal(h.resource,10-cost);assert.equal(h.secondary,gain);
+ }
+});
+
+test('Patch stance changes damage type while a stockpile never removes its fixed one-record cashout',()=>{
  const s=make('patch');
  assert.match(card(s,'patch','chargedslash').body,/data-skill-type="physical"/);
  assert.equal(useSkill(s,'patch','bookward').ok,true);
  assert.match(card(s,'patch','chargedslash').body,/充能斩 · 镜反/);assert.match(card(s,'patch','chargedslash').body,/data-skill-type="magic"/);
  assert.equal(useSkill(s,'patch','bookward').ok,true);
  const active=card(s,'patch','chargedslash'),tip=words(tooltipView(s,'skill','patch','chargedslash'));
- assert.match(active.body,/充能斩 · 反证/);assert.match(active.attrs,/empowered/);assert.match(tip,/3 点记录/);assert.match(tip,/返还 4 点魔力/);assert.match(tip,/4 → 1 \/ 6/);
+ assert.match(active.body,/充能斩 · 镜反/);assert.match(tip,/1 点记录/);assert.match(tip,/被动回魔 \+3/);assert.match(tip,/6 → 5 \/ 10/);
+ assert.match(tip,/2 → 5/);assert.doesNotMatch(tip,/充能斩 · 反证|消耗 3 点记录/);
+});
+
+test('Patch gate previews six-to-ten consumed records and one stance-dependent passive payout',()=>{
+ for(const form of ['observe','record'])for(const records of [6,8,10]){
+  const s=createBattle('standard','warden',{partyIds:['patch','knibbs','ric'],upgrades:['patch_revelation'],loadouts:{patch:['keyblade','bookward','chargedslash','fragments','revelation']}}),h=heroOf(s,'patch');
+  h.patchForm=form;h.secondary=records;h.records=records;h.resource=0;
+  const tip=words(tooltipView(s,'skill','patch','revelation')),preview=skillPreview(s,'patch','revelation'),refund=form==='record'?3:2;
+  assert.ok(tip.includes(`消耗记录 ${records}`));assert.ok(tip.includes(`攻击段数 ${records} 段`));assert.ok(tip.includes(`被动回魔 +${refund}`));
+  assert.ok(tip.includes(`${records} → 0 / 10`));assert.equal(preview.hits,records);assert.equal(preview.refund,refund);
+  if(form==='record'&&records>=8)assert.match(tip,/封锁敌人的下一次普通行动/);
+  else assert.doesNotMatch(tip,/封锁敌人的下一次普通行动/);
+  assert.equal(useSkill(s,'patch','revelation').ok,true);assert.equal(h.secondary,0);assert.equal(h.resource,refund);
+ }
 });
 
 test('low-stock and emergency recovery variants cannot masquerade as empowered attacks',()=>{
@@ -58,38 +85,40 @@ test('low-stock and emergency recovery variants cannot masquerade as empowered a
  assert.match(tip,/没有原技能的战斗效果/);assert.doesNotMatch(tip,/本次强化已生效|魔法攻击/);
  h.secondary=0;const emergency=card(s,'qianxing','repair');
  assert.match(emergency.body,/应急提炼/);assert.match(emergency.body,/data-skill-type="support"/);assert.doesNotMatch(emergency.attrs,/empowered/);
- assert.match(words(tooltipView(s,'skill','qianxing','repair')),/另花行动点兑现/);
+ assert.match(words(tooltipView(s,'skill','qianxing','repair')),/另花行动点使用/);
 });
 
 test('full stock exposes a powerful but less efficient cashout while fixed small cashout stays available',()=>{
  const s=make('qianxing'),h=heroOf(s,'qianxing');
- for(let i=0;i<3;i++)assert.equal(useSkill(s,'qianxing','spike').ok,true);
- assert.equal(h.secondary,6);const heavy=skillPreview(s,'qianxing','beam'),small=skillPreview(s,'qianxing','pulse');
- assert.equal(heavy.secondarySpend,6);assert.equal(heavy.refund,6);assert.equal(small.secondarySpend,1);assert.equal(small.refund,2);
+ assert.equal(useSkill(s,'qianxing','repair').ok,true);
+ assert.equal(h.secondary,3);const heavy=skillPreview(s,'qianxing','beam'),small=skillPreview(s,'qianxing','pulse');
+ assert.equal(heavy.secondarySpend,3);assert.equal(heavy.refund,6);assert.equal(small.secondarySpend,1);assert.equal(small.refund,4);
  assert.match(card(s,'qianxing','beam').body,/超临界/);assert.match(words(tooltipView(s,'skill','qianxing','beam')),/两轮内受到的伤害增加 15%/);
- assert.match(words(tooltipView(s,'status','qianxing','secondary')),/银焱/);
+ assert.match(words(tooltipView(s,'status','qianxing','secondary')),/充能/);
  assert.ok(small.refund/small.secondarySpend>heavy.refund/heavy.secondarySpend);
 });
 
-test('auxiliary cashouts lead with their actual tactical effect and show mana return as an additional benefit',()=>{
+test('auxiliary cashouts lead with their tactical effect while passive recovery stays in the detailed preview',()=>{
  const h=make('haart');assert.equal(useSkill(h,'haart','page').ok,true);
- assert.match(words(card(h,'haart','soothe').body),/辅助 敌伤 −20% · 回魔 \+2/);
- const p=make('patch');assert.equal(useSkill(p,'patch','bookward').ok,true);
- assert.match(words(card(p,'patch','collate').body),/辅助 全队净化 1 层 · 回魔 \+2/);
+ assert.match(words(card(h,'haart','soothe').body),/辅助 敌伤 −20%/);assert.doesNotMatch(words(card(h,'haart','soothe').body),/回魔/);
+ assert.match(words(card(h,'haart','anchor').body),/辅助 每人下次攻击 \+25%/);
+ const p=make('patch');assert.match(words(card(p,'patch','collate').body),/辅助 记录 \+6/);
  const q=createBattle('standard','warden',{partyIds:['qianxing','knibbs','ric'],upgrades:['qianxing_lock'],loadouts:{qianxing:['spike','beam','armor','repair','lock']}});
- assert.equal(useSkill(q,'qianxing','spike').ok,true);assert.equal(useSkill(q,'qianxing','armor').ok,true);
- assert.match(words(card(q,'qianxing','lock').body),/辅助 封锁行动 · 驱散 3 层 · 回魔 \+4/);
+ assert.equal(useSkill(q,'qianxing','spike').ok,true);assert.equal(useSkill(q,'qianxing','spike').ok,true);
+ assert.match(words(card(q,'qianxing','lock').body),/辅助 封锁行动 · 驱散 3 层/);assert.doesNotMatch(words(card(q,'qianxing','lock').body),/回魔/);
+ assert.match(words(tooltipView(q,'skill','qianxing','lock')),/被动回魔 \+5/);
 });
 
 test('shield icons explain separate remaining batches and disappear when actual settlement expires them',()=>{
  const s=make('qianxing'),h=heroOf(s,'qianxing');
- assert.equal(useSkill(s,'qianxing','armor').ok,true);s.boss.broken=true;endRound(s);
- assert.deepEqual(h.shieldLayers,[{amount:22,turns:1}]);
+ assert.equal(useSkill(s,'qianxing','spike').ok,true);assert.equal(useSkill(s,'qianxing','armor').ok,true);s.boss.broken=true;endRound(s);
+ assert.deepEqual(h.shieldLayers,[{amount:36,turns:1}]);
+ assert.equal(useSkill(s,'qianxing','spike').ok,true);
  assert.equal(useSkill(s,'qianxing','armor').ok,true);
  const before=structuredClone(s),tip=words(tooltipView(s,'status','qianxing','shield'));
- assert.match(tip,/22 点，剩余 1 次敌方回合/);assert.match(tip,/22 点，剩余 2 次敌方回合/);
+ assert.match(tip,/36 点，剩余 1 次敌方回合/);assert.match(tip,/24 点，剩余 2 次敌方回合/);
  assert.match(tip,/重新施盾不会刷新旧批次/);assert.match(statusBadges(s,h),/data-detail="shield"/);assert.deepEqual(s,before);
- s.boss.broken=true;endRound(s);assert.equal(h.shield,22);assert.deepEqual(h.shieldLayers,[{amount:22,turns:1}]);
+ s.boss.broken=true;endRound(s);assert.equal(h.shield,24);assert.deepEqual(h.shieldLayers,[{amount:24,turns:1}]);
  s.boss.hardControl=1;endRound(s);assert.equal(h.shield,0);assert.doesNotMatch(statusBadges(s,h),/data-detail="shield"/);
 });
 
@@ -113,7 +142,7 @@ test('blood oath is explained and usable at full health, with a live taunt icon 
 });
 
 test('one-use attack buffs are visible on every recipient and their real consumption removes the icon',()=>{
- const s=make('haart');assert.equal(useSkill(s,'haart','anchor').ok,true);
+ const s=make('haart');assert.equal(useSkill(s,'haart','page').ok,true);assert.equal(useSkill(s,'haart','anchor').ok,true);
  for(const h of s.heroes){assert.match(statusBadges(s,h),/data-detail="attackBuff"/);assert.match(words(tooltipView(s,'status',h.id,'attackBuff')),/一项多段技能的全部命中/);}
  assert.match(card(s,'knibbs','shot').attrs,/empowered/);assert.equal(useSkill(s,'knibbs','shot').ok,true);
  assert.doesNotMatch(statusBadges(s,heroOf(s,'knibbs')),/data-detail="attackBuff"/);assert.match(statusBadges(s,heroOf(s,'haart')),/data-detail="attackBuff"/);
@@ -121,7 +150,7 @@ test('one-use attack buffs are visible on every recipient and their real consump
 
 test('hard control visibly cancels ordinary response preparation without claiming a posture damage bonus',()=>{
  const s=createBattle('standard','warden',{partyIds:['qianxing','knibbs','ric'],upgrades:['qianxing_lock'],loadouts:{qianxing:['spike','beam','armor','repair','lock']}});
- assert.equal(useSkill(s,'qianxing','spike').ok,true);assert.equal(useSkill(s,'qianxing','armor').ok,true);assert.equal(useSkill(s,'qianxing','lock').ok,true);
+ assert.equal(useSkill(s,'qianxing','spike').ok,true);assert.equal(useSkill(s,'qianxing','spike').ok,true);assert.equal(useSkill(s,'qianxing','lock').ok,true);
  const responseButtons=buttons(render(s)).filter(b=>b.attrs.includes('data-response='));assert.equal(responseButtons.length,3);
  for(const b of responseButtons){assert.match(b.attrs,/disabled/);assert.match(b.body,/本轮没有敌方主招/);}
  assert.match(words(tooltipView(s,'skill','qianxing','lock')),/辅助技能/);assert.match(words(tooltipView(s,'skill','qianxing','lock')),/不提供破韧增伤/);
@@ -150,8 +179,8 @@ test('the upgraded book ward separates a self-only two-round shield from its act
  const s=createBattle('standard','warden',{partyIds:['patch','ric','youmu'],upgrades:['patch_archive']});
  s.heroes.forEach(h=>h.resonance=3);
  const tip=words(tooltipView(s,'skill','patch','bookward'));
- assert.match(tip,/为自己提供 20 点护盾/);assert.match(tip,/为所有存活队员各清除 1 层共鸣/);assert.doesNotMatch(tip,/为所有存活队员各提供 20 点护盾/);
- assert.equal(useSkill(s,'patch','bookward').ok,true);assert.deepEqual(s.heroes.map(h=>h.resonance),[2,2,2]);assert.deepEqual(s.heroes.map(h=>h.shield),[20,0,0]);
+ assert.match(tip,/为自己提供 8 点护盾/);assert.match(tip,/为所有存活队员各清除 1 层共鸣/);assert.doesNotMatch(tip,/为所有存活队员各提供 8 点护盾/);
+ assert.equal(useSkill(s,'patch','bookward').ok,true);assert.deepEqual(s.heroes.map(h=>h.resonance),[2,2,2]);assert.deepEqual(s.heroes.map(h=>h.shield),[8,0,0]);
 });
 
 test('transplantation is an auxiliary form of surgery with no active damage or new wound',()=>{
@@ -165,5 +194,5 @@ test('transplantation is an auxiliary form of surgery with no active damage or n
 test('the manual and portraits state the current two-resource economy without obsolete recovery promises',()=>{
  const s=make('patch'),texts=[helpView(s),...['haart','qianxing','patch'].map(id=>tooltipView(make(id),'hero',id))].map(words).join(' ');
  assert.doesNotMatch(texts,/返还 9|回 9|高档回转效率更高|每轮第一次攻击会额外回复|护盾被敌方击破.*回复 2 点魔力/);
- assert.match(texts,/念线/);assert.match(texts,/银焱/);assert.match(texts,/记录/);assert.match(texts,/主动献血至 40%/);
+ assert.match(texts,/念线/);assert.match(texts,/充能/);assert.match(texts,/记录/);assert.match(texts,/主动献血至 40%/);
 });

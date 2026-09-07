@@ -22,19 +22,20 @@ test('tooltip: Ric self cleanse never claims it cleanses the whole party and gro
 test('tooltip: both new portraits explain their actual loops and payment restrictions',()=>{
  const s=make(),youmu=clean(tooltipView(s,'hero','youmu')),patch=clean(tooltipView(s,'hero','patch'));
  assert.match(youmu,/手术刀建立准备/);assert.match(youmu,/主动将生命降至 40%/);assert.match(youmu,/虚脱两轮/);assert.match(youmu,/每轮恢复 2/);
- assert.match(patch,/销毁 1 条回 2，3 条回 4，6 条回 6/);assert.match(patch,/兑现技能消耗记录并返还魔力/);assert.doesNotMatch(patch,/魔力不足时，即使满记录也不能施放/);
+ assert.match(patch,/观测姿态固定恢复 2 魔力，收录姿态固定恢复 3 魔力/);assert.match(patch,/被动回魔|由角色被动回魔/);assert.match(patch,/与此次销毁的记录数量、命中次数无关/);assert.doesNotMatch(patch,/魔力不足时，即使满记录也不能施放/);
  assert.equal(tooltipView(s,'status','patch','archiveward'),'');
- const ward=clean(tooltipView(s,'skill','patch','bookward'));assert.match(ward,/为自己提供 20 点护盾/);assert.match(ward,/独立持续 2 次敌方回合/);assert.match(ward,/生成 2 点记录/);assert.doesNotMatch(ward,/返还 2 魔力并回击|破盾.*回魔/);
+ const ward=clean(tooltipView(s,'skill','patch','bookward'));assert.match(ward,/为自己提供 8 点护盾/);assert.match(ward,/独立持续 2 次敌方回合/);assert.match(ward,/生成 3 点记录/);assert.doesNotMatch(ward,/返还 2 魔力并回击|破盾.*回魔/);
 });
 test('tooltip: displayed dynamic spell names, types and resource costs come from resolved skill data',()=>{
  const s=make(),p=heroOf(s,'patch');p.secondary=3;
- const attack=clean(tooltipView(s,'skill','patch','chargedslash'));assert.match(attack,/充能斩 · 断光/);assert.match(attack,/物理攻击/);assert.match(attack,/2 × 32 物理伤害/);assert.match(attack,/消耗记录\s+3/);assert.match(attack,/返还 4 点魔力/);assert.doesNotMatch(attack,/预计魔法伤害|消耗魔力/);
+ const attack=clean(tooltipView(s,'skill','patch','chargedslash'));assert.match(attack,/充能斩/);assert.match(attack,/物理攻击/);assert.match(attack,/46 物理伤害/);assert.match(attack,/消耗记录\s+1/);assert.match(attack,/被动回魔\s+\+0（溢出 2）/);assert.doesNotMatch(attack,/预计魔法伤害|消耗魔力/);
  const y=heroOf(s,'youmu');y.hp=60;assert.equal(useSkill(s,'youmu','bloodoath').ok,true);
  const captain=clean(tooltipView(s,'skill','youmu','bloodoath'));assert.match(captain,/沉渊炼狱号/);assert.match(captain,/游墓 · 魔法攻击/);assert.match(captain,/3 × 48 魔法伤害/);assert.match(captain,/提前|立即结束/);
 });
 test('tooltip: every new conditional reward is linked to all skills it can affect',()=>{
  const s=make(['youmu_transplant','youmu_resolve','patch_precision','patch_archive']);
- for(const [hero,skill,reward]of [['youmu','surgery','外科 · 无菌移植'],['youmu','bloodoath','血誓 · 护住这具身体'],['patch','chargedslash','书记官 · 精确计时'],['patch','fragments','书记官 · 精确计时'],['patch','revelation','书记官 · 精确计时'],['patch','bookward','收录 · 厚页书阵']])assert.ok(tooltipView(s,'skill',hero,skill).includes(reward),`${hero}/${skill}: ${reward}`);
+ for(const [hero,skill,reward]of [['youmu','surgery','外科 · 无菌移植'],['youmu','bloodoath','血誓 · 护住这具身体'],['patch','fragments','书记官 · 精确计时'],['patch','revelation','书记官 · 精确计时'],['patch','bookward','收录 · 厚页书阵']])assert.ok(tooltipView(s,'skill',hero,skill).includes(reward),`${hero}/${skill}: ${reward}`);
+ assert.ok(!tooltipView(s,'skill','patch','chargedslash').includes('书记官 · 精确计时'));
  assert.ok(!tooltipView(s,'skill','patch','chargedslash').includes('收录 · 厚页书阵'));
  assert.ok(!tooltipView(s,'skill','patch','collate').includes('持有成长与触发条件'));
 });

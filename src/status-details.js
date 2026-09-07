@@ -12,7 +12,7 @@ export function shieldBatches(h){const layers=Array.isArray(h.shieldLayers)?h.sh
 const responseNames={parry:'招架',evade:'回避',counter:'迎击'};
 const passiveIds={knibbs:'intuition',apeilia:'alternation',ric:'harmony',haart:'mindlink',qianxing:'silverflame',youmu:'surgeon',patch:'recorder'};
 const ownedRewards=(state,h)=>Object.values(REWARDS).filter(reward=>reward.heroId===h.id&&(state.upgrades||[]).includes(reward.id));
-const rewardSkills={knibbs_deadeye:'focus',knibbs_expose:'shot',apeilia_cascade:'eden',apeilia_zero:'sentinel',ric_grace:'shelter',ric_verdict:'rune',haart_triage:'soothe',haart_echo:'page',qianxing_reinforce:'armor',qianxing_focus:'beam',youmu_transplant:'surgery',youmu_resolve:'bloodoath',patch_precision:['chargedslash','fragments','revelation'],patch_archive:['bookward','chargedslash']};
+const rewardSkills={knibbs_deadeye:'focus',knibbs_expose:'shot',apeilia_cascade:'eden',apeilia_zero:'sentinel',ric_grace:'shelter',ric_verdict:'rune',haart_triage:'soothe',haart_echo:'page',qianxing_reinforce:'armor',qianxing_focus:'beam',youmu_transplant:'surgery',youmu_resolve:'bloodoath',patch_precision:['fragments','revelation'],patch_archive:'bookward'};
 
 function header(symbol,title,subtitle){
   return `<div class="tooltip-header">${icon(symbol)}<div><h3>${esc(title)}</h3>${subtitle?`<small>${esc(subtitle)}</small>`:''}</div></div>`;
@@ -39,16 +39,16 @@ export function statusBadges(state,h){
     result.push(badge(h,'harmony',h.resource<0?'crosshair':'blade',h.resource<0?'负域':'正域',signed(h.resource),h.resource?'active good':'inactive',`领域投影：当前平衡 ${signed(h.resource)}，每轮向零回复 2`));
     if(h.ricEdge)result.push(badge(h,'edge','blade','剑势',h.ricEdge,'active good',`剑势 ${h.ricEdge} 次，强化下一次剑式`));
   }else if(h.id==='haart'){
-    result.push(badge(h,'mindlink','book','念线',`${h.secondary||0}/6`,h.secondary>=3?'active good':'active','心智通路：积攒念线后，选择干扰、驱散或协同兑现'));
+    result.push(badge(h,'mindlink','book','念线',`${h.secondary||0}/${h.maxSecondary}`,h.secondary>=h.maxSecondary?'active good':'active','心智通路：先编织念线；消耗念线时，被动回收魔力'));
   }else if(h.id==='qianxing'){
-    result.push(badge(h,'silverflame','crystal','银焱',`${h.secondary||0}/6`,h.secondary>=3?'active good':'active','升格模组：装填银焱后回收，六份可强化聚焦光束'));
+    result.push(badge(h,'silverflame','crystal','充能',`${h.secondary||0}/${h.maxSecondary}`,h.secondary>=h.maxSecondary?'active good':'active','反应炉回收：三格充能驱动重火力，逐格使用时回魔更高效'));
   }else if(h.id==='youmu'){
     result.push(badge(h,'surgeon',h.youmuForm==='captain'?'flag':'heal',h.youmuForm==='captain'?'船长':'外科',h.youmuForm==='captain'?`${h.captainTurns}轮`:h.surgicalReady?'备':'待',h.youmuForm==='captain'||h.surgicalReady?'active good':'inactive',h.youmuForm==='captain'?`游墓接管：剩余 ${h.captainTurns} 轮`:'游木外科：手术刀准备后可切除护层'));
     if(h.specimen)result.push(badge(h,'specimen','heal','标本',1,'active good',`${SPECIMEN_NAMES[h.specimen]}标本：移植手术已就绪`));
     if(!h.captainUsed&&h.hp>0)result.push(badge(h,'bloodoath','flag','血誓','可','active good','血誓可用：主动将生命降至40%，请船长接管并嘲讽两轮'));
     if(h.exhaustedTurns)result.push(badge(h,'exhaustion','wind','虚脱',h.exhaustedTurns,'active warning',`虚脱 ${h.exhaustedTurns} 轮：输出减少20%、承伤增加20%`));
   }else if(h.id==='patch'){
-    result.push(badge(h,'recorder',h.patchForm==='record'?'book':'blade',h.patchForm==='record'?'收录':'观测',`${h.secondary||0}/6`,h.secondary>=3?'active good':'active',`记录 ${h.secondary||0}/6：${h.patchForm==='record'?'收录兑现侧重驱散与封锁':'观测兑现侧重进攻与易伤'}`));
+    result.push(badge(h,'recorder',h.patchForm==='record'?'book':'blade',h.patchForm==='record'?'收录':'观测',`${h.secondary||0}/${h.maxSecondary}`,h.secondary>=6?'active good':'active',`记录 ${h.secondary||0}/${h.maxSecondary}：${h.patchForm==='record'?'收录消耗记录时，被动回魔 3；侧重驱散与封锁':'观测消耗记录时，被动回魔 2；侧重进攻与易伤'}`));
   }
   if(h.reflect>0)result.push(badge(h,'reflect','blade','',`${h.reflect}/2`,'active good',`钉刺待发 ${h.reflect}/2 层，受到物理攻击后回击`));
   if(h.grace)result.push(badge(h,'grace','shield','','余','active good','余响同调就绪：下一次肉身同调为 1 行动点、自身 38 护盾与 2 次剑势'));
@@ -66,7 +66,7 @@ export function statusBadges(state,h){
 
 export function passiveDetail(state,h){
   if(h.id==='youmu')return {symbol:'heal',name:h.passiveName,subtitle:`气息 ${h.resource}/10 · ${h.youmuForm==='captain'?'游墓接管':'游木行医'}`,description:h.passiveDesc,facts:['手术刀 → 切除手术 → 移植手术：准备和标本均跨回合保留；移植完成后重新准备。','只切除镜片、孢压、蓄电、封页或迷雾，不能转移 BOSS 阶段和抗控状态。','血誓可主动将生命降至 40% 后让游墓接管；已经低于该值时不再扣血。每战一次，接管并嘲讽两轮；承伤减少 35%，但仍可能倒下。炮击可提前结束。','即时急救负责单体抢救，精密缝合负责单体两轮持续恢复；持续恢复不能救起倒下队员。','虚脱两轮内输出 −20%、承伤 +20%；治疗与药剂仍能正常使用。气息每轮恢复 2，整备每轮可用一次。']};
-  if(['haart','qianxing','patch'].includes(h.id))return {symbol:h.id==='qianxing'?'crystal':h.id==='patch'?'clock':'book',name:h.passiveName,subtitle:`魔力 ${h.resource}/${h.maxResource} · ${h.secondaryName||'二级资源'} ${h.secondary||0}/${h.maxSecondary||6}`,description:h.passiveDesc,facts:[`先将魔力转化成${h.secondaryName||'二级资源'}，最多保存 ${h.maxSecondary||6} 点；它和魔力分别计量。`,`兑现技能消耗${h.secondaryName||'二级资源'}并返还魔力，不再重复支付魔力。不同技能的消耗与返还数量分别列在技能说明中。`,'转化和兑现各有用途，需要先满足当前技能的资源条件；本次返还不能用于垫付本次消耗。','魔力不足且二级资源为零时，整备技能可生成 1 点二级资源，不直接回复魔力。']};
+  if(['haart','qianxing','patch'].includes(h.id))return {symbol:h.id==='qianxing'?'crystal':h.id==='patch'?'clock':'book',name:h.passiveName,subtitle:`魔力 ${h.resource}/${h.maxResource} · ${h.secondaryName} ${h.secondary||0}/${h.maxSecondary}`,description:h.passiveDesc,facts:[`转化时先支付魔力和行动点，获得${h.secondaryName}；这一步的伤害或防护较弱，也可以一次投入大量魔力集中准备。`,`成功消耗${h.secondaryName}的行动触发一次本被动。多段攻击只回魔一次，回魔不会额外消耗行动点，也不能用于垫付本次费用。`,'少量多次使用时，每份二级资源换回的魔力更多；大量投入会换来更强的技能效果，但回魔效率下降。超过魔力上限的部分不保留。','只有二级资源为空、当前装配又没有可负担的转化时，才能应急产生 1 份；之后仍需另花行动点使用它。']};
   if(h.id==='knibbs')return {
     symbol:'crosshair',name:'直感',subtitle:`永久被动 · 当前 ${h.intuition||0}/3 层`,
     description:'每次攻击积攒 1 层直感，最多 3 层。满层时，下一次单发确认、扩散弹或战术迎击获得伤害 +40%、削韧 +12。',
@@ -85,7 +85,7 @@ export function passiveDetail(state,h){
 }
 
 function statusTooltip(state,h,id){
-  if(id==='secondary')return header(h.id==='qianxing'?'crystal':h.id==='patch'?'clock':'book',h.secondaryName||'二级资源',`当前 ${h.secondary||0} / ${h.maxSecondary||6}`)+paragraph(h.passiveDesc)+notes([`先将魔力转化为${h.secondaryName||'二级资源'}，再消耗它施放兑现技能；兑现后才按该技能规则返还魔力。`,`每项技能分别显示魔力支付、${h.secondaryName||'二级资源'}生成 / 消耗和实际返魔。库存不足时的逆向提炼只回收 1 点，没有原技能效果。`]);
+  if(id==='secondary')return header(h.id==='qianxing'?'crystal':h.id==='patch'?'clock':'book',h.secondaryName||'二级资源',`当前 ${h.secondary||0} / ${h.maxSecondary}`)+paragraph(h.passiveDesc)+notes([`先将魔力转化为${h.secondaryName}，再消耗它施放技能，自动触发角色的回魔被动。`,'回魔按一次行动结算，不按攻击段数重复触发。技能悬浮框会预览被动造成的实际魔力变化。','库存不足时的逆向提炼只使用 1 份，没有原技能效果。']);
   if(id==='attackBuff')return header('spark','攻击强化',`伤害 +${h.attackBuff}% · 剩余 ${h.attackBuffTurns||2} 轮`)+paragraph('强化下一次主动伤害技能，施放后消耗；一项多段技能的全部命中都享受这次强化。')+notes(['战术迎击、护盾反击和持续伤害不会消费这次强化。','到期未使用则失效，不能无限储存。']);
   if(id==='taunt')return header('target','嘲讽',`剩余 ${h.tauntTurns} 轮`)+paragraph('敌人的单体主招优先攻击该角色，当前预告会立即显示新的目标。')+notes(['群体攻击仍会命中所有目标。','普通额外追击不受嘲讽影响；嘲讽本身不提供减伤。']);
   if(id==='regen')return header('heal','持续恢复',`回合末 +${h.regenAmount||32} 生命 · 剩余 ${h.regenTurns} 轮`)+paragraph('每次回合末为这个角色恢复生命。没有即时治疗，也不会治疗其他队员。')+notes(['角色必须存活才能获得恢复；这个状态不会自动复活倒下队员。','剩余次数在回合末结算后减少。']);
@@ -107,7 +107,7 @@ function statusTooltip(state,h,id){
     const response=state.response;
     if(!response||response.actor!==h.id)return header('shield','战术应对','当前未准备')+paragraph('每轮可消耗 1 行动点，准备一次全队战术应对。');
     const option=responseOptions({...state,selected:h.id}).find(entry=>entry.id===response.id);
-    return header(response.id,`已准备 · ${responseNames[response.id]}`,`执行者：${h.name}`)+paragraph(option?.description||'应对将在下一次敌方主招时执行。')+notes([option?.reward||'','全队获得减伤；额外资源或反击由发起者执行。若其倒下，由首位存活队员接续。',`同轮可免费更改方式与执行者。主招被取消时应对不触发；下一轮固定恢复到 ${state.maxAp} AP。`,'应对只覆盖本次主招；巨人的追加飞弹、真空波，以及共鸣震荡与折镜反噬均不在覆盖范围内。'].filter(Boolean));
+    return header(response.id,`已准备 · ${responseNames[response.id]}`,`执行者：${h.name}`)+paragraph(option?.description||'应对将在下一次敌方主招时执行。')+notes([option?.reward||'','全队获得减伤；额外资源或反击由发起者执行。若其倒下，由首位存活队员接续。',`同轮可免费更改方式与执行者。主招被取消时应对不触发，已付的 1 AP 不退还；下一轮获得基础 ${state.challengeMode==='solo'?5:6} AP，并保留本轮最多 2 点未使用 AP。`,'应对只覆盖本次主招；巨人的追加飞弹、真空波，以及共鸣震荡与折镜反噬均不在覆盖范围内。'].filter(Boolean));
   }
   if(id==='down')return header('close','角色倒下','无法施放技能或获得通常治疗')+paragraph('点击该角色头像，再使用应急药剂，可使其重新站起并回复 60 生命，共鸣清零。')+notes(['应急药剂消耗 1 行动点与 1 份补给。','游木在医生形态使用战地急救，也会优先救起一名倒下队员，恢复 30 生命。','全队倒下时战斗失败。']);
   return '';
@@ -115,7 +115,7 @@ function statusTooltip(state,h,id){
 
 export function heroResourceDescription(h){
   const burstCost=id=>skillOf('apeilia',id)?.cost??0;
-  if(['haart','qianxing','patch'].includes(h.id))return `魔力上限 ${h.maxResource}，${h.secondaryName||'二级资源'}上限 ${h.maxSecondary||6}。转化技能将魔力变为${h.secondaryName||'二级资源'}；兑现技能消耗它并返还魔力。魔力不会自动按回合恢复，各技能分别说明转化、消耗与返还数量。`;
+  if(['haart','qianxing','patch'].includes(h.id))return `魔力上限 ${h.maxResource}，${h.secondaryName}上限 ${h.maxSecondary}。先花行动点和魔力准备${h.secondaryName}，再使用它换取强效果。成功消耗二级资源后，由角色被动回魔；魔力不会随回合自动恢复。`;
   return ({
     knibbs:`气息上限为 ${h.maxResource} 点，每轮开始恢复 2 点。用直感发射积攒直感并回复气息，再以单发确认或扩散弹爆发；整息装填可以主动补给。`,
     apeilia:`连击上限为 ${h.maxResource} 点。螳螂刀与炼净双枪积攒连击，伊甸之约消耗 ${burstCost('eden')} 点，地狱哨兵消耗 ${burstCost('sentinel')} 点。物理与魔法交替时还能多获得 1 点连击。`,
@@ -135,9 +135,9 @@ export function skillExplanation(state,owner,id){
   if(secondaryCost)payment+=`和 ${secondaryCost} 点${h.secondaryName}。`;
   else if(cost>0)payment+=`和 ${cost} 点${h.resourceName}。`;
   else payment+=h.id==='ric'?'，不直接消耗平衡。':`，不消耗${h.resourceName}。`;
-  if(p.refund)payment+=`兑现后返还 ${p.refund} 点魔力，超过魔力上限的部分不保留。`;
+  if(secondaryCost)conditions.push(`本次消耗会自动触发「${h.passiveName}」。回魔规则见角色被动，本次实际变化显示在技能预览中。`);
   if(secondaryGain)effects.push(`生成 ${secondaryGain} 点${h.secondaryName}，上限为 ${h.maxSecondary||6}；库存装不下时不能施放。`);
-  if(s.manaRecovery)conditions.push(s.manaEmergency?'当前为应急提炼：没有原技能的攻击、治疗或净化效果。需另花行动点兑现这 1 点资源，才会回魔。':'当前为逆向提炼：只回收 1 点二级资源并返还 1 魔力，没有原技能的战斗效果。先转化更多魔力可恢复完整招式。');
+  if(s.manaRecovery)conditions.push(s.manaEmergency?'当前为应急提炼：没有原技能的攻击、治疗或净化效果。需另花行动点使用这 1 份资源，才会触发回魔被动。':'当前为逆向提炼：只使用 1 份二级资源并触发回魔被动，没有原技能的战斗效果。先转化更多魔力可恢复完整招式。');
   if(s.damage){
     const hits=s.hits||1,formula=hits>1?`${hits} × ${number(s.damage)}`:String(number(s.damage));
     if(state.boss.core||state.boss.finale)effects.push(`攻击当前敌人${hits>1?`${hits}次`:'一次'}，${requirements.solo?'将每次命中计入当前要求':'记录对应属性的命中次数'}。这个阶段按命中次数判断，不会按伤害数字推进。`);
@@ -221,7 +221,7 @@ function skillTooltip(state,h,id){
     items.push(['攻击段数',`${preview.hits} 段`]);
     if(!state.boss.core&&!state.boss.finale)items.push(['预计削韧',String(preview.stagger)]);
   }
-  if(preview.refund)items.push(['施放成功返还',`魔力 +${preview.refund}`]);
+  if(preview.refund){const actual=Math.max(0,preview.resourceAfter-preview.resourceBefore+(preview.cost||0)),wasted=Math.max(0,preview.refund-actual);items.push(['被动回魔',`+${actual}${wasted?`（溢出 ${wasted}）`:''}`]);}
   if(preview.allShield)items.push(['追加全队护盾',`+${preview.allShield}（含自身）`]);
   if(effective.shield)items.push([effective.selfShield?'自身护盾':'全队护盾',`+${effective.shield} · 2 次敌方回合`]);
   if(effective.heal)items.push(['本次治疗',effective.self?`自身 +${effective.heal}`:skill.revive?`单体 +${effective.heal} / 救起 ${skill.revive}`:`最低比例 +${effective.heal}${effective.allHeal?` / 其余 +${effective.allHeal}`:''}`]);

@@ -17,7 +17,7 @@ for(const rewardIndex of [0,1,2])test(`campaign: all six chapters restore at eve
   for(let chapter=0;chapter<6;chapter++){
     assert.equal(run.chapter,chapter);assert.equal(run.phase,'dialogue');assert.equal(run.dialogue,'before');run=restore(run);
     assert.ok(runDialogue(run).length>1);assert.equal(advanceDialogue(run),true);assert.equal(run.line,1);run=restore(run);
-    beforeToBattle(run);run=restore(run);assert.equal(run.battle.boss.id,CHAPTERS[chapter].bossId);assert.equal(run.battle.version,7);
+    beforeToBattle(run);run=restore(run);assert.equal(run.battle.boss.id,CHAPTERS[chapter].bossId);assert.equal(run.battle.version,8);
     fixtureWin(run);assert.equal(run.phase,'dialogue');assert.equal(run.dialogue,'after');assert.equal(run.history.length,chapter+1);run=restore(run);
     assert.equal(run.unlockedHeroes.includes('haart'),chapter>=1);assert.equal(run.unlockedHeroes.includes('qianxing'),chapter>=2);
     advanceDialogue(run,true);run=restore(run);
@@ -102,7 +102,7 @@ test('campaign migration: v1 recruitment, earned rewards and custom slots surviv
   assert.deepEqual(run.loadouts.qianxing,['spike','beam','nova','repair','armor']);
   assert.deepEqual(run.lastReward,{id:'qianxing_nova',replaced:'repair'});assert.equal(run.focusHero,'qianxing');
   assert.deepEqual(run.history[2].partyIds,['haart','knibbs','ric']);restore(run);
-  const battle=battleForRun(run);assert.equal(battle.boss.id,'golem');assert.equal(battle.version,7);
+  const battle=battleForRun(run);assert.equal(battle.boss.id,'golem');assert.equal(battle.version,8);
   assert.deepEqual(activeSkills(battle,'haart').map(s=>s.id),['page','network','soothe','rest','relay']);
   assert.deepEqual(activeSkills(battle,'qianxing').map(s=>s.id),['spike','beam','nova','repair','armor']);
   const cannotSkip=structuredClone(old);cannotSkip.upgrades[1]='voss_furnace';assert.equal(normalizeRun(cannotSkip),null,'migration must still enforce chapter reward pools');
@@ -124,7 +124,7 @@ test('campaign migration: an ongoing v1 chapter resumes its v3 battle with new r
   old.phase='battle';old.battle=battle;
   const before=structuredClone(old),run=normalizeRun(old);assert.deepEqual(old,before);
   assert.ok(run);assert.equal(run.phase,'battle','valid old active combat must not silently fall back to camp');assert.equal(run.chapter,3);
-  assert.equal(run.battle.version,7);assert.equal(run.battle.round,4);assert.equal(run.battle.elapsed,84);
+  assert.equal(run.battle.version,8);assert.equal(run.battle.round,4);assert.equal(run.battle.elapsed,84);
   assert.equal(run.battle.ap,6);assert.equal(run.battle.maxAp,6);
   assert.equal(run.battle.boss.stagger,run.battle.boss.maxStagger/2);assert.equal(run.battle.boss.exposed,false);
   assert.deepEqual(run.battle.heroes.map(h=>h.id),['qianxing','haart','ric']);

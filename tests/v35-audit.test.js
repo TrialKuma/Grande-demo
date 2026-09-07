@@ -52,7 +52,9 @@ test('v3.5 final audit: physical retaliation and prepared counter neither consum
     const normal=endRound(baseline).events.find(e=>e.type==='attack'&&e.actor==='qianxing');
     const r=endRound(s),event=r.events.find(e=>e.type==='attack'&&e.actor==='qianxing');assert.ok(event);
     assert.equal(h.attackBuff,40);assert.equal(h.attackBuffTurns,1);assert.equal(event.amount,normal.amount);
-    const preview=skillPreview(s,'qianxing','spike');act(s,'qianxing','spike');assert.equal(h.attackBuff,0);assert.ok(preview.damage>28);assert.ok(normalizeSave(s));
+    const unbuffed=structuredClone(s);heroOf(unbuffed,'qianxing').attackBuff=0;heroOf(unbuffed,'qianxing').attackBuffTurns=0;
+    const preview=skillPreview(s,'qianxing','spike'),plain=skillPreview(unbuffed,'qianxing','spike');
+    const attack=act(s,'qianxing','spike').events.find(e=>e.type==='attack'&&e.actor==='qianxing');assert.equal(h.attackBuff,0);assert.ok(preview.damage>plain.damage);assert.equal(attack.amount,preview.damage);assert.ok(normalizeSave(s));
   }
 });
 

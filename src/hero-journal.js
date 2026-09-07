@@ -24,12 +24,10 @@ function conditionVariants(state,hero,skill){
   }
   if(hero.id==='ric'&&skill.id==='rune')cases.push(['平衡至少为 +4，或持有剑势',{resource:4}]);
   if(hero.id==='ric'&&skill.id==='bind')cases.push(['平衡不高于 −4，或敌人正受到束缚',{resource:-4}]);
-  if(hero.id==='haart'&&skill.id==='relay')cases.push(['施放前已有至少 3 条念线',{secondary:3}]);
-  if(hero.id==='haart'&&skill.id==='intercept')cases.push(['施放前已有 6 条念线',{secondary:6}]);
-  if(hero.id==='qianxing'&&skill.id==='beam')cases.push(['施放前已有 6 份银焱',{secondary:6}]);
-  if(hero.id==='patch'&&skill.id==='chargedslash')cases.push(['观测姿态，施放前已有至少 3 条记录',{patchForm:'observe',secondary:3}],['收录姿态，施放前已有 1 至 2 条记录',{patchForm:'record',secondary:1}],['收录姿态，施放前已有至少 3 条记录',{patchForm:'record',secondary:3}]);
-  if(hero.id==='patch'&&['fragments','injunction','collate'].includes(skill.id))cases.push(['观测姿态下兑现记录',{patchForm:'observe',secondary:skill.secondaryCost||1}],['收录姿态下兑现记录',{patchForm:'record',secondary:skill.secondaryCost||1}]);
-  if(hero.id==='patch'&&skill.id==='revelation')cases.push(['收录姿态，施放前已有 6 条记录',{patchForm:'record',secondary:6}]);
+  if(hero.id==='qianxing'&&skill.id==='beam')cases.push(['施放前已有 3 格充能',{secondary:3}]);
+  if(hero.id==='patch'&&skill.id==='chargedslash')cases.push(['观测姿态，逐条使用记录',{patchForm:'observe',secondary:1}],['收录姿态，逐条使用记录',{patchForm:'record',secondary:1}]);
+  if(hero.id==='patch'&&['fragments','injunction'].includes(skill.id))cases.push(['观测姿态下消耗记录',{patchForm:'observe',secondary:skill.secondaryCost||1}],['收录姿态下消耗记录',{patchForm:'record',secondary:skill.secondaryCost||1}]);
+  if(hero.id==='patch'&&skill.id==='revelation')cases.push(['观测姿态，积满 10 条记录',{patchForm:'observe',secondary:10}],['收录姿态，已有 6 条记录',{patchForm:'record',secondary:6}],['收录姿态，积满 10 条记录',{patchForm:'record',secondary:10}]);
   if(!cases.length)return '';
   return `<details class="journal-variants"><summary>查看条件满足后的具体变招</summary>${cases.map(([condition,fields])=>{
     const alternate=structuredClone(state),actor=heroOf(alternate,hero.id);Object.assign(actor,fields);

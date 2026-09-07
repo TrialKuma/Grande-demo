@@ -8,7 +8,7 @@ import {gmToolsView,progressResetView,resetGameProgress,challengePartyView,norma
 import {DialogueVoice} from './voice.js';
 import {voiceCastView} from './voice-cast.js';
 import {heroJournalView} from './hero-journal.js';
-import {normalizeProfile,rememberCompanions,isDialogueAdvanceGesture,unlockAllHeroes,disableAllHeroes} from './player-profile.js';
+import {normalizeProfile,rememberCompanions,rememberBossVictories,isDialogueAdvanceGesture,unlockAllHeroes,disableAllHeroes,unlockAllBosses,disableAllBosses,canChallengeBoss,normalizeChallengeBoss} from './player-profile.js';
 import voiceManifest from '../public/voices/manifest.json';
 import {campaignEntry,campaignView} from './campaign-ui.js';
 import {STORY_SPEAKERS} from './story.js';
@@ -40,11 +40,12 @@ prefs.volume=Number.isFinite(prefs.volume)?Math.max(0,Math.min(1,prefs.volume)):
 let state=createBattle(prefs.difficulty,prefs.bossId),screen='title',modal=null,busy=false,scene=null,timer=null,startedAt=0,elapsed=0,lastSkill=null;
 let tooltips=null,codexId='golem',run=normalizeRun(read(RUN_SAVE,null)),journeyActive=false,partySlot=0,skillSlot=0,feedbackState=null;
 let saved=normalizeSave(read(SAVE,null));if(!saved)remove(SAVE);
-let profile=rememberCompanions(normalizeProfile(read(PROFILE_SAVE,null)),run),journalHero='knibbs';
+let profile=rememberBossVictories(rememberCompanions(normalizeProfile(read(PROFILE_SAVE,null)),run),run,read(RECORDS,[])),journalHero='knibbs';
 let challengeSlot=0;
 if(profile.gmAllHeroes&&run)unlockRunHeroes(run);
 else if(run)disableRunHeroes(run);
 prefs.partyIds=normalizeChallengeParty(prefs.partyIds,profile.unlockedHeroes);
+prefs.bossId=normalizeChallengeBoss(profile,prefs.bossId)||prefs.bossId;
 write(PROFILE_SAVE,profile);
 prefs.challengeMode=prefs.challengeMode==='solo'?'solo':'party';
 if(!profile.unlockedHeroes.includes(prefs.soloHero))prefs.soloHero='knibbs';
@@ -73,7 +74,7 @@ function render(){
   else root.innerHTML=campaignView(run,{partySlot,skillSlot});
   renderModal();syncDialogue();if(!busy)syncScore();
 }
-function titleView(){const records=read(RECORDS,[]);return renderTitle(prefs,saved,toolbar(),Array.isArray(records)?records:[],campaignEntry(run),{unlockedHeroes:profile.unlockedHeroes});}
+function titleView(){const records=read(RECORDS,[]);return renderTitle(prefs,saved,toolbar(),Array.isArray(records)?records:[],campaignEntry(run),{unlockedHeroes:profile.unlockedHeroes,unlockedBosses:profile.unlockedBosses});}
 function challengeOptions(){return {mode:prefs.challengeMode,partyIds:prefs.challengeMode==='solo'?[profile.unlockedHeroes.includes(prefs.soloHero)?prefs.soloHero:'knibbs']:normalizeChallengeParty(prefs.partyIds,profile.unlockedHeroes)};}
 function battleView(){return renderBattle(feedbackState||state,busy,toolbar(),formatTime(elapsed+(startedAt?(Date.now()-startedAt)/1000:0)),lastSkill);}
 function syncScore(){audio.setScene?.({bossId:state.boss.id,screen,phase:screen==='battle'?(state.mode==='victory'?'victory':state.mode==='defeat'?'defeat':state.boss.finale?'finale':state.boss.core?'core':state.boss.stage):0});}
@@ -136,13 +137,13 @@ function renderModal(){
   else if(modal==='help')body=helpView(screen==='battle'?state:screen==='title'?createBattle(prefs.difficulty,prefs.bossId,challengeOptions()):undefined);
   else if(modal==='pause')body=`<div class="modal-eyebrow">TAKE A BREATH</div><h2>稍作休整</h2><p class="modal-lead">你的远征进度已自动保存在这台设备。</p><div class="settings-list"><button class="settings-voice-cast" data-action="hero-journal">${icon('book')}角色图鉴与招募</button><button class="settings-voice-cast" data-action="voice-cast">${icon('volume')}角色声音试听</button><label>背景音乐 <input type="checkbox" data-setting="music" ${prefs.music?'checked':''}></label><label>中文对白配音 <input type="checkbox" data-setting="voice" ${prefs.voice?'checked':''}></label><label>静音 <input type="checkbox" data-setting="muted" ${prefs.muted?'checked':''}></label><label>主音量 <input type="range" min="0" max="100" value="${prefs.volume*100}" data-setting="volume" aria-label="主音量"></label><label>演出速度 <button data-action="speed">${prefs.speed}×</button></label></div><button class="primary" data-action="close-modal">继续远征 ${icon('play')}</button><div class="modal-secondary">${screen==='battle'?`<button data-action="restart">${icon('repeat')}重新挑战</button>`:''}<button data-action="back-title">返回标题</button></div>`;
   else if(modal==='log')body=`<div class="modal-eyebrow">BATTLE CHRONICLE</div><h2>战斗记录</h2><div class="full-log">${state.log.map(l=>`<p class="log-${l.tone}">${esc(l.text)}</p>`).join('')}</div>`;
-  else if(modal==='credits')body=`<div class="modal-eyebrow">BEHIND THE ECHO</div><h2>格朗德 · 魔晶回响</h2><p class="modal-lead">基于格朗德既有角色设定的分支远征。十名 BOSS、两处选路，以及由沿途决定产生的不同结局。</p><div class="credits-copy"><p><b>沿用设定</b><br>尼布斯拉姆的气息、直感发射、单发确认、扩散弹；艾佩莉雅的连击与四种武器；雷克的深渊领域和正负平衡；魔晶巨人的元素解体、地裂、迷雾、共鸣与双系核心。</p><p><b>本次改编</b><br>「停机之前」救援剧情、哈特蒙斯的支援技能，以及折镜刃卫、孢冠司祭、雷脊守卫、缄页织者、四名分支守卫与归零之核为 demo 适配或原创内容。哈特蒙斯、潜行、游木／游墓和补丁 Z 均采用已有角色卡；游木使用气息，其余三人使用魔力。三名魔力角色先将魔力转化为念线、银焱或记录，再消耗二级资源换回魔力并触发不同效果。潜行的钉刺护甲、聚焦光束与紧急修复取自既有技能稿。七人选三、三十五项成长奖励、每人五个技能位与三种预备应对按回合制体验编写，全队共享 6 AP。</p><p><b>美术与声音</b><br>四张生成图片包含七人头像、船长形态与标题背景。潜行的银焱战甲参照立绘，通过 Blender 脚本建立可编辑网格与分层材质，提供模型展示；其余角色、十名 BOSS 和五处场景使用程序化模型。${voiceManifest.clips.length} 句对白按角色选择七种中文神经基础声线，在线生成后保存为本地音频；标题页可逐角色试听；音乐与技能音效由程序合成。</p><p>无需账号。游戏进度仅保存在本机。</p></div><button class="primary" data-action="close-modal">返回 ${icon('arrow')}</button>`;
+  else if(modal==='credits')body=`<div class="modal-eyebrow">BEHIND THE ECHO</div><h2>格朗德 · 魔晶回响</h2><p class="modal-lead">基于格朗德既有角色设定的分支远征。十名 BOSS、两处选路，以及由沿途决定产生的不同结局。</p><div class="credits-copy"><p><b>沿用设定</b><br>尼布斯拉姆的气息、直感发射、单发确认、扩散弹；艾佩莉雅的连击与四种武器；雷克的深渊领域和正负平衡；魔晶巨人的元素解体、地裂、迷雾、共鸣与双系核心。</p><p><b>本次改编</b><br>「停机之前」救援剧情、哈特蒙斯的支援技能，以及折镜刃卫、孢冠司祭、雷脊守卫、缄页织者、四名分支守卫与归零之核为 demo 适配或原创内容。哈特蒙斯、潜行、游木／游墓和补丁 Z 均采用已有角色卡；游木使用气息，其余三人使用魔力。三名魔力角色先将魔力转化为念线、充能或记录，再消耗二级资源换回魔力并触发不同效果。潜行的钉刺护甲、聚焦光束取自既有技能稿，按本版魔力循环重新适配。七人选三、三十五项成长奖励、每人五个技能位与三种预备应对按回合制体验编写，全队每轮获得基础 6 AP，剩余点数最多保留 2 点到下一轮。</p><p><b>美术与声音</b><br>四张生成图片包含七人头像、船长形态与标题背景。潜行的银焱战甲参照立绘，通过 Blender 脚本建立可编辑网格与分层材质，提供模型展示；其余角色、十名 BOSS 和五处场景使用程序化模型。${voiceManifest.clips.length} 句对白按角色选择七种中文神经基础声线，在线生成后保存为本地音频；标题页可逐角色试听；音乐与技能音效由程序合成。</p><p>无需账号。游戏进度仅保存在本机。</p></div><button class="primary" data-action="close-modal">返回 ${icon('arrow')}</button>`;
   else if(modal==='victory'||modal==='defeat'){
     const win=modal==='victory',survivors=state.heroes.filter(h=>h.hp>0).length;
     const grade=state.round<=8&&survivors===state.heroes.length&&state.boss.reforms===0?'S':survivors===state.heroes.length&&state.boss.reforms===0?'A':'B';cls='result-modal';
     body=`<div class="result-emblem ${win?'':'lost'}">${icon(win?'crystal':'flag')}</div><div class="modal-eyebrow">${win?'EXPEDITION COMPLETE':'THE ECHO REMAINS'}</div><h2>${win?'已击败 · '+bossOf(state).name:'远征尚未结束'}</h2><p class="modal-lead">${win?({golem:'核心的光逐渐熄灭。遗迹重新归于寂静。',duelist:'最后一面镜片碎裂，刃卫放下了长刀。',cantor:'孢冠失去光芒，沉积的孢雾缓缓散去。',warden:'避雷针熄灭，栈桥上的风暴终于退去。',weaver:'封页机构停止，控制室的通路已经打开。',final:'归零程序已停止，避难室重新开始通风。',tide:'压力阀停止转动。维修通道的积水开始退去。',furnace:'炉膛渐渐暗下来，备用线路恢复供电。',orrery:'星轨归位。总控留下的观测记录终于能够读出。',arbiter:'执行官放下封令。被拦住的救援器械开始通行。'}[state.boss.id]):'带上这一次的经验，再试一次。'}</p>${win?`<div class="result-rank">${grade}<span>远征评级</span></div>`:''}<div class="result-stats"><div><strong>${state.round}</strong><span>战斗回合</span></div><div><strong>${state.stats.damage.toLocaleString()}</strong><span>累计伤害</span></div><div><strong>${state.stats.breaks}</strong><span>架势击破</span></div><div><strong>${state.stats.interrupts}</strong><span>行动打断</span></div></div><div class="result-party">${state.heroes.map(h=>`<div class="${h.hp<=0?'down':''}">${portrait(h.id)}<span>${h.short}</span><small>${h.hp<=0?'失去意识':h.hp+' / '+h.maxHp}</small></div>`).join('')}</div>${!win?'<p class="defeat-tip">留出 1 AP 应对敌方行动，并在输出、护盾和恢复之间安排资源。初探难度同样保留全部机制。</p>':''}<button class="primary" data-action="${journeyActive&&win?'journey-resume':'restart'}">${journeyActive&&win?'继续旅程':'再次挑战'} ${icon(journeyActive&&win?'arrow':'repeat')}</button>${journeyActive&&!win?'<button class="regroup-button" data-action="journey-resume">返回整备 · 调整队伍与技能</button>':''}<div class="modal-secondary"><button data-action="back-title">返回标题</button><button data-action="log">查看战斗记录</button></div>`;
   }
-  root.innerHTML=`<div class="modal-backdrop"><section role="dialog" aria-modal="true" aria-label="${modal}" class="modal ${cls}">${!['victory','defeat'].includes(modal)?`<button class="modal-close icon-button" data-action="close-modal" aria-label="关闭">${icon('close')}</button>`:''}${body}${modal==='pause'?'<button class="gm-pause-entry" data-action="gm">GM · 角色全开</button>':''}</section></div>`;
+  root.innerHTML=`<div class="modal-backdrop"><section role="dialog" aria-modal="true" aria-label="${modal}" class="modal ${cls}">${!['victory','defeat'].includes(modal)?`<button class="modal-close icon-button" data-action="close-modal" aria-label="关闭">${icon('close')}</button>`:''}${body}${modal==='pause'?'<button class="gm-pause-entry" data-action="gm">GM · 试玩开关</button>':''}</section></div>`;
 }
 
 function persist(){if(journeyActive&&run){if(run.phase==='battle'&&state.mode==='playing')run.battle={...state,elapsed:elapsed+(startedAt?(Date.now()-startedAt)/1000:0)};write(RUN_SAVE,run);return;}if(state.mode==='playing'){write(SAVE,{...state,elapsed:elapsed+(startedAt?(Date.now()-startedAt)/1000:0)});saved=normalizeSave(read(SAVE,null));}else{remove(SAVE);saved=null;}}
@@ -151,7 +152,9 @@ function toast(message){const el=document.querySelector('#toast');el.textContent
 function openModal(type){if(busy)return;voice.pause();clearTimeout(autoStoryTimer);modal=type;scene?.setPaused(true);if(startedAt){elapsed+=(Date.now()-startedAt)/1000;startedAt=0;}renderModal();requestAnimationFrame(()=>document.querySelector('.modal button')?.focus());}
 function closeModal(){if(modal==='model-review'){exitModelReview();return;}modal=null;scene?.setPaused(false);if(screen==='battle'&&state.mode==='playing'&&!startedAt)startedAt=Date.now();renderModal();syncDialogue();if(screen==='dialogue')voice.resume();}
 async function begin(resume=false){
-  if(busy)return;journeyActive=false;busy=true;await audio.unlock();closeModal();
+  if(busy)return;
+  if(!(resume&&saved)){const bossId=normalizeChallengeBoss(profile,prefs.bossId);if(!bossId){toast('先在远征中击败 BOSS，或在 GM 中开放 BOSS 自由挑战。');return;}prefs.bossId=bossId;}
+  journeyActive=false;busy=true;await audio.unlock();closeModal();
   state=resume&&saved?structuredClone(saved):createBattle(prefs.difficulty,prefs.bossId,challengeOptions());screen='battle';busy=false;elapsed=resume?(state.elapsed||0):0;startedAt=Date.now();lastSkill=null;
   prefs.bossId=state.boss.id;prefs.difficulty=state.difficulty;preferences();render();window.scrollTo(0,0);
   scene?.setPaused(false);scene?.resetCamera();scene?.updateState(state);syncScore();render();persist();
@@ -174,13 +177,19 @@ async function execute(result,before){
   persist();render();
   if(state.mode!=='playing'){
     if(startedAt){elapsed+=(Date.now()-startedAt)/1000;startedAt=0;}
-    if(state.mode==='victory'){const value=read(RECORDS,[]),records=Array.isArray(value)?value:[];records.push({bossId:state.boss.id,round:state.round,difficulty:state.difficulty,challengeMode:state.challengeMode||'party',partyIds:state.heroes.map(h=>h.id),at:Date.now(),damage:state.stats.damage});write(RECORDS,records.slice(-50));audio.setPhase('victory');}
+    if(state.mode==='victory'){const value=read(RECORDS,[]),records=Array.isArray(value)?value:[],record={bossId:state.boss.id,round:state.round,difficulty:state.difficulty,challengeMode:state.challengeMode||'party',partyIds:state.heroes.map(h=>h.id),at:Date.now(),damage:state.stats.damage,result:'victory'};records.push(record);write(RECORDS,records.slice(-50));profile=rememberBossVictories(profile,run,[record]);write(PROFILE_SAVE,profile);audio.setPhase('victory');}
     openModal(state.mode);
   }
 }
 function action(name){
   if(name==='gm'){if(!busy)openModal('gm');return;}
   if(name==='gm-unlock'){if(busy||modal!=='gm')return;profile=unlockAllHeroes(profile);write(PROFILE_SAVE,profile);if(run){unlockRunHeroes(run);saveJourney();}render();toast('七名角色已全部解锁。');return;}
+  if(name==='gm-boss-unlock'||name==='gm-boss-disable'){
+    if(busy||modal!=='gm')return;
+    profile=name==='gm-boss-unlock'?unlockAllBosses(profile):disableAllBosses(profile);write(PROFILE_SAVE,profile);
+    prefs.bossId=normalizeChallengeBoss(profile,prefs.bossId)||prefs.bossId;preferences();render();
+    toast(profile.gmAllBosses?'全部 BOSS 已开放自由挑战。':'已关闭 BOSS 全开，仅显示实际击败过的敌人。');return;
+  }
   if(name==='gm-disable'){
     if(busy||modal!=='gm')return;
     if(screen==='battle')persist();
@@ -219,7 +228,10 @@ function action(name){
   if(busy)return;
   if(name==='start'){begin(false);return;}
   if(name==='restart'&&journeyActive&&run){run.phase='camp';if(!profile.gmAllHeroes)disableRunHeroes(run);run.phase='battle';run.battle=null;launchJourneyBattle(false);return;}
-  if(name==='restart'){prefs.difficulty=state.difficulty;prefs.bossId=state.boss.id;prefs.challengeMode=state.challengeMode||'party';if(state.heroes.length===1)prefs.soloHero=state.heroes[0].id;else prefs.partyIds=state.heroes.map(h=>h.id);preferences();begin(false);return;}
+  if(name==='restart'){
+    if(!canChallengeBoss(profile,state.boss.id)){persist();prefs.bossId=normalizeChallengeBoss(profile,prefs.bossId)||prefs.bossId;preferences();screen='title';closeModal();startedAt=0;scene?.updateState({...state,mode:'title'});render();toast(state.mode==='playing'?'这个 BOSS 尚未击败。可以继续原战斗，或在 GM 中重新开放。':'这个 BOSS 尚未击败，请在远征中挑战，或在 GM 中重新开放。');return;}
+    prefs.difficulty=state.difficulty;prefs.bossId=state.boss.id;prefs.challengeMode=state.challengeMode||'party';if(state.heroes.length===1)prefs.soloHero=state.heroes[0].id;else prefs.partyIds=state.heroes.map(h=>h.id);preferences();begin(false);return;
+  }
   if(name==='continue'){begin(true);return;}
   if(name==='back-title'&&journeyActive){journeyAction('journey-title');return;}
   if(name==='back-title'){persist();screen='title';closeModal();startedAt=0;scene?.updateState({...state,mode:'title'});render();window.scrollTo(0,0);return;}
@@ -230,7 +242,7 @@ function action(name){
 }
 
 
-function rememberUnlocks(){profile=rememberCompanions(profile,run);write(PROFILE_SAVE,profile);}
+function rememberUnlocks(){profile=rememberBossVictories(rememberCompanions(profile,run),run);write(PROFILE_SAVE,profile);}
 function saveJourney(){if(run){rememberUnlocks();write(RUN_SAVE,run);}}
 async function launchJourneyBattle(resume=false){
   if(busy)return;
@@ -298,7 +310,7 @@ document.addEventListener('click',e=>{
     if(button.dataset.loadoutSlot!==undefined){skillSlot=Number(button.dataset.loadoutSlot);render();return;}
     if(button.dataset.equipSkill){const result=equipSkill(run,run.focusHero,skillSlot,button.dataset.equipSkill);if(result.ok){skillSlot=result.slot;saveJourney();render();}else toast(result.error);return;}
   }
-  if(button.dataset.boss&&screen==='title'&&!modal){prefs.bossId=button.dataset.boss;preferences();render();return;}
+  if(button.dataset.boss&&screen==='title'&&!modal&&canChallengeBoss(profile,button.dataset.boss)){prefs.bossId=button.dataset.boss;preferences();render();return;}
   if(button.dataset.difficulty&&screen==='title'&&!modal){prefs.difficulty=button.dataset.difficulty;preferences();render();return;}
   if(busy||modal||screen!=='battle')return;
   if(button.dataset.hero){state.selected=button.dataset.hero;lastSkill=null;scene?.updateState(state);render();audio.play('select');return;}

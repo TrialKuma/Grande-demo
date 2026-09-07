@@ -1,8 +1,9 @@
 import {BOSSES,BOSS_INTENTS} from './encounters.js';
 import {REWARDS} from './rewards.js';
 import {NEW_HEROES,NEW_SKILLS,CAPTAIN_SKILLS,TRANSFERABLE_LAYERS,SPECIMEN_NAMES} from './expedition-heroes.js';
-import {MANA_HERO_OVERRIDES,MANA_SKILLS,tuneManaSkill,manaSkillError,manaAfterSkill,applyManaSkill,manaHeroDefaults,manaStatus} from './mana-cycles.js';
+import {MANA_HERO_OVERRIDES,MANA_SKILLS,tuneManaSkill,manaSkillError,manaAfterSkill,applyManaSkill,manaHeroDefaults,manaStatus,manaRefundFor} from './mana-cycles.js';
 import {grantShield,absorbShield,ageShields} from './shields.js';
+import {ACTION_POINT_RULES,baseActionPoints,refreshActionPoints} from './action-points.js';
 export {BOSSES,BOSS_INTENTS};
 export {REWARDS};
 
@@ -53,7 +54,7 @@ SKILLS.apeilia.push({id:'reboot',name:'战术重整',sub:'TACTICAL RESET',ap:1,g
 for(const hero of HEROES)if(MANA_HERO_OVERRIDES[hero.id])Object.assign(hero,MANA_HERO_OVERRIDES[hero.id]);
 Object.assign(SKILLS,MANA_SKILLS);
 export const SKILL_SLOTS=5;
-export const SOLO_RULES=Object.freeze({ap:5,bossHp:.64,bossDamage:.9,stagger:120,staggerRegen:10,coreHits:4,finaleHits:2});
+export const SOLO_RULES=Object.freeze({ap:ACTION_POINT_RULES.solo,bossHp:.64,bossDamage:.9,stagger:120,staggerRegen:10,coreHits:4,finaleHits:2});
 export const isSolo=state=>state.challengeMode==='solo';
 export function victoryRequirements(state){const solo=isSolo(state);return {solo,coreHits:solo?SOLO_RULES.coreHits:6,corePhysical:solo?0:3,coreMagic:solo?0:3,finaleHits:2,finalePhysical:solo?0:1,finaleMagic:solo?0:1};}
 export const DIFFICULTIES = {
@@ -87,8 +88,8 @@ export function createBattle(difficulty='standard',bossId='golem',options={}) {
   const solo=options.mode==='solo'||options.challengeMode==='solo',partySize=solo?1:3;
   const partyIds=Array.isArray(requested)&&requested.length===partySize&&new Set(requested).size===partySize&&requested.every(id=>HEROES.some(h=>h.id===id))?requested:solo?['knibbs']:['knibbs','apeilia','ric'];
   const loadouts=normalizeLoadouts(upgrades,options.loadouts);
-  const hp=Math.round(DIFFICULTIES[difficulty].hp*BOSSES[bossId].hpMultiplier*(solo?SOLO_RULES.bossHp:1)),maxAp=solo?SOLO_RULES.ap:6,maxStagger=solo?SOLO_RULES.stagger:160;
-  return {version:7,mode:'playing',challengeMode:solo?'solo':'party',difficulty,upgrades,loadouts,round:1,ap:maxAp,maxAp,selected:partyIds[0],response:null,
+  const hp=Math.round(DIFFICULTIES[difficulty].hp*BOSSES[bossId].hpMultiplier*(solo?SOLO_RULES.bossHp:1)),maxAp=baseActionPoints(solo?'solo':'party'),maxStagger=solo?SOLO_RULES.stagger:160;
+  return {version:8,mode:'playing',challengeMode:solo?'solo':'party',difficulty,upgrades,loadouts,round:1,roundCarry:0,ap:maxAp,maxAp,selected:partyIds[0],response:null,
     heroes:partyIds.map(id=>HEROES.find(h=>h.id===id)).map(h=>({...h,...manaHeroDefaults(h.id),hp:h.maxHp,shield:0,shieldLayers:[],attackBuff:0,attackBuffTurns:0,tauntTurns:0,regenTurns:0,regenAmount:0,resource:['knibbs','haart','qianxing','youmu','patch'].includes(h.id)?10:0,resonance:0,cooldowns:{},used:[],guard:false,intuition:0,lastKind:null,balanceBursts:0,grace:false,verdict:false,reflect:0,ricEdge:0,youmuForm:'doctor',surgicalReady:false,specimen:null,captainTurns:0,captainUsed:false,exhaustedTurns:0,exhaustionFresh:false,patchForm:'observe',records:0,recordProgress:0,patchRetaliation:false,patchObserved:false,patchRecorded:false})),
     boss:{id:bossId,hp,maxHp:hp,stage:0,core:false,corePhysical:0,coreMagic:0,coreHits:0,coreTurns:2,coreFresh:false,reforms:0,stagger:maxStagger,maxStagger,broken:false,exposed:false,marked:false,weakened:0,vulnerable:0,hardControl:0,healSuppression:0,dot:null,fog:0,charging:false,phasePending:false,mirror:bossId==='duelist'?2:0,spores:bossId==='cantor'?1:0,controlImmune:0,charge:bossId==='warden'?2:0,seals:bossId==='weaver'?2:bossId==='final'?3:0,sealedKind:'physical',lastKind:null,sync:0,finale:false,finalePhysical:0,finaleMagic:0,finaleHits:0,finaleTurns:2,finaleFresh:false,waterLevel:bossId==='tide'?2:0,valveHits:0,heat:bossId==='furnace'?2:0,furnaceOpen:false,prediction:0,forecastSkill:null,decree:'light',violations:0,intent:BOSS_INTENTS[bossId][0],intentTarget:partyIds[0]},
     potions:3,log:[{text:`你们踏入${BOSSES[bossId].region}。${BOSSES[bossId].name}已现身。`,tone:'system'}],stats:{damage:0,healed:0,breaks:0,interrupts:0,actions:0,turns:0},serial:0};
@@ -117,7 +118,7 @@ function bossPhaseEvent(state,type,label){
   return {type,actor:'boss',targets:['boss'],bossId:b.id,label,hpAfter:b.hp,phaseAfter:{stage:b.stage,core:b.core,finale:b.finale}};
 }
 const usesMana=h=>h.resourceName==='魔力';
-const manaRefund=(h,s)=>usesMana(h)?s.manaReturn||0:0;
+const manaRefund=(h,s)=>usesMana(h)?manaRefundFor(h,Math.min(h.secondary||0,s.secondaryCost||0)):0;
 const allyActed=(state,h,skillId)=>isSolo(state)?h.used.some(id=>id!==skillId):state.heroes.some(other=>other.id!==h.id&&other.used.length>0);
 function resourceAfterSkill(h,s,alternating=false){
   if(usesMana(h))return manaAfterSkill(h,s).resource;
@@ -252,7 +253,7 @@ export function skillPreview(state,heroId,skillId){
   }
   trackBossSkill(b,t,h.id);
   let resourceAfter=resourceAfterSkill(h,t,alternating);
-  if(usesMana(h))notes.push(t.secondaryCost?`消耗 ${t.secondaryCost} ${h.secondaryName}，返还 ${t.manaReturn||0} 魔力`:t.secondaryGain?`${t.manaEmergency?'应急提炼':`支付 ${t.cost||0} 魔力`}，获得 ${t.secondaryGain} ${h.secondaryName}`:'本次不改变魔力循环');
+  if(usesMana(h))notes.push(t.secondaryCost?`消耗 ${t.secondaryCost} ${h.secondaryName}，自动触发「${h.passiveName}」，每次行动只结算一次回魔`:t.secondaryGain?`${t.manaEmergency?'应急提炼':`支付 ${t.cost||0} 魔力`}，获得 ${t.secondaryGain} ${h.secondaryName}`:'本次不改变魔力循环');
   if(state.boss.core&&t.damage)notes.push(isSolo(state)?`独狼核心：任意属性命中 +${Math.min(SOLO_RULES.coreHits-b.coreHits,t.hits||1)}`:`核心：${t.kind==='physical'?'物理':'魔法'}命中 +${Math.min(3-(t.kind==='physical'?b.corePhysical:b.coreMagic),t.hits||1)}`);
   if(state.boss.id==='duelist'&&t.kind==='physical'&&state.boss.mirror&&!t.captureLayer)notes.push(`${state.boss.mirror} 镜片：物理减伤 ${state.boss.mirror*10}%`);
   if(state.boss.id==='duelist'&&state.boss.intent==='mirror'&&!state.boss.broken&&t.kind==='physical'&&state.boss.mirror){
@@ -453,7 +454,7 @@ export function useSkill(state,id,skillId){
     h.youmuForm='captain';h.captainTurns=2;h.captainUsed=true;h.surgicalReady=false;h.tauntTurns=2;
     log(state,'主动献血 '+blood+' 生命，游墓接管并嘲讽两轮；结束后游木虚脱两轮。','warning');
   }
-  if(mana)log(state,`${h.short}：魔力 ${before} → ${h.resource}，${h.secondaryName}现有 ${h.secondary}/6。`);
+  if(mana)log(state,`${h.short}：${s.secondaryCost?'被动「'+h.passiveName+'」触发，':''}魔力 ${before} → ${h.resource}，${h.secondaryName}现有 ${h.secondary}/${h.maxSecondary}。`);
   if(s.cooldown)h.cooldowns[s.id]=s.cooldown+1;
   if(consumeGrace)h.grace=false;if(consumeVerdict)h.verdict=false;
   if(empowerReason)log(state,empowerReason+'。','good');
@@ -649,14 +650,14 @@ export function responseOptions(state){
     const damage=Math.round(spec.damage*enemyMultiplier(state)*p.factor)*(spec.hits||1);
     let reward=id==='parry'?`削韧 ${p.stagger}`:id==='evade'&&usesMana(h)?`${h.short}两轮内下次主动攻击增伤 15%（不直接回魔）`:id==='evade'?`${h.short}${h.id==='ric'?'向 0 调和最多 '+p.resource+' 点':h.resourceName+' +'+p.resource}`:`${p.damage} 基础${['ric','haart','patch'].includes(h.id)?'魔法':'物理'}反击伤害，削韧 ${p.stagger}`;
     if(id==='counter'&&h.id==='knibbs'&&h.intuition>=3)reward+='；满直感再强化 40% / 12 削韧';if(p.special)reward+='；'+p.special;
-    return{id,name:names[id][0],icon:names[id][1],ap:1,damage,damageFactor:p.factor,baseDamage:scaled(state,spec.damage)*(spec.hits||1),group:!!spec.group,hits:spec.hits||1,description:inactive?`当前无敌方主招；已准备的应对取消，下轮正常恢复 ${state.maxAp} 行动点`:`${spec.group?'群体主招':'单体主招'}减伤 ${Math.round((1-p.factor)*100)}%${spec.damage?`，${spec.group?'每人':'受击者'}预计承伤 ${damage}（护盾 / 防御前）`:'；本次主招无直接伤害'}`,reward};
+    return{id,name:names[id][0],icon:names[id][1],ap:1,damage,damageFactor:p.factor,baseDamage:scaled(state,spec.damage)*(spec.hits||1),group:!!spec.group,hits:spec.hits||1,description:inactive?`当前无敌方主招；已准备的应对取消且不退款，下轮获得基础 ${baseActionPoints(state)} AP，并保留最多 2 点未使用 AP`:`${spec.group?'群体主招':'单体主招'}减伤 ${Math.round((1-p.factor)*100)}%${spec.damage?`，${spec.group?'每人':'受击者'}预计承伤 ${damage}（护盾 / 防御前）`:'；本次主招无直接伤害'}`,reward};
   });
 }
 export function prepareResponse(state,id,actorId=state.selected){
   const h=heroOf(state,actorId),error=state.mode!=='playing'?'战斗已结束':!['parry','evade','counter'].includes(id)?'未知的战术应对':!h||h.hp<=0?'请选择存活队员':state.boss.core?'核心阶段无需准备应对':(state.boss.broken||state.boss.hardControl)?'敌人本轮无法行动，无需新增应对':!state.response&&state.ap<1?'行动点不足':'';
   if(error)return{ok:false,error,events:[]};if(!state.response){state.ap--;state.stats.actions++;}
   state.response={id,actor:actorId};state.serial++;
-  const name={parry:'招架',evade:'回避',counter:'迎击'}[id];log(state,`${h.short}准备${name}：应对下一次敌方主招，同轮可免费更改。敌招被打断则取消应对，下轮正常恢复 ${state.maxAp} 行动点。`,'good');
+  const name={parry:'招架',evade:'回避',counter:'迎击'}[id];log(state,`${h.short}准备${name}：应对下一次敌方主招，同轮可免费更改。敌招被打断则取消应对，已付的 1 AP 不退还；下轮获得基础 ${baseActionPoints(state)} AP，并保留最多 2 点未使用 AP。`,'good');
   return{ok:true,events:[{type:'shield',actor:actorId,targets:alive(state).map(p=>p.id),style:'guard',amount:0,label:`准备${name}`}]};
 }
 function hurtParty(state,events,ids,base,kind,label,style='quake',resonance=true,responseFactor=1){
@@ -820,7 +821,7 @@ export function endRound(state){
   // It must not receive the partial-turn grace reserved for player-phase exposure.
   if(!wasCore&&b.core)b.coreFresh=false;
   if(!wasFinale&&b.finale)b.finaleFresh=false;
-  state.round++;state.maxAp=isSolo(state)?SOLO_RULES.ap:6;state.ap=state.maxAp;
+  state.round++;refreshActionPoints(state);
   if(cancelledResponse)log(state,`敌方主招未出手，预备应对已取消；本轮正常恢复 ${state.maxAp} 行动点。`,'good');
   // A response breaks posture after the boss has already acted. Carry only its
   // damage window into the next player turn, not another cancelled enemy turn.
@@ -851,5 +852,5 @@ export function endRound(state){
   const cycle=BOSS_INTENTS[b.id];b.intent=cycle[(state.round-1)%cycle.length];b.intentTarget=alive(state)[(state.round-1)%alive(state).length].id;
   if(b.phasePending&&!b.core){b.charging=!b.broken;b.phasePending=false;}
   if(heroOf(state,state.selected)?.hp<=0)state.selected=alive(state)[0].id;
-  log(state,`第 ${state.round} 回合 · 行动点恢复至 ${state.ap}。`,'system');return{ok:true,events};
+  log(state,`第 ${state.round} 回合 · 行动点 ${state.ap}（基础 ${baseActionPoints(state)}${state.roundCarry?` ＋ 保留 ${state.roundCarry}`:''}）。`,'system');return{ok:true,events};
 }

@@ -22,7 +22,7 @@ test('profile: GM unlock is explicit, pure, and survives remembering a fresh exp
 });
 
 test('profile: ordinary and invalid GM flags do not bypass the normal starting roster',()=>{
-  const ordinary={version:2,naturalHeroes:[...STARTING_HEROES],unlockedHeroes:[...STARTING_HEROES]};
+  const ordinary={version:3,naturalHeroes:[...STARTING_HEROES],unlockedHeroes:[...STARTING_HEROES],defeatedBosses:[],unlockedBosses:[]};
   assert.deepEqual(normalizeProfile(null),ordinary);
   for(const flag of [false,'true',1,{},[]])assert.deepEqual(normalizeProfile({gmAllHeroes:flag,unlockedHeroes:['unknown']}),ordinary);
   assert.deepEqual(rememberCompanions(null,{unlockedHeroes:[]}),ordinary);

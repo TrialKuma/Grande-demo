@@ -47,21 +47,22 @@ test('Youmu sacrifices full health to captain form with five actions, two-round 
 test('Youmu captain finisher consumes real AP/breath and exits early without granting another turn',()=>{
  const s=battle('warden'),h=heroOf(s,'youmu');h.hp=60;cast(s,h.id,'bloodoath');const {p}=cast(s,h.id,'bloodoath');assert.equal(p.name,'沉渊炼狱号');assert.equal(p.hits,3);assert.equal(s.ap,2);assert.equal(h.resource,2);assert.equal(h.youmuForm,'doctor');assert.equal(h.exhaustedTurns,2);assert.equal(h.exhaustionFresh,true);
 });
-test('Patch converts paid mana into records before medium and small cash-outs can return it',()=>{
- const s=battle('warden'),h=heroOf(s,'patch');cast(s,h.id,'keyblade');assert.equal(h.resource,7);assert.equal(h.records,2);assert.equal(h.secondary,2);assert.equal(h.recordProgress,0);
- cast(s,h.id,'keyblade');assert.equal(h.records,4);assert.equal(h.resource,4);const {p}=cast(s,h.id,'chargedslash');assert.equal(p.variant,'patch_daybreak');assert.equal(p.kind,'physical');assert.equal(p.hits,2);assert.equal(h.records,1);assert.equal(h.secondary,1);assert.equal(p.recordsAfter,1);assert.equal(h.resource,8);
- cast(s,h.id,'chargedslash');assert.equal(h.records,0);assert.equal(h.secondary,0);assert.equal(h.resource,10);assert.equal(s.ap,1);
+test('Patch converts paid mana into records and keeps one-record slashes available while stockpiling',()=>{
+ const s=battle('warden'),h=heroOf(s,'patch');cast(s,h.id,'keyblade');assert.equal(h.resource,9);assert.equal(h.records,1);assert.equal(h.secondary,1);assert.equal(h.recordProgress,0);
+ cast(s,h.id,'bookward');assert.equal(h.records,4);assert.equal(h.resource,5);cast(s,h.id,'keyblade');assert.equal(h.records,5);assert.equal(h.resource,4);
+ const {p}=cast(s,h.id,'chargedslash');assert.equal(p.kind,'physical');assert.equal(p.hits,1);assert.equal(p.ap,1);assert.equal(p.secondarySpend,1);assert.equal(h.records,4);assert.equal(h.secondary,4);assert.equal(p.recordsAfter,4);assert.equal(h.resource,6);
+ cast(s,h.id,'chargedslash');assert.equal(h.records,3);assert.equal(h.secondary,3);assert.equal(h.resource,8);assert.equal(s.ap,1);
 });
 test('Patch conversion needs mana, cash-out needs records, and both still require AP',()=>{
- const s=battle(),h=heroOf(s,'patch');refuse(s,h.id,'fragments');cast(s,h.id,'keyblade');h.resource=2;refuse(s,h.id,'keyblade');h.resource=7;cast(s,h.id,'keyblade');s.ap=1;refuse(s,h.id,'fragments');s.ap=2;h.resource=0;cast(s,h.id,'fragments');assert.equal(h.resource,4);assert.equal(h.secondary,1);
+ const s=battle(),h=heroOf(s,'patch');refuse(s,h.id,'fragments');cast(s,h.id,'keyblade');h.resource=0;refuse(s,h.id,'keyblade');h.resource=7;cast(s,h.id,'bookward');s.ap=1;refuse(s,h.id,'fragments');s.ap=2;h.resource=0;cast(s,h.id,'fragments');assert.equal(h.resource,3);assert.equal(h.secondary,1);
 });
 test('Patch collection stance keeps paid records through hits without free records or mana on shield break',()=>{
- const s=battle('golem'),h=heroOf(s,'patch');s.boss.intentTarget='patch';cast(s,h.id,'bookward');assert.equal(h.patchForm,'record');assert.equal(h.records,2);assert.equal(h.resource,7);
- const r=endRound(s);assert.equal(h.records,2);assert.equal(h.secondary,2);assert.equal(h.resource,7);assert.equal(h.patchRetaliation,false);assert.equal(r.events.filter(e=>e.label==='镜反回击').length,0);
- assert.equal(resolvedSkill(s,h.id,'chargedslash').name,'充能斩 · 镜反');const {p}=cast(s,h.id,'chargedslash');assert.equal(p.kind,'magic');assert.equal(p.shield,0);assert.equal(h.records,1);assert.equal(h.resource,9);assert.equal(s.boss.weakened,1);
+ const s=battle('golem'),h=heroOf(s,'patch');s.boss.intentTarget='patch';cast(s,h.id,'bookward');assert.equal(h.patchForm,'record');assert.equal(h.records,3);assert.equal(h.resource,6);
+ const r=endRound(s);assert.equal(h.records,3);assert.equal(h.secondary,3);assert.equal(h.resource,6);assert.equal(h.patchRetaliation,false);assert.equal(r.events.filter(e=>e.label==='镜反回击').length,0);
+ assert.equal(resolvedSkill(s,h.id,'chargedslash').name,'充能斩 · 镜反');const {p}=cast(s,h.id,'chargedslash');assert.equal(p.kind,'magic');assert.equal(p.shield,0);assert.equal(h.records,2);assert.equal(h.resource,9);assert.equal(s.boss.weakened,1);
 });
 test('Patch both stance variants use the same damage type and hit count for preview and core progress',()=>{
- for(const [conversion,kind,hits] of [['keyblade','physical',2],['bookward','magic',1]]){
+ for(const [conversion,kind,hits] of [['keyblade','physical',1],['bookward','magic',1]]){
   const s=battle('golem'),h=heroOf(s,'patch');cast(s,h.id,conversion);cast(s,h.id,conversion);s.boss.hp=1;cast(s,'youmu','scalpel');
   const p=skillPreview(s,h.id,'chargedslash');assert.equal(p.kind,kind);assert.equal(p.hits,hits);cast(s,h.id,'chargedslash');assert.equal(s.boss.coreMagic,kind==='magic'?hits:0);assert.equal(s.boss.corePhysical,kind==='physical'?hits:0);
  }
@@ -70,11 +71,11 @@ test('Both new kits and Ric dynamic states roundtrip with deterministic next act
  const s=battle(),y=heroOf(s,'youmu');cast(s,'youmu','scalpel');cast(s,'youmu','surgery');cast(s,'patch','bookward');const restored=normalizeSave(JSON.parse(JSON.stringify(s)));assert.deepEqual(restored,{...s,elapsed:0});assert.deepEqual(useSkill(restored,'ric','rune'),useSkill(s,'ric','rune'));assert.deepEqual(endRound(restored),endRound(s));
 });
 test('Current saves reject forged forms, impossible paid-state counters and nontransferable specimens',()=>{
- for(const mutate of [s=>heroOf(s,'youmu').specimen='controlImmune',s=>heroOf(s,'youmu').youmuForm='captain',s=>heroOf(s,'patch').records=7,s=>heroOf(s,'ric').resource=11,s=>heroOf(s,'patch').captainUsed=true]){const s=battle();mutate(s);assert.equal(normalizeSave(s),null);}
+ for(const mutate of [s=>heroOf(s,'youmu').specimen='controlImmune',s=>heroOf(s,'youmu').youmuForm='captain',s=>{heroOf(s,'patch').records=11;heroOf(s,'patch').secondary=11;},s=>heroOf(s,'ric').resource=11,s=>heroOf(s,'patch').captainUsed=true]){const s=battle();mutate(s);assert.equal(normalizeSave(s),null);}
 });
 test('A captured v4 four-slot roster migrates Ric balance proportion and keeps every selected old slot',()=>{
  const old=createBattle();old.version=4;old.heroes.find(h=>h.id==='ric').resource=-3;old.loadouts={knibbs:['shot','focus','scatter','breathe'],apeilia:['blade','purify','eden','sentinel'],ric:['rune','bind','shelter','mend'],haart:['page','relay','soothe','rest'],qianxing:['spike','beam','armor','repair']};
- const restored=normalizeSave(old);assert.ok(restored);assert.equal(heroOf(restored,'ric').resource,-10);assert.deepEqual(restored.loadouts.ric,['rune','bind','shelter','mend','crossing']);assert.equal(restored.loadouts.patch.length,5);assert.equal(restored.version,7);
+ const restored=normalizeSave(old);assert.ok(restored);assert.equal(heroOf(restored,'ric').resource,-10);assert.deepEqual(restored.loadouts.ric,['rune','bind','shelter','mend','crossing']);assert.equal(restored.loadouts.patch.length,5);assert.equal(restored.version,8);
 });
 test('Campaign recruits all four arrivals at the promised battle boundary and supports their reward pools',()=>{
  let run=createRun('standard',{legacyRoute:true});for(let chapter=0;chapter<4;chapter++){

@@ -46,22 +46,25 @@ test('journal describes ship skills, transplantation and both clock stances befo
  for(const name of ['移植手术','铁血弯刀','船长威严','枪弹盛宴','沉渊炼狱号','死海整帆','深海炮列'])assert.ok(doctor.includes(name),name);
  assert.match(doctor,/立即退出船长状态/);assert.match(doctor,/进入两轮虚脱/);
  const clock=words(heroJournalView({unlockedHeroes:['patch'],selectedHero:'patch'}));
- for(const name of ['充能斩 · 断光','充能斩 · 镜反','充能斩 · 反证','时之扉 · 封存'])assert.ok(clock.includes(name),name);
- assert.match(clock,/施放时消耗 1 点行动点和 3 点魔力/);assert.match(clock,/施放时消耗 2 点行动点和 3 点记录/);
+ for(const name of ['充能斩','充能斩 · 镜反','时之扉 · 封存'])assert.ok(clock.includes(name),name);
+ assert.match(clock,/施放时消耗 1 点行动点和 4 点魔力/);assert.match(clock,/施放时消耗 2 点行动点和 8 点魔力/);
+ assert.match(clock,/消耗记录.*被动|被动.*回魔/);
 });
 
-test('title solo selection contains only unlocked valid characters and keeps all ten enemies accessible',()=>{
+test('title solo selection keeps character and boss unlock lists independent',()=>{
  const prefs={bossId:'golem',difficulty:'standard',challengeMode:'solo',soloHero:'patch'};
  const locked=titleView(prefs,null,'',[]),open=titleView(prefs,null,'',[],'',{unlockedHeroes:['patch','<script>']});
  assert.deepEqual([...locked.matchAll(/data-solo-hero="([^"]+)"/g)].map(m=>m[1]),['knibbs','apeilia','ric']);
  assert.deepEqual([...open.matchAll(/data-solo-hero="([^"]+)"/g)].map(m=>m[1]),['knibbs','apeilia','ric','patch']);
  assert.match(open,/data-action="hero-journal"/);assert.match(open,/data-mode="party"/);assert.match(open,/data-mode="solo"/);
- assert.equal((open.match(/data-boss=/g)||[]).length,Object.keys(BOSSES).length);assert.equal(Object.keys(BOSSES).length,10);
- assert.match(open,/01 — 10/);assert.doesNotMatch(open,/>010<|<script>/);valid(open);
+ assert.equal((open.match(/data-boss=/g)||[]).length,0);assert.match(open,/还没有解锁自由挑战/);
+ const allBosses=titleView(prefs,null,'',[],'',{unlockedHeroes:['patch'],unlockedBosses:Object.keys(BOSSES)});
+ assert.equal((allBosses.match(/data-boss=/g)||[]).length,Object.keys(BOSSES).length);assert.equal(Object.keys(BOSSES).length,10);
+ assert.match(allBosses,/10 \/ 10/);assert.doesNotMatch(open,/>010<|<script>/);valid(open);valid(allBosses);
 });
 
 test('solo board renders one complete five-slot row and reads its AP limit in battle and help',()=>{
- const s=make('ric');s.maxAp=7;s.ap=7;const before=structuredClone(s),html=battle(s);
+ const s=make('ric');s.round=2;s.roundCarry=2;s.maxAp=7;s.ap=7;const before=structuredClone(s),html=battle(s);
  assert.match(html,/battle-v3 is-solo/);assert.equal((html.match(/class="team-row /g)||[]).length,1);
  assert.equal((html.match(/data-skill=/g)||[]).length,5);assert.match(html,/独狼行动点/);assert.match(html,/<small> \/ 7<\/small>/);
  assert.match(helpView(s),/7 AP/);assert.doesNotMatch(helpView(s),/6 AP|四项技能|六场战斗/);
@@ -95,14 +98,15 @@ test('skill explanations use live primary or secondary costs and explicit target
  for(const id of ['eden','sentinel']){assert.equal(skillOf('apeilia',id).cost,6);assert.match(skillExplanation(a,'apeilia',id).cost,/6 点连击/);}
  assert.match(heroResourceDescription(heroOf(a,'apeilia')),/伊甸之约消耗 6 点，地狱哨兵消耗 6 点/);
  const h=make('haart'),support=skillExplanation(h,'haart','soothe');
- assert.match(support.cost,/1 点念线。兑现后返还 2 点魔力/);assert.doesNotMatch(support.effects.join(''),/恢复.*生命/);assert.match(support.effects.join(''),/伤害降低 20%/);
+ assert.match(support.cost,/1 点念线。/);assert.doesNotMatch(support.cost,/返还|回魔/);assert.match(support.conditions.join(''),/心智通路/);assert.match(support.conditions.join(''),/回魔规则见角色被动/);assert.doesNotMatch(support.effects.join(''),/恢复.*生命/);assert.match(support.effects.join(''),/伤害降低 20%/);
  const shield=skillExplanation(make('ric'),'ric','shelter');assert.match(shield.effects.join(''),/为自己提供 30 点护盾/);assert.doesNotMatch(shield.effects.join(''),/所有存活队员各.*30 点护盾/);
 });
 
 test('Haart passive badge displays current stored threads and rendering is read-only',()=>{
  const s=make('haart','golem',{upgrades:['haart_triage']}),h=heroOf(s,'haart');
- h.secondary=1;assert.match(statusBadges(s,h),/1\/6/);assert.doesNotMatch(statusBadges(s,h),/治疗强化/);
- h.secondary=3;const before=structuredClone(s);assert.match(statusBadges(s,h),/active good/);assert.match(statusBadges(s,h),/3\/6/);assert.deepEqual(s,before);
+ h.secondary=1;assert.match(statusBadges(s,h),/1\/4/);assert.doesNotMatch(statusBadges(s,h),/治疗强化/);
+ h.secondary=3;assert.doesNotMatch(statusBadges(s,h),/active good/);
+ h.secondary=4;const before=structuredClone(s);assert.match(statusBadges(s,h),/active good/);assert.match(statusBadges(s,h),/4\/4/);assert.deepEqual(s,before);
 });
 
 test('readable manual has four reachable sections and seven independent portrait cards',()=>{
