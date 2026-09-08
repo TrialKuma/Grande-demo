@@ -1,0 +1,38 @@
+/* The two-person atlas must stop at each portrait's own boundary. */
+.story-screen .dialogue-speaker:has(.portrait.haart),.story-screen .dialogue-speaker:has(.portrait.qianxing){aspect-ratio:3/4;height:auto}
+.story-screen .dialogue-speaker .portrait.haart,.story-screen .dialogue-speaker .portrait.qianxing{aspect-ratio:3/4;height:auto;background-size:200% 100%;background-repeat:no-repeat}
+.story-screen .dialogue-speaker .portrait.haart{background-position:0% center}
+.story-screen .dialogue-speaker .portrait.qianxing{background-position:100% center}
+.recruitment-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;padding-bottom:25px}
+.recruitment-card{display:flex;align-items:flex-start;gap:16px;text-align:left;border:1px solid #8aabb545;background:#142334e8;padding:20px;border-radius:6px}
+.recruitment-card:hover{border-color:var(--hero);background:#243449}.recruitment-card>.portrait{width:58px;height:78px;flex-shrink:0}.recruitment-card h2{color:var(--hero);font-size:20px;margin:0 0 8px}.recruitment-card strong{font-size:12px;color:#b4c6d5}.recruitment-card p{font-size:14px;line-height:1.85;color:#c6d2dc}.recruitment-card small{display:block;font-size:12px;line-height:1.8;color:#92b9c6}.recruitment-card b{display:flex;align-items:center;gap:8px;color:#e4c991;font-size:14px;margin-top:16px}
+.learning-summary{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:15px 18px;margin:0 0 20px;border:1px solid #91c9b84a;border-radius:5px;background:#16362e70;color:#afded0;font-size:14px}.learning-summary strong{color:#e8d4a9}.personal-practice{margin-top:18px;padding:20px;border:1px solid #a7b7d345;background:#182a3c}.personal-practice h3{margin:0 0 10px;font-size:18px;color:#e1c99c}.personal-practice p{font-size:14px;line-height:1.85;color:#b8c8d7}.personal-practice button{padding:11px 16px;background:#a28b5833;color:#e4ca95;border:1px solid #bea16c85;border-radius:4px}.personal-practice button:disabled{opacity:.5}
+.battle-layout .team-skills{grid-template-columns:repeat(var(--skill-count,5),minmax(0,1fr))}.battle-layout.is-learning .team-skill{min-width:0}.battle-layout.is-small-party .team-roster{grid-template-rows:none;grid-auto-rows:var(--dock-row,86px)}
+.battle-layout .party-protection{margin-top:18px;padding:17px;border:1px solid #8eb4c13c;border-radius:4px;background:#132434dd}.party-protection h3{font-size:16px;color:#dac18e;margin:0 0 12px}.party-protection p{display:flex;gap:10px;justify-content:space-between;font-size:13px;line-height:1.7;color:#c4d4de;margin:8px 0}.party-protection p strong{color:#9cdccc}.party-protection small{display:block;font-size:12px;color:#9fb4c5;line-height:1.8}
+.battle-lesson{margin-top:18px;border-left:2px solid #c4a164;padding:5px 0 5px 15px}.battle-lesson h3{font-size:16px;color:#e3cb9c;margin:0 0 10px}.battle-lesson p{font-size:14px;line-height:1.9;color:#c5d2dd;margin:0}.battle-layout .hero-effects .protected{color:#a5e0ce}
+@media(min-width:1001px){.battle-layout.is-small-party{--dock-height:calc(78px + var(--party-size,1)*var(--dock-row,86px))}.battle-layout.is-small-party .team-board{min-height:0}.battle-layout.is-small-party .board-heading{height:66px}}
+@media(max-width:1000px){.recruitment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.recruitment-card{padding:16px;gap:12px}.recruitment-card>.portrait{width:44px;height:62px}}
+@media(max-width:620px){.recruitment-grid{grid-template-columns:1fr}.recruitment-card h2{font-size:18px}.learning-summary{font-size:12px}.battle-layout .party-protection{padding:10px}.battle-layout .battle-lesson p{font-size:12px}}
+
+.journey-route.learning-route{grid-template-columns:repeat(11,minmax(0,1fr));gap:6px}.learning-route .route-node{padding:7px 3px}.learning-route .route-node strong{font-size:11px}
+@media(max-width:1100px){.journey-route.learning-route{display:flex;overflow-x:auto;gap:8px;scrollbar-width:thin}.journey-route.learning-route>.route-step{flex:0 0 92px}}
+@media(min-width:801px) and (max-height:800px){.story-screen .story-location{margin-top:20px;margin-bottom:12px}.story-screen .story-location h1{font-size:27px;margin:10px 0}.story-screen .dialogue-stage{padding-top:0}.story-screen .dialogue-card{padding:24px 30px}.story-screen .dialogue-card>p{min-height:76px}.story-screen .dialogue-controls{margin-top:14px}.story-screen .dialogue-voice{margin-top:15px}.story-screen .story-progress{margin-top:12px}}
+
+/* The stage and the command dock must reserve the same actual row count. */
+@media(min-width:901px){
+ #app.in-battle:has(.battle-layout.is-small-party){--board-height:calc(var(--dock-heading) + var(--dock-row) * 2 + 40px)}
+ #app.in-battle:has(.battle-layout.is-small-party[style*="--party-size:1"]){--board-height:calc(var(--dock-heading) + var(--dock-row) + 36px)}
+ .battle-layout.is-small-party .board-heading{height:var(--dock-heading)}
+ .battle-layout .party-protection h3{display:flex;align-items:center;gap:8px}
+ .battle-layout .party-protection p{align-items:baseline;gap:12px}
+ .battle-layout .party-protection p>strong{text-align:right;font-weight:600}
+ .battle-layout.is-learning .team-skill .skill-result{white-space:normal}
+}
+@media(max-width:900px){
+ #app.in-battle:has(.battle-layout.is-small-party){--board-height:365px}
+ #app.in-battle:has(.battle-layout.is-small-party[style*="--party-size:1"]){--board-height:222px}
+ .battle-layout.is-small-party .team-roster{grid-auto-rows:140px}
+ .battle-layout .party-protection{margin-top:10px}
+ .battle-layout .battle-lesson{margin-top:12px}
+}
+@media(max-width:470px){.battle-layout .team-skills{grid-template-columns:repeat(var(--skill-count,5),minmax(118px,1fr));overflow-x:auto;overflow-y:hidden;padding-bottom:3px}}

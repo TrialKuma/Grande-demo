@@ -1,0 +1,548 @@
+{
+  "version": "3.8",
+  "generator": "build_boss_cast.py",
+  "coordinateSystem": {
+    "up": "+Y",
+    "front": "+Z",
+    "feetY": 0,
+    "runtimeRootY": 0.48
+  },
+  "glb": "/models/grande-boss-cast.glb",
+  "bytes": 2072408,
+  "bosses": {
+    "golem": {
+      "root": "boss_golem",
+      "name": "魔晶巨人",
+      "concept": "Asymmetric crystal-and-basalt siege giant, massive fists, exposed rib cage",
+      "triangles": 4364,
+      "drawCalls": 23,
+      "bounds": {
+        "width": 4.224,
+        "height": 4.76,
+        "depth": 1.921,
+        "minY": 0.0,
+        "maxY": 4.76
+      },
+      "jointCount": 9,
+      "clips": [
+        {
+          "name": "golem_idle",
+          "duration": 2.4,
+          "channels": 7,
+          "targetJoints": 7
+        },
+        {
+          "name": "golem_attack",
+          "duration": 1.1,
+          "channels": 8,
+          "targetJoints": 7
+        },
+        {
+          "name": "golem_hit",
+          "duration": 0.6,
+          "channels": 8,
+          "targetJoints": 7
+        }
+      ]
+    },
+    "duelist": {
+      "root": "boss_duelist",
+      "name": "折镜刃卫",
+      "concept": "Long-legged mirror fencer, narrow waist, asymmetrical layered armor and hooked saber",
+      "triangles": 2990,
+      "drawCalls": 38,
+      "bounds": {
+        "width": 3.22,
+        "height": 4.25,
+        "depth": 1.16,
+        "minY": 0.0,
+        "maxY": 4.25
+      },
+      "jointCount": 12,
+      "clips": [
+        {
+          "name": "duelist_idle",
+          "duration": 2.4,
+          "channels": 9,
+          "targetJoints": 9
+        },
+        {
+          "name": "duelist_attack",
+          "duration": 1.1,
+          "channels": 11,
+          "targetJoints": 10
+        },
+        {
+          "name": "duelist_hit",
+          "duration": 0.6,
+          "channels": 10,
+          "targetJoints": 9
+        }
+      ]
+    },
+    "cantor": {
+      "root": "boss_cantor",
+      "name": "孢冠司祭",
+      "concept": "Floating pleated fungal bell robe, living root arms, large gilled cap and porcelain mask",
+      "triangles": 12982,
+      "drawCalls": 27,
+      "bounds": {
+        "width": 2.564,
+        "height": 4.293,
+        "depth": 2.549,
+        "minY": 0.112,
+        "maxY": 4.405
+      },
+      "jointCount": 15,
+      "clips": [
+        {
+          "name": "cantor_idle",
+          "duration": 2.4,
+          "channels": 15,
+          "targetJoints": 15
+        },
+        {
+          "name": "cantor_attack",
+          "duration": 1.1,
+          "channels": 16,
+          "targetJoints": 15
+        },
+        {
+          "name": "cantor_hit",
+          "duration": 0.6,
+          "channels": 16,
+          "targetJoints": 15
+        }
+      ]
+    },
+    "warden": {
+      "root": "boss_warden",
+      "name": "雷脊看守",
+      "concept": "Low mechanical hound, four digitigrade legs, arched conductor spine and articulated metal jaw",
+      "triangles": 8606,
+      "drawCalls": 38,
+      "bounds": {
+        "width": 2.52,
+        "height": 3.476,
+        "depth": 4.054,
+        "minY": 0.005,
+        "maxY": 3.481
+      },
+      "jointCount": 13,
+      "clips": [
+        {
+          "name": "warden_idle",
+          "duration": 2.4,
+          "channels": 11,
+          "targetJoints": 11
+        },
+        {
+          "name": "warden_attack",
+          "duration": 1.1,
+          "channels": 12,
+          "targetJoints": 11
+        },
+        {
+          "name": "warden_hit",
+          "duration": 0.6,
+          "channels": 11,
+          "targetJoints": 10
+        }
+      ]
+    },
+    "weaver": {
+      "root": "boss_weaver",
+      "name": "缚页织者",
+      "concept": "Six-legged manuscript arachnid, book abdomen, quill arms and layered parchment mantle",
+      "triangles": 5760,
+      "drawCalls": 29,
+      "bounds": {
+        "width": 3.697,
+        "height": 3.949,
+        "depth": 2.727,
+        "minY": 0.0314,
+        "maxY": 3.98
+      },
+      "jointCount": 11,
+      "clips": [
+        {
+          "name": "weaver_idle",
+          "duration": 2.4,
+          "channels": 4,
+          "targetJoints": 4
+        },
+        {
+          "name": "weaver_attack",
+          "duration": 1.1,
+          "channels": 6,
+          "targetJoints": 5
+        },
+        {
+          "name": "weaver_hit",
+          "duration": 0.6,
+          "channels": 5,
+          "targetJoints": 4
+        }
+      ]
+    },
+    "tide": {
+      "root": "boss_tide",
+      "name": "潮闸监守",
+      "concept": "Circular pressure-bulkhead torso, exposed piston legs, nozzle cannon and anchored manipulator",
+      "triangles": 7592,
+      "drawCalls": 29,
+      "bounds": {
+        "width": 3.645,
+        "height": 3.751,
+        "depth": 1.85,
+        "minY": 0.005,
+        "maxY": 3.756
+      },
+      "jointCount": 9,
+      "clips": [
+        {
+          "name": "tide_idle",
+          "duration": 2.4,
+          "channels": 7,
+          "targetJoints": 7
+        },
+        {
+          "name": "tide_attack",
+          "duration": 1.1,
+          "channels": 8,
+          "targetJoints": 7
+        },
+        {
+          "name": "tide_hit",
+          "duration": 0.6,
+          "channels": 8,
+          "targetJoints": 7
+        }
+      ]
+    },
+    "furnace": {
+      "root": "boss_furnace",
+      "name": "焚炉驮兽",
+      "concept": "Six-legged furnace carrier, deep combustion mouth, twin stacks and asymmetric industrial tool arms",
+      "triangles": 6872,
+      "drawCalls": 35,
+      "bounds": {
+        "width": 3.6,
+        "height": 3.8,
+        "depth": 2.408,
+        "minY": 0.005,
+        "maxY": 3.805
+      },
+      "jointCount": 11,
+      "clips": [
+        {
+          "name": "furnace_idle",
+          "duration": 2.4,
+          "channels": 5,
+          "targetJoints": 5
+        },
+        {
+          "name": "furnace_attack",
+          "duration": 1.1,
+          "channels": 6,
+          "targetJoints": 5
+        },
+        {
+          "name": "furnace_hit",
+          "duration": 0.6,
+          "channels": 5,
+          "targetJoints": 4
+        }
+      ]
+    },
+    "orrery": {
+      "root": "boss_orrery",
+      "name": "错星仪",
+      "concept": "Nonhumanoid suspended celestial gyroscope, tripod observatory pedestal and articulated lens array",
+      "triangles": 13374,
+      "drawCalls": 27,
+      "bounds": {
+        "width": 3.604,
+        "height": 4.196,
+        "depth": 3.502,
+        "minY": 0.005,
+        "maxY": 4.201
+      },
+      "jointCount": 10,
+      "clips": [
+        {
+          "name": "orrery_idle",
+          "duration": 2.4,
+          "channels": 7,
+          "targetJoints": 7
+        },
+        {
+          "name": "orrery_attack",
+          "duration": 1.1,
+          "channels": 8,
+          "targetJoints": 7
+        },
+        {
+          "name": "orrery_hit",
+          "duration": 0.6,
+          "channels": 8,
+          "targetJoints": 7
+        }
+      ]
+    },
+    "arbiter": {
+      "root": "boss_arbiter",
+      "name": "沉律裁决者",
+      "concept": "Blindfolded mitred magistrate, heavy pleated wine robe, suspended balance scales and broad execution blade",
+      "triangles": 3892,
+      "drawCalls": 23,
+      "bounds": {
+        "width": 3.33,
+        "height": 4.24,
+        "depth": 1.896,
+        "minY": 0.0,
+        "maxY": 4.24
+      },
+      "jointCount": 8,
+      "clips": [
+        {
+          "name": "arbiter_idle",
+          "duration": 2.4,
+          "channels": 6,
+          "targetJoints": 6
+        },
+        {
+          "name": "arbiter_attack",
+          "duration": 1.1,
+          "channels": 9,
+          "targetJoints": 8
+        },
+        {
+          "name": "arbiter_hit",
+          "duration": 0.6,
+          "channels": 7,
+          "targetJoints": 6
+        }
+      ]
+    },
+    "final": {
+      "root": "boss_final",
+      "name": "无主总核",
+      "concept": "Six-armed cathedral control idol: suspended open rib cage, split mechanical wings, eye core and crown",
+      "triangles": 12822,
+      "drawCalls": 45,
+      "bounds": {
+        "width": 4.82,
+        "height": 4.6,
+        "depth": 1.471,
+        "minY": 0.18,
+        "maxY": 4.78
+      },
+      "jointCount": 20,
+      "clips": [
+        {
+          "name": "final_idle",
+          "duration": 2.4,
+          "channels": 20,
+          "targetJoints": 20
+        },
+        {
+          "name": "final_attack",
+          "duration": 1.1,
+          "channels": 21,
+          "targetJoints": 20
+        },
+        {
+          "name": "final_hit",
+          "duration": 0.6,
+          "channels": 21,
+          "targetJoints": 20
+        }
+      ]
+    }
+  },
+  "animations": [
+    {
+      "name": "golem_idle",
+      "duration": 2.4,
+      "channels": 7,
+      "targetJoints": 7
+    },
+    {
+      "name": "golem_attack",
+      "duration": 1.1,
+      "channels": 8,
+      "targetJoints": 7
+    },
+    {
+      "name": "golem_hit",
+      "duration": 0.6,
+      "channels": 8,
+      "targetJoints": 7
+    },
+    {
+      "name": "duelist_idle",
+      "duration": 2.4,
+      "channels": 9,
+      "targetJoints": 9
+    },
+    {
+      "name": "duelist_attack",
+      "duration": 1.1,
+      "channels": 11,
+      "targetJoints": 10
+    },
+    {
+      "name": "duelist_hit",
+      "duration": 0.6,
+      "channels": 10,
+      "targetJoints": 9
+    },
+    {
+      "name": "cantor_idle",
+      "duration": 2.4,
+      "channels": 15,
+      "targetJoints": 15
+    },
+    {
+      "name": "cantor_attack",
+      "duration": 1.1,
+      "channels": 16,
+      "targetJoints": 15
+    },
+    {
+      "name": "cantor_hit",
+      "duration": 0.6,
+      "channels": 16,
+      "targetJoints": 15
+    },
+    {
+      "name": "warden_idle",
+      "duration": 2.4,
+      "channels": 11,
+      "targetJoints": 11
+    },
+    {
+      "name": "warden_attack",
+      "duration": 1.1,
+      "channels": 12,
+      "targetJoints": 11
+    },
+    {
+      "name": "warden_hit",
+      "duration": 0.6,
+      "channels": 11,
+      "targetJoints": 10
+    },
+    {
+      "name": "weaver_idle",
+      "duration": 2.4,
+      "channels": 4,
+      "targetJoints": 4
+    },
+    {
+      "name": "weaver_attack",
+      "duration": 1.1,
+      "channels": 6,
+      "targetJoints": 5
+    },
+    {
+      "name": "weaver_hit",
+      "duration": 0.6,
+      "channels": 5,
+      "targetJoints": 4
+    },
+    {
+      "name": "tide_idle",
+      "duration": 2.4,
+      "channels": 7,
+      "targetJoints": 7
+    },
+    {
+      "name": "tide_attack",
+      "duration": 1.1,
+      "channels": 8,
+      "targetJoints": 7
+    },
+    {
+      "name": "tide_hit",
+      "duration": 0.6,
+      "channels": 8,
+      "targetJoints": 7
+    },
+    {
+      "name": "furnace_idle",
+      "duration": 2.4,
+      "channels": 5,
+      "targetJoints": 5
+    },
+    {
+      "name": "furnace_attack",
+      "duration": 1.1,
+      "channels": 6,
+      "targetJoints": 5
+    },
+    {
+      "name": "furnace_hit",
+      "duration": 0.6,
+      "channels": 5,
+      "targetJoints": 4
+    },
+    {
+      "name": "orrery_idle",
+      "duration": 2.4,
+      "channels": 7,
+      "targetJoints": 7
+    },
+    {
+      "name": "orrery_attack",
+      "duration": 1.1,
+      "channels": 8,
+      "targetJoints": 7
+    },
+    {
+      "name": "orrery_hit",
+      "duration": 0.6,
+      "channels": 8,
+      "targetJoints": 7
+    },
+    {
+      "name": "arbiter_idle",
+      "duration": 2.4,
+      "channels": 6,
+      "targetJoints": 6
+    },
+    {
+      "name": "arbiter_attack",
+      "duration": 1.1,
+      "channels": 9,
+      "targetJoints": 8
+    },
+    {
+      "name": "arbiter_hit",
+      "duration": 0.6,
+      "channels": 7,
+      "targetJoints": 6
+    },
+    {
+      "name": "final_idle",
+      "duration": 2.4,
+      "channels": 20,
+      "targetJoints": 20
+    },
+    {
+      "name": "final_attack",
+      "duration": 1.1,
+      "channels": 21,
+      "targetJoints": 20
+    },
+    {
+      "name": "final_hit",
+      "duration": 0.6,
+      "channels": 21,
+      "targetJoints": 20
+    }
+  ],
+  "totalTriangles": 79254,
+  "totalDrawCalls": 314
+}

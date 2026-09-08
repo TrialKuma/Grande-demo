@@ -1,7 +1,9 @@
 // Public-API balance probe. Policies never edit battle HP, AP, intentions or resources.
-const {BOSSES,createBattle,activeSkills,canUse,heroOf,skillPreview,useSkill,usePotion,guard,prepareResponse,endRound,intentInfo}=await import(process.env.PRESSURE_COMBAT_MODULE||new URL('../src/combat.js',import.meta.url));
+const {BOSSES,createBattle,activeSkills,canUse,heroOf,skillPreview,useSkill,usePotion,guard,prepareResponse,endRound,intentInfo,enemyById,enemyTargets,selectEnemyTarget}=await import(process.env.PRESSURE_COMBAT_MODULE||new URL('../src/combat.js',import.meta.url));
 
-const names=['pass-only','raw-damage','parry-greedy','tactical'];
+const foe=s=>enemyById(s,s.selectedEnemyId)||s.boss;
+function targetPriority(s){const es=enemyTargets(s);const target=es.find(e=>e.role==='device')||es.find(e=>e.guardianFor)||es.find(e=>e.id==='boss')||es[0];if(target)selectEnemyTarget(s,target.id);}
+const names=['pass-only','raw-damage','defense-greedy','tactical'];
 const totalHp=s=>s.heroes.reduce((n,h)=>n+h.hp,0);
 const minRatio=s=>Math.min(...s.heroes.map(h=>h.hp/h.maxHp));
 const living=s=>s.heroes.filter(h=>h.hp>0);
@@ -20,24 +22,29 @@ function outgoing(s,stats,result){
   stats.onState?.(s);
 }
 function cast(s,stats,id,k){if(canUse(s,id,k))return false;const p=skillPreview(s,id,k);if(healingSkills.has(k))stats.recoveryAp+=p.ap;outgoing(s,stats,useSkill(s,id,k));stats.actions.push(`R${s.round} ${id}/${k}`);return true;}
-function response(s,stats,id){
-  if(s.response||s.boss.core||s.boss.broken||s.boss.hardControl||!s.ap)return false;
-  let actor=living(s).find(h=>h.id==='knibbs')||living(s)[0];
-  if(id==='evade')actor=living(s).find(h=>h.id==='apeilia')||actor;
-  outgoing(s,stats,prepareResponse(s,id,actor.id));stats.responses[id]++;stats.actions.push(`R${s.round} ${id}`);return true;
+function response(s,stats){
+  if(foe(s).core||foe(s).broken||foe(s).hardControl||!s.ap)return false;
+  const target=heroOf(s,foe(s).intentTarget),group=!!intentInfo(s).desc.includes('全队');
+  if(!foe(s).finale||!foe(s).finaleProtected){
+    if(living(s).some(h=>(h.protection||0)<30)&&cast(s,stats,'knibbs','cover'))return true;
+    if(target?.id==='apeilia'&&target.protection<55&&cast(s,stats,'apeilia','reboot'))return true;
+    if(target?.id==='ric'&&target.protection<55&&cast(s,stats,'ric','shelter'))return true;
+    if(!foe(s).weakened&&cast(s,stats,'ric','mend'))return true;
+  }
+  return false;
 }
 function next(s,stats){
-  const attacks=!s.boss.broken&&!s.boss.core;
-  const r=endRound(s);outgoing(s,stats,r);if(attacks)stats.enemyActions++;
+  const attacks=!foe(s).broken&&!foe(s).core;
+  const round=s.round,r=endRound(s);outgoing(s,stats,r);stats.actions.push(`R${round} end`);if(attacks)stats.enemyActions++;
   stats.refunds+=s.ap===7?1:0;
 }
 function bestDamage(s,{lethal=false}={}){
   return s.heroes.flatMap(h=>activeSkills(s,h.id).map(k=>({h:h.id,k:k.id,p:skillPreview(s,h.id,k.id)})))
-    .filter(x=>!canUse(s,x.h,x.k)&&x.p.damage>0&&(!lethal||x.p.damage>=s.boss.hp))
+    .filter(x=>!canUse(s,x.h,x.k)&&x.p.damage>0&&(!lethal||x.p.damage>=foe(s).hp))
     .sort((a,b)=>b.p.damage/b.p.ap-a.p.damage/a.p.ap||b.p.damage-a.p.damage)[0];
 }
 function terminal(s,stats,policy){
-  const b=s.boss;
+  const b=foe(s);
   if(!b.core&&!b.finale)return false;
   if(!stats.firstExposure)stats.firstExposure={round:s.round,hp:s.heroes.map(h=>h.hp)};
   const p=b.core?b.corePhysical<3:!b.finalePhysical,m=b.core?b.coreMagic<3:!b.finaleMagic;
@@ -45,23 +52,24 @@ function terminal(s,stats,policy){
     .filter(c=>!canUse(s,c.h,c.k)&&c.preview.hits>0&&(c.preview.kind==='physical'?p:m))
     .sort((a,c)=>c.preview.hits/c.preview.ap-a.preview.hits/a.preview.ap);
   if(needed.length){cast(s,stats,needed[0].h,needed[0].k);return true;}
-  if(b.finale&&policy!=='raw-damage'&&response(s,stats,policy==='tactical'?'evade':'parry'))return true;
+  if(b.finale&&!b.finaleProtected&&policy!=='raw-damage'&&response(s,stats))return true;
   if(b.finale&&policy==='tactical'&&!p&&!m&&s.ap&&s.potions){const hurt=[...living(s)].sort((a,b)=>a.hp-b.hp)[0];if(hurt?.hp<35){stats.recoveryAp++;outgoing(s,stats,usePotion(s,hurt.id));stats.actions.push(`R${s.round} potion/${hurt.id}`);return true;}}
   next(s,stats);return true;
 }
 function tactical(s,stats){
-  const b=s.boss,low=[...s.heroes].sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0];
+  targetPriority(s);
+  const b=foe(s),low=[...s.heroes].sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0];
   // A confirmed finishing blow prevents the enemy action altogether. Do not
   // spend several turns healing through an attack that can already be stopped.
   if(!b.core&&!b.finale){
     const finisher=bestDamage(s,{lethal:true});
     if(finisher){cast(s,stats,finisher.h,finisher.k);return;}
   }
-  if(b.finale&&response(s,stats,'evade'))return;
+  if(b.finale&&!b.finaleProtected&&response(s,stats))return;
   // Complete the exposed mechanism before spending the shared AP on optional
-  // healing. The terminal round is won by registration plus a live response.
+  // healing. The terminal round is won by registration plus a role defense.
   if(terminal(s,stats,'tactical'))return;
-  if(low.hp<45&&s.ap&&s.potions){stats.recoveryAp++;outgoing(s,stats,usePotion(s,low.id));return;}
+  if(low.hp<45&&s.ap&&s.potions){stats.recoveryAp++;outgoing(s,stats,usePotion(s,low.id));stats.actions.push(`R${s.round} potion/${low.id}`);return;}
   if(!b.broken&&!b.controlImmune&&(b.charging||['pierce','duel','drain','bloom','storm','silence','rewrite','zero_pulse'].includes(b.intent))&&cast(s,stats,'ric','bind'))return;
   if(!b.broken&&low.hp/low.maxHp<Number(process.env.PRESSURE_HEAL_THRESHOLD||.5)){
     if(low.id==='knibbs'&&cast(s,stats,'knibbs','breathe'))return;
@@ -69,7 +77,7 @@ function tactical(s,stats){
     if(!b.weakened&&cast(s,stats,'ric','mend'))return;
     if(low.id==='ric'&&heroOf(s,'ric')?.resource<-1&&cast(s,stats,'ric','shelter'))return;
   }
-  if(!s.response&&!b.broken&&s.ap){
+  if(!b.broken&&s.ap&&(!b.finale||!b.finaleProtected)){
     const key=b.charging?'quake':b.intent;
     const pick=['quake','pierce','bloom','storm','sever','zero_pulse'].includes(key)?'evade':['fog','weave','charge'].includes(key)?'counter':'parry';
     if(response(s,stats,pick))return;
@@ -91,10 +99,11 @@ function tactical(s,stats){
 export function runPolicy(bossId,policy,difficulty='standard',{includeState=false,onState=null}={}){
   const s=createBattle(difficulty,bossId),stats={damageTaken:0,damageEvents:0,heals:0,shields:0,recoveryAp:0,minimumHpRatio:1,enemyActions:0,refunds:0,responses:{parry:0,evade:0,counter:0},actions:[],firstExposure:null,onState};
   for(let step=0;step<500&&s.mode==='playing'&&s.round<40;step++){
+    targetPriority(s);
     if(policy==='pass-only'){next(s,stats);continue;}
     if(policy==='tactical'){tactical(s,stats);continue;}
     if(terminal(s,stats,policy))continue;
-    if(policy==='parry-greedy'&&response(s,stats,'parry'))continue;
+    if(['parry-greedy','defense-greedy'].includes(policy)&&response(s,stats))continue;
     const best=bestDamage(s);
     if(best)cast(s,stats,best.h,best.k);else next(s,stats);
   }
@@ -104,10 +113,10 @@ export function attackPressure(bossId){
   const s=createBattle('standard',bossId),out=[];
   for(let i=0;i<5&&s.mode==='playing';i++){
     const info=intentInfo(s),row={boss:bossId,round:s.round,intent:info.name,description:info.desc};
-    for(const responseId of ['none','parry','evade']){
+    for(const responseId of ['none','cover','mend']){
       const clone=structuredClone(s);
       if(responseId!=='none'){
-        const prepared=prepareResponse(clone,responseId,living(clone)[0].id);
+        const prepared=useSkill(clone,responseId==='cover'?'knibbs':'ric',responseId);
         if(!prepared.ok)throw new Error(prepared.error);
       }
       const before=clone.heroes.map(h=>h.hp);endRound(clone);
@@ -119,11 +128,11 @@ export function attackPressure(bossId){
 }
 
 if(process.argv[1]?.endsWith('pressure-probe.mjs')){
-  const battles=Object.keys(BOSSES).flatMap(id=>names.map(policy=>runPolicy(id,policy)));
-  if(process.argv.includes('--json'))console.log(JSON.stringify({battles,pressure:Object.keys(BOSSES).flatMap(attackPressure)},null,2));
+  const battles=Object.keys(BOSSES).filter(id=>!BOSSES[id].isTutorial&&!BOSSES[id].isSkirmish&&!BOSSES[id].isMinion).flatMap(id=>names.map(policy=>runPolicy(id,policy)));
+  if(process.argv.includes('--json'))console.log(JSON.stringify({battles,pressure:Object.keys(BOSSES).filter(id=>!BOSSES[id].isTutorial&&!BOSSES[id].isSkirmish&&!BOSSES[id].isMinion).flatMap(attackPressure)},null,2));
   else{
     console.table(battles.map(({actions,responses,firstExposure,...row})=>row));
-    console.table(Object.keys(BOSSES).flatMap(attackPressure).map(({description,...row})=>row));
-    console.log('Raw-damage final exposure (victory requires a response by design):',battles.find(x=>x.boss==='final'&&x.policy==='raw-damage').firstExposure);
+    console.table(Object.keys(BOSSES).filter(id=>!BOSSES[id].isTutorial&&!BOSSES[id].isSkirmish&&!BOSSES[id].isMinion).flatMap(attackPressure).map(({description,...row})=>row));
+    console.log('Raw-damage final exposure (victory requires a character defense):',battles.find(x=>x.boss==='final'&&x.policy==='raw-damage').firstExposure);
   }
 }

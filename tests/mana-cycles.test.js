@@ -62,7 +62,7 @@ test('mana: overflow is rejected, mana is capped and hand-written return values 
 });
 
 test('mana: Haart splits single-thread support, fixed two-thread damage and four-thread coordination',()=>{
-  const h=hero('haart',{secondary:4}),s=state(h);let t=tuneManaSkill(s,h,skill('haart','soothe'));assert.equal(t.weaken,true);assert.equal(t.secondaryCost,1);assert.equal(t.manaReturn,3);
+  const h=hero('haart',{secondary:4}),s=state(h);let t=tuneManaSkill(s,h,skill('haart','soothe'));assert.equal(t.confuse,true);assert.equal(t.secondaryCost,1);assert.equal(t.manaReturn,3);
   t=tuneManaSkill(s,h,skill('haart','anchor'));assert.equal(t.secondaryCost,1);assert.equal(t.attackBuff,25);
   t=tuneManaSkill(s,h,skill('haart','relay'));assert.equal(t.secondaryCost,2);assert.equal(t.damage*t.hits,120);assert.equal(t.manaReturn,4);
   t=tuneManaSkill(s,h,skill('haart','network'));assert.equal(t.attackBuff,60);assert.equal(t.secondaryCost,4);assert.equal(t.manaReturn,5);

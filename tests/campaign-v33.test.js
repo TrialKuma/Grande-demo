@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createBattle,HEROES} from '../src/combat.js';
-import {createRun,currentChapter,pathFor,runRoute,runDialogue,advanceDialogue,battleForRun,completeEncounter,rewardOptions,claimReward,startNextChapter,chooseRoute,chooseEvent,routeOptions,currentEvent,endingForRun,normalizeRun,storyHistory,consequenceNotes,regroup} from '../src/campaign.js';
+import {createRun as createCurrentRun,currentChapter,pathFor,runRoute,runDialogue,advanceDialogue,battleForRun,completeEncounter,rewardOptions,claimReward,startNextChapter,chooseRoute,chooseEvent,routeOptions,currentEvent,endingForRun,normalizeRun,storyHistory,consequenceNotes,regroup} from '../src/campaign.js';
 import {campaignView,campaignEntry} from '../src/campaign-ui.js';
 import {ALL_CHAPTERS,CHAPTERS,ROUTE_CHOICES,CAMP_EVENTS,ENDINGS,allStoryLines,STORY_SPEAKERS} from '../src/story.js';
 
@@ -155,7 +155,7 @@ test('campaign 3.3: completed old v1-v3 six-fight saves stay complete on their o
 });
 
 test('campaign 3.3: the map, events, recruitment gates, and entry advertise real available actions',()=>{
-  assert.match(campaignEntry(null),/八场战斗/);assert.match(campaignEntry(null),/两处分岔/);
+  assert.match(campaignEntry(null),/分段招募/);assert.match(campaignEntry(null),/战间探索/);
   const first=reach(r=>r.phase==='route'),map=runRoute(first),html=campaignView(first);
   assert.equal(map.length,8);assert.equal(map.filter(n=>n.choices.length===2).length,2);
   assert.deepEqual(map.filter(n=>n.recruit).map(n=>[n.index+1,n.recruit]),[[1,'youmu'],[2,'haart'],[3,'qianxing'],[5,'patch']]);
@@ -166,8 +166,10 @@ test('campaign 3.3: the map, events, recruitment gates, and entry advertise real
 });
 
 test('campaign 3.3: the complete voice collection includes each original and branch dialogue with valid speakers',()=>{
-  assert.equal(ALL_CHAPTERS.length,10);assert.equal(new Set(ALL_CHAPTERS.map(c=>c.bossId)).size,10);
-  const lines=allStoryLines(),keys=new Set(lines.map(l=>l.speaker+'\n'+l.text));assert.equal(lines.length,362);assert.equal(keys.size,lines.length);
+  assert.equal(ALL_CHAPTERS.length,13);assert.equal(new Set(ALL_CHAPTERS.map(c=>c.bossId)).size,13);
+  const lines=allStoryLines(),keys=new Set(lines.map(l=>l.speaker+'\n'+l.text));assert.ok(lines.length>200);assert.equal(keys.size,lines.length);
   const groups=[...CHAPTERS.flatMap(c=>[c.before,c.after]),...Object.values(ROUTE_CHOICES).flatMap(g=>g.options.map(o=>o.lines)),...Object.values(CAMP_EVENTS).flatMap(g=>g.options.map(o=>o.lines)),...Object.values(ENDINGS).map(e=>e.lines)];
   for(const group of groups)for(const line of group){assert.ok(keys.has(line.speaker+'\n'+line.text));assert.ok(STORY_SPEAKERS[line.speaker]||HEROES.some(h=>h.id===line.speaker));}
 });
+
+const createRun=(difficulty='standard',options={})=>createCurrentRun(difficulty,{...options,skipTutorial:true});

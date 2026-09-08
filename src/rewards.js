@@ -1,8 +1,8 @@
 /** Expedition rewards are canonical data. Owning a reward is what activates it. */
 export const REWARDS = {
   knibbs_steadyhands:{id:'knibbs_steadyhands',heroId:'knibbs',kind:'upgrade',affects:['breathe'],name:'装填 · 稳手',description:'至少持有 2 层直感时使用整息装填，为自己的下一次主动攻击提供 30% 增伤。增幅两轮内有效，不消耗直感，也不叠加同类增幅。'},
-  knibbs_crossfire:{id:'knibbs_crossfire',heroId:'knibbs',kind:'upgrade',affects:['cover'],name:'掩护 · 交叉封锁',description:'对已被标记的敌人使用掩护射击，命中前额外清除 1 层可消除增益，包括镜片、孢压、蓄电、封页、水位、炉热或测绘锁定。护盾仍各自持续两轮。'},
-  apeilia_brace:{id:'apeilia_brace',heroId:'apeilia',kind:'upgrade',affects:['reboot'],name:'重整 · 折返防线',description:'上一项攻击为魔法时，战术重整还会使自己进入本轮个人防御，受到伤害减少 55%。防御不保护其他队员，不与普通防御叠加。'},
+  knibbs_crossfire:{id:'knibbs_crossfire',heroId:'knibbs',kind:'upgrade',affects:['cover'],name:'掩护 · 交叉封锁',description:'对已被标记的敌人使用掩护射击，命中前额外清除 1 层可消除增益，包括镜片、孢压、蓄电、封页、水位、炉热或测绘锁定。驱散在敌人实际出手前的截击中结算；若敌人本轮未出手，不会白白获得驱散。'},
+  apeilia_brace:{id:'apeilia_brace',heroId:'apeilia',kind:'upgrade',affects:['reboot'],name:'重整 · 折返防线',description:'上一项攻击为魔法时，战术重整的维修恢复提高到30生命。仍只闪避本轮第一段攻击，不产生护盾。'},
   apeilia_puncture:{id:'apeilia_puncture',heroId:'apeilia',kind:'upgrade',affects:['sentinel'],name:'哨兵 · 弱点回收',description:'敌人已处于架势崩溃或应对破绽时，地狱哨兵额外返还 2 连击。仍须先支付 6 连击；需要先由自己或同伴打开输出窗口。'},
   ric_erosion:{id:'ric_erosion',heroId:'ric',kind:'upgrade',affects:['mend'],name:'负域 · 侵蚀',description:'缚足同化额外使敌人在两轮内受到的治疗减少 50%，可压制吸血、复写与校准治疗。不会削减核心重组所恢复的生命。'},
   ric_discipline:{id:'ric_discipline',heroId:'ric',kind:'upgrade',affects:['bind'],name:'咒弹 · 封行剥夺',description:'施放前平衡不高于 −4，或敌人正处于干扰时，封行咒弹命中前额外清除 2 层可消除增益。阶段、抗控与核心规则不受影响。'},

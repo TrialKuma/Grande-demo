@@ -44,8 +44,8 @@ test('v3.5 final audit: forced control and posture break cannot bank two cancell
   }
 });
 
-test('v3.5 final audit: physical retaliation and prepared counter neither consume nor amplify a next-active-attack buff',()=>{
-  for(const counter of ['retaliation','response']){
+test('v3.5 final audit: physical retaliation does not consume or amplify a next-active-attack buff',()=>{
+  for(const counter of ['retaliation']){
     const s=createBattle('standard','duelist',{partyIds:['qianxing','knibbs','apeilia']}),h=heroOf(s,'qianxing');h.attackBuff=40;h.attackBuffTurns=2;s.boss.intent='rend';s.boss.mirror=0;
     if(counter==='retaliation')h.reflect=1;else assert.ok(prepareResponse(s,'counter','qianxing').ok);
     const baseline=structuredClone(s);heroOf(baseline,'qianxing').attackBuff=0;heroOf(baseline,'qianxing').attackBuffTurns=0;

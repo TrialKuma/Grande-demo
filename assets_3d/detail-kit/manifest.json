@@ -1,0 +1,32 @@
+{
+  "version": "3.7",
+  "modules": [
+    "ruin_arch",
+    "fluted_pillar",
+    "terrace_segment",
+    "crystal_cluster",
+    "coil_tower",
+    "pipe_elbow",
+    "archive_lectern",
+    "bookcase",
+    "flood_pump",
+    "star_globe",
+    "boss_golem",
+    "boss_duelist",
+    "boss_cantor",
+    "boss_warden",
+    "boss_weaver",
+    "boss_tide",
+    "boss_furnace",
+    "boss_orrery",
+    "boss_arbiter",
+    "boss_final"
+  ],
+  "module_count": 20,
+  "source_objects": 596,
+  "materials": 12,
+  "runtime_triangles": 151610,
+  "runtime_meshes": 81,
+  "glb_bytes": 3670980,
+  "method": "Authored Blender profile meshes, curved masonry, lathed and fluted objects, beveled sheet metal, inscriptions, gills and graduated mechanical rings. No external textures."
+}

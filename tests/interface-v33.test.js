@@ -10,13 +10,13 @@ const battle=state=>battleView(state,false,'','00:00',null);
 const make=(id,boss='golem',extra={})=>createBattle('standard',boss,{mode:'solo',partyIds:[id],...extra});
 const valid=html=>assert.doesNotMatch(html,/undefined|NaN|\[object Object\]/);
 
-test('journal retains the three starters and exposes exact recruit timing without granting a locked skill',()=>{
- assert.deepEqual(journalUnlockedHeroes(),['knibbs','apeilia','ric']);
- assert.deepEqual(journalUnlockedHeroes(['patch','patch','invented']),['knibbs','apeilia','ric','patch']);
- assert.deepEqual(journalUnlockedHeroes(null),['knibbs','apeilia','ric']);
+test('journal starts with Knibbs and explains player-selected recruitment without granting a locked skill',()=>{
+ assert.deepEqual(journalUnlockedHeroes(),['knibbs']);
+ assert.deepEqual(journalUnlockedHeroes(['patch','patch','invented']),['knibbs','patch']);
+ assert.deepEqual(journalUnlockedHeroes(null),['knibbs']);
  for(const [id,bossName]of [['youmu','折镜刃卫'],['haart','孢冠司祭'],['qianxing','雷脊守卫'],['patch','魔晶巨人']]){
   const html=heroJournalView({selectedHero:id,upgrades:Object.keys(REWARDS)});
-  assert.match(HERO_UNLOCKS[id],new RegExp(bossName));assert.ok(html.includes(HERO_UNLOCKS[id]));
+  assert.match(HERO_UNLOCKS[id],/二选一先加入/);assert.ok(html.includes(HERO_UNLOCKS[id]));
   assert.equal((html.match(/data-journal-hero=/g)||[]).length,7);assert.ok(!html.includes('data-journal-skill='));
   assert.match(html,/尚未解锁/);valid(html);
  }
@@ -54,12 +54,12 @@ test('journal describes ship skills, transplantation and both clock stances befo
 test('title solo selection keeps character and boss unlock lists independent',()=>{
  const prefs={bossId:'golem',difficulty:'standard',challengeMode:'solo',soloHero:'patch'};
  const locked=titleView(prefs,null,'',[]),open=titleView(prefs,null,'',[],'',{unlockedHeroes:['patch','<script>']});
- assert.deepEqual([...locked.matchAll(/data-solo-hero="([^"]+)"/g)].map(m=>m[1]),['knibbs','apeilia','ric']);
- assert.deepEqual([...open.matchAll(/data-solo-hero="([^"]+)"/g)].map(m=>m[1]),['knibbs','apeilia','ric','patch']);
+ assert.deepEqual([...locked.matchAll(/data-solo-hero="([^"]+)"/g)].map(m=>m[1]),['knibbs']);
+ assert.deepEqual([...open.matchAll(/data-solo-hero="([^"]+)"/g)].map(m=>m[1]),['knibbs','patch']);
  assert.match(open,/data-action="hero-journal"/);assert.match(open,/data-mode="party"/);assert.match(open,/data-mode="solo"/);
  assert.equal((open.match(/data-boss=/g)||[]).length,0);assert.match(open,/还没有解锁自由挑战/);
  const allBosses=titleView(prefs,null,'',[],'',{unlockedHeroes:['patch'],unlockedBosses:Object.keys(BOSSES)});
- assert.equal((allBosses.match(/data-boss=/g)||[]).length,Object.keys(BOSSES).length);assert.equal(Object.keys(BOSSES).length,10);
+ assert.equal((allBosses.match(/data-boss=/g)||[]).length,Object.values(BOSSES).filter(b=>!b.isTutorial&&!b.isSkirmish&&!b.isMinion).length);assert.equal(Object.values(BOSSES).filter(b=>!b.isTutorial&&!b.isSkirmish&&!b.isMinion).length,10);
  assert.match(allBosses,/10 \/ 10/);assert.doesNotMatch(open,/>010<|<script>/);valid(open);valid(allBosses);
 });
 
@@ -67,7 +67,7 @@ test('solo board renders one complete five-slot row and reads its AP limit in ba
  const s=make('ric');s.round=2;s.roundCarry=2;s.maxAp=7;s.ap=7;const before=structuredClone(s),html=battle(s);
  assert.match(html,/battle-v3 is-solo/);assert.equal((html.match(/class="team-row /g)||[]).length,1);
  assert.equal((html.match(/data-skill=/g)||[]).length,5);assert.match(html,/独狼行动点/);assert.match(html,/<small> \/ 7<\/small>/);
- assert.match(helpView(s),/7 AP/);assert.doesNotMatch(helpView(s),/6 AP|四项技能|六场战斗/);
+ assert.match(helpView(s),/7 AP/);assert.doesNotMatch(helpView(s),/本场.*6 AP|六场战斗/);
  const party=battle(createBattle());assert.equal((party.match(/class="team-row /g)||[]).length,3);assert.equal((party.match(/data-skill=/g)||[]).length,15);
  assert.deepEqual(s,before);valid(html);
 });
@@ -78,8 +78,8 @@ test('solo title and help disclose numeric tuning and never advertise dual-type 
   assert.match(title,/5 AP/);assert.match(title,/64%/);assert.match(title,/90%/);assert.match(title,/韧性上限为 120，每轮恢复 10 点/);
   assert.match(title,/任意属性命中 4 次/);assert.match(title,/任意属性命中 2 次/);assert.doesNotMatch(title,/终幕双系与应对|双系核心|最后以双系命中|再以物理与魔法净化/);
  }
- const solo=words(helpView(make('knibbs','final')));assert.match(solo,/独狼挑战由一名角色使用全部行动点/);assert.doesNotMatch(solo,/最后以双系命中|双系核心/);
- const party=words(helpView(createBattle()));assert.match(party,/三名角色共享行动点/);assert.match(party,/双系核心/);
+ const solo=words(helpView(make('knibbs','final')));assert.match(solo,/本场 1 名角色共享每轮基础/);assert.doesNotMatch(solo,/最后以双系命中|双系核心/);
+ const party=words(helpView(createBattle()));assert.match(party,/本场 3 名角色共享每轮基础/);assert.match(party,/角色技能的一部分/);
 });
 
 test('solo core and finale HUD and skill tooltip show any-type requirements instead of dual-type gates',()=>{
@@ -98,7 +98,7 @@ test('skill explanations use live primary or secondary costs and explicit target
  for(const id of ['eden','sentinel']){assert.equal(skillOf('apeilia',id).cost,6);assert.match(skillExplanation(a,'apeilia',id).cost,/6 点连击/);}
  assert.match(heroResourceDescription(heroOf(a,'apeilia')),/伊甸之约消耗 6 点，地狱哨兵消耗 6 点/);
  const h=make('haart'),support=skillExplanation(h,'haart','soothe');
- assert.match(support.cost,/1 点念线。/);assert.doesNotMatch(support.cost,/返还|回魔/);assert.match(support.conditions.join(''),/心智通路/);assert.match(support.conditions.join(''),/回魔规则见角色被动/);assert.doesNotMatch(support.effects.join(''),/恢复.*生命/);assert.match(support.effects.join(''),/伤害降低 20%/);
+ assert.match(support.cost,/1 点念线。/);assert.doesNotMatch(support.cost,/返还|回魔/);assert.match(support.conditions.join(''),/心智通路/);assert.match(support.conditions.join(''),/回魔规则见角色被动/);assert.doesNotMatch(support.effects.join(''),/恢复.*生命/);assert.match(support.effects.join(''),/伤害降低 55%/);assert.match(support.effects.join(''),/单体攻击转向另一名敌人/);
  const shield=skillExplanation(make('ric'),'ric','shelter');assert.match(shield.effects.join(''),/为自己提供 30 点护盾/);assert.doesNotMatch(shield.effects.join(''),/所有存活队员各.*30 点护盾/);
 });
 
@@ -127,7 +127,7 @@ test('readable manual has four reachable sections and seven independent portrait
 test('manual opens only the current enemy and preserves the actual solo victory requirements',()=>{
  const s=make('knibbs','final'),before=structuredClone(s),html=helpView(s);
  const enemies=[...html.matchAll(/<details\b([^>]*)>/g)].map(match=>match[1]);
- assert.equal(enemies.length,Object.keys(BOSSES).length);assert.equal(enemies.filter(attrs=>/\bopen\b/.test(attrs)).length,1);
+ assert.equal(enemies.length,Object.values(BOSSES).filter(b=>!b.isTutorial&&!b.isSkirmish&&!b.isMinion).length);assert.equal(enemies.filter(attrs=>/\bopen\b/.test(attrs)).length,1);
  assert.ok(enemies.find(attrs=>attrs.includes('data-manual-boss="final"')).includes('open'));
  assert.match(html,/任意属性累计命中 2 次/);assert.match(html,/data-action="boss-codex"/);
  assert.doesNotMatch(html,/终幕双系与应对|最后以双系命中/);assert.deepEqual(s,before);

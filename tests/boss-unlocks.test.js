@@ -5,10 +5,10 @@ import {normalizeSave} from '../src/save.js';
 import {normalizeProfile,rememberCompanions,rememberBossVictories,unlockAllHeroes,disableAllHeroes,unlockAllBosses,disableAllBosses,canChallengeBoss,normalizeChallengeBoss} from '../src/player-profile.js';
 import {gmToolsView,progressResetView,resetGameProgress,GAME_PROGRESS_KEYS} from '../src/gm-tools.js';
 import {titleView} from '../src/interface.js';
-import {createRun,advanceDialogue,battleForRun,completeEncounter} from '../src/campaign.js';
+import {createRun as createCurrentRun,advanceDialogue,battleForRun,completeEncounter} from '../src/campaign.js';
 import {campaignEntry} from '../src/campaign-ui.js';
 
-const all=Object.keys(BOSSES),victory=(bossId,extra={})=>({bossId,round:3,...extra});
+const all=Object.values(BOSSES).filter(b=>!b.isTutorial&&!b.isSkirmish&&!b.isMinion).map(b=>b.id),victory=(bossId,extra={})=>({bossId,round:3,...extra});
 const view=(profile,prefs={},saved=null)=>titleView({bossId:'final',difficulty:'standard',...prefs},saved,'',[],campaignEntry(null),profile);
 const listed=markup=>[...markup.matchAll(/data-boss="([^"]+)"/g)].map(match=>match[1]);
 
@@ -80,3 +80,5 @@ test('boss access: GM provides a separate switch and progress reset clears both 
   const data=new Map(GAME_PROGRESS_KEYS.map(key=>[key,JSON.stringify(both)]));data.set('grande-crystal-prefs-v1','retained');const result=resetGameProgress({removeItem:key=>data.delete(key)},{music:false,voice:true,muted:true,volume:.32});
   assert.deepEqual(result.profile.defeatedBosses,[]);assert.deepEqual(result.profile.unlockedBosses,[]);assert.equal(result.profile.gmAllHeroes,undefined);assert.equal(result.profile.gmAllBosses,undefined);assert.equal(result.prefs.volume,.32);assert.deepEqual([...data.keys()],['grande-crystal-prefs-v1']);
 });
+
+const createRun=(difficulty='standard',options={})=>createCurrentRun(difficulty,{...options,skipTutorial:true});

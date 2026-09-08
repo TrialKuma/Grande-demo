@@ -4,6 +4,9 @@ const Y=.48, TAU=Math.PI*2;
 export function formationFor(bossId,count=3){
   if(count===1)return {name:'独狼对峙',boss:[0,Y,-1.8],party:[[0,Y,3.6]]};
   const layouts={
+    scout:{name:'路口初遇',boss:[0,Y,-.8],party:[[0,Y,2.5],[-2.5,Y,3.1],[2.5,Y,3.1]]},
+    bulwark:{name:'旧哨所前',boss:[0,Y,-1.1],party:[[-1.5,Y,2.4],[1.6,Y,2.9],[0,Y,4.0]]},
+    conduit:{name:'检修通道',boss:[0,Y,-1.5],party:[[-2.4,Y,2.3],[.3,Y,3.5],[2.6,Y,2.5]]},
     duelist:{name:'回廊迎击',boss:[0,Y,-1.5],party:[[-2.5,Y,2.5],[.2,Y,3.8],[2.8,Y,2.2]]},
     cantor:{name:'过滤站侧翼',boss:[1,Y,-.9],party:[[-3.8,Y,.8],[-1.6,Y,3.1],[1.5,Y,4]]},
     warden:{name:'栈桥纵队',boss:[0,Y,-2],party:[[-1.4,Y,2.1],[1.1,Y,3],[0,Y,4.9]]},
@@ -17,6 +20,83 @@ export function formationFor(bossId,count=3){
   };
   const layout=layouts[bossId]||layouts.duelist;
   return {name:layout.name,boss:[...layout.boss],party:layout.party.slice(0,count).map(p=>[...p])};
+}
+
+// Small two-move training foes have distinct silhouettes and animation pivots.
+// Their metal housings reuse the same local art palette as later machines.
+export function trainingEnemy(id,k){
+  const {material,mesh,box,orb,rod,plate,ring,finishEnemy}=k;
+  const root=new THREE.Group(),body=new THREE.Group();root.add(body);
+  const bones={},animated=[];
+  const dark=material('#1c3036',{metalness:.65,roughness:.4});
+  const steel=material('#637a80',{metalness:.72,roughness:.34});
+  const bronze=material('#b2925c',{metalness:.78,roughness:.37});
+  const accent={scout:'#71d1bf',bulwark:'#ddb475',conduit:'#89b7ff'}[id];
+  const light=material(accent,{emissive:accent,emissiveIntensity:1.35,roughness:.3});
+  for(const name of ['head','rightArm','leftArm']){bones[name]=new THREE.Group();body.add(bones[name]);}
+  if(id==='scout'){
+    orb(body,dark,[.58,.42,.66],[0,.97,0],2);
+    const shell=mesh(body,new THREE.SphereGeometry(.58,20,12,0,Math.PI*2,0,Math.PI*.58),steel,0,1.02,0,[1,.75,1.12]);
+    for(const s of [-1,1]){
+      const arm=bones[s<0?'leftArm':'rightArm'];arm.position.set(s*.49,1.05,0);
+      for(const z of [-.38,.34]){
+        rod(arm,bronze,[0,0,z],[s*.36,-.3,z*1.3],.065);
+        orb(arm,dark,[.09,.09,.09],[s*.36,-.3,z*1.3],1);
+        rod(arm,steel,[s*.36,-.3,z*1.3],[s*.46,-.91,z*1.5+.12],.065,.033,10);
+        box(arm,dark,[.20,.08,.26],[s*.46,-.93,z*1.5+.16]);
+      }
+    }
+    bones.head.position.set(0,1.12,.47);
+    orb(bones.head,dark,[.29,.21,.25],[0,0,0],1);
+    for(const s of [-1,1])orb(bones.head,light,[.058,.058,.028],[s*.12,.02,.225],1);
+    for(const s of [-1,1]){
+      rod(bones.head,bronze,[s*.12,.15,0],[s*.22,.49,-.02],.019,.008,8);
+      orb(bones.head,light,[.035,.04,.035],[s*.22,.49,-.02],1);
+    }
+    const tail=ring(body,.20,.02,accent,1.18,.65);tail.position.z=-.6;tail.rotation.x=0;
+    animated.push({object:tail,type:'orbitRing',axis:'z',speed:.2});
+  }else if(id==='bulwark'){
+    for(const s of [-1,1]){
+      rod(body,steel,[s*.24,.23,0],[s*.23,1.16,0],.12,.14,12);
+      orb(body,bronze,[.16,.17,.16],[s*.24,.65,.02],1);
+      box(body,dark,[.39,.17,.60],[s*.24,.13,.15]);
+    }
+    mesh(body,new THREE.CylinderGeometry(.43,.31,.75,16),dark,0,1.53,0);
+    plate(body,steel,[[-.39,.25],[.39,.25],[.32,-.29],[0,-.45],[-.32,-.29]],.13,[0,1.56,.29]);
+    bones.head.position.set(0,2.15,0);orb(bones.head,dark,[.25,.3,.25],[0,0,0],1);
+    plate(bones.head,steel,[[-.25,.23],[.25,.23],[.26,-.11],[0,-.25],[-.26,-.11]],.07,[0,0,.20]);
+    box(bones.head,light,[.34,.04,.025],[0,.05,.29]);
+    for(const s of [-1,1]){
+      const arm=bones[s<0?'leftArm':'rightArm'];arm.position.set(s*.49,1.87,0);
+      orb(arm,bronze,[.20,.2,.2],[0,0,0],1);rod(arm,dark,[0,0,0],[s*.20,-.62,.17],.10,.09,12);
+    }
+    plate(bones.leftArm,bronze,[[-.55,.31],[.10,.31],[.15,-.67],[-.2,-.89],[-.60,-.67]],.12,[0,-.25,.31]);
+    plate(bones.leftArm,dark,[[-.47,.22],[.02,.22],[.06,-.62],[-.2,-.78],[-.51,-.62]],.04,[0,-.25,.45]);
+    rod(bones.rightArm,bronze,[.20,-.50,.24],[.20,.37,.25],.055);
+    orb(bones.rightArm,steel,[.18,.28,.18],[.20,.42,.25],1);
+  }else{
+    mesh(body,new THREE.CylinderGeometry(.39,.66,.3,16),dark,0,.21,0);
+    for(const s of [-1,1]){
+      rod(body,bronze,[s*.25,.37,0],[s*.50,1.30,0],.066);
+      const arm=bones[s<0?'leftArm':'rightArm'];arm.position.set(s*.52,1.53,0);
+      rod(arm,dark,[0,0,0],[s*.30,-.21,.20],.06);
+      for(const y of [-.1,.02,.14])mesh(arm,new THREE.CylinderGeometry(.15,.15,.05,16),bronze,s*.26,y,.20);
+      orb(arm,light,[.09,.16,.09],[s*.26,.27,.20],1);
+    }
+    rod(body,steel,[0,.35,0],[0,2.12,0],.15);
+    for(let i=0;i<5;i++){
+      const y=.52+i*.27;
+      mesh(body,new THREE.CylinderGeometry(.32,.24,.09,20),bronze,0,y,0);
+      const band=ring(body,.24,.025,accent,y+.07,.85);
+      animated.push({object:band,type:'coil',phase:i*.5});
+    }
+    bones.head.position.set(0,2.08,0);
+    orb(bones.head,light,[.23,.32,.23],[0,0,0],2);
+    for(const s of [-1,1])rod(bones.head,bronze,[s*.33,-.30,0],[s*.24,.45,0],.023);
+    const halo=mesh(bones.head,new THREE.TorusGeometry(.42,.029,8,48),steel,0,0,0);
+    halo.rotation.x=.3;animated.push({object:halo,type:'orbitRing',axis:'y',speed:.22});
+  }
+  return finishEnemy(id,root,body,bones,animated,accent,id==='scout'?1.9:2.65);
 }
 
 export function branchEnemy(id,k){

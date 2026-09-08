@@ -66,19 +66,19 @@ assert.ok(!css.includes('/art/'), 'An unresolved artwork path remains.');
 // HTML parses script/style contents before JavaScript/CSS gets a chance to run.
 // Escaping the opening '<' sequence here prevents source strings ending the tag.
 const manifest = JSON.parse(await readFile(resolve(root, 'public/voices/manifest.json'), 'utf8'));
-const mediaPaths = [...new Set(manifest.clips.map(clip => clip.src)), '/models/qianxing.glb'];
+const mediaPaths = [...new Set(manifest.clips.map(clip => clip.src)), '/models/qianxing.glb', '/models/grande-detail-kit.glb', '/models/grande-worlds.glb', '/models/grande-boss-cast.glb', ...['ruins','storm','sanctum','floodworks','observatory'].flatMap(id=>[`/concepts/${id}.png`,`/backdrops/${id}.png`])];
 const mediaBuffers = await Promise.all(mediaPaths.map(path => readFile(resolve(root, `public${path}`))));
 const media = new Map(mediaPaths.map((path, i) => [path,
-  `data:${path.endsWith('.glb') ? 'model/gltf-binary' : 'audio/mpeg'};base64,${mediaBuffers[i].toString('base64')}`]));
+  `data:${path.endsWith('.glb') ? 'model/gltf-binary' : path.endsWith('.png') ? 'image/png' : 'audio/mpeg'};base64,${mediaBuffers[i].toString('base64')}`]));
 const embeddedMedia = new Set();
-const js = jsFiles[0].text.replace(/(["'])(\/(?:voices|models)\/[^"']+)\1/g, (whole, quote, path) => {
+const js = jsFiles[0].text.replace(/(["'])(\/(?:voices|models|concepts|backdrops)\/[^"']+)\1/g, (whole, quote, path) => {
   const data = media.get(path);
   assert.ok(data, `Unexpected local media resource: ${path}`);
   embeddedMedia.add(path);
   return JSON.stringify(data);
 }).replace(/<\/script/gi, '<\\/script');
 for (const path of mediaPaths) assert.ok(embeddedMedia.has(path), `Missing embedded media: ${path}`);
-assert.ok(!/["']\/(?:voices|models)\//.test(js), 'An unresolved media path remains.');
+assert.ok(!/["']\/(?:voices|models|concepts|backdrops)\//.test(js), 'An unresolved media path remains.');
 css = css.replace(/<\/style/gi, '<\\/style');
 const faviconUrl = `data:image/svg+xml;base64,${Buffer.from(favicon).toString('base64')}`;
 let shell = template.replace(/<link\b[^>]*\brel\s*=\s*["']icon["'][^>]*>/gi,
@@ -108,5 +108,5 @@ await writeFile(destination, html, 'utf8');
 const bytes = Buffer.byteLength(html, 'utf8');
 console.log(`Offline game built: ${destination}`);
 console.log(`Size: ${(bytes / 1024 / 1024).toFixed(2)} MiB (${bytes.toLocaleString('en-US')} bytes)`);
-console.log(`Embedded: ${assetNames.length} PNG artworks, ${manifest.clips.length} Chinese voice clips, Blender GLB, SVG favicon, CSS, Three.js, game logic and synthesized music.`);
+console.log(`Embedded: ${assetNames.length} PNG artworks, ${manifest.clips.length} Chinese voice clips, 4 Blender GLBs, 5 scene concepts, 5 panoramic backdrops, SVG favicon, CSS, Three.js, game logic and synthesized music.`);
 console.log('Verified: no external script, stylesheet, preload, CSS URL, or JavaScript import; dist was not changed.');

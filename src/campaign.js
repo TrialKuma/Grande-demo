@@ -5,6 +5,8 @@ import {CHAPTERS,CHAPTER_BY_BOSS,ROUTE_CHOICES,CAMP_EVENTS,ENDINGS} from './stor
 import {migrateRoster} from './legacy-roster.js';
 import {RECRUIT_AFTER,earnedCompanions} from './roster-unlocks.js';
 import {grantShield} from './shields.js';
+import * as learning from './campaign-learning.js';
+export {recruitOptions,chooseCompanion,startPractice,skillAccessFor,trainingCount,isLearningRun,formalLearning,interludeFor,interactInterlude,advanceInterlude,finishInterlude,updateInterludePosition} from './campaign-learning.js';
 
 export const ORIGINAL_PARTY=['knibbs','apeilia','ric'];
 export const CHAPTER_RECRUITS=['youmu','haart','qianxing','patch',null,null];
@@ -28,17 +30,17 @@ const gmRewardKeysFor=run=>(run.upgrades||[]).filter((id,index)=>!naturalAtRewar
 const rewardRecruitAllowed=(run,id,index)=>naturalAtReward(run,index).includes(REWARDS[id]?.heroId)||run.gmAllHeroes===true||Array.isArray(run.gmRewardKeys)&&run.gmRewardKeys.includes(id);
 const routeGroup=run=>run.chapter===3?'crossing':run.chapter===6?'archive':null;
 const eventGroup=run=>['tide','furnace'].includes(pathFor(run)[run.chapter])?'crossing':['orrery','arbiter'].includes(pathFor(run)[run.chapter])?'archive':null;
-export function pathFor(run){return run.legacyRoute?[...MAIN_PATH]:['duelist','cantor','warden',run.routes?.crossing||null,'golem','weaver',run.routes?.archive||null,'final'];}
-export function currentChapter(run){
+export function pathFor(run){if(learning.isLearningRun(run))return learning.pathFor(run);return run.legacyRoute?[...MAIN_PATH]:['duelist','cantor','warden',run.routes?.crossing||null,'golem','weaver',run.routes?.archive||null,'final'];}
+export function currentChapter(run){if(learning.isLearningRun(run))return learning.currentChapter(run);
  const id=pathFor(run)[run.chapter];
  if(id)return CHAPTER_BY_BOSS[id];
  const group=routeGroup(run),choice=ROUTE_CHOICES[group],previous=CHAPTER_BY_BOSS[group==='crossing'?'warden':'weaver'];
  return {...previous,title:choice?.title||'选择接下来的路线',hook:choice?.prompt||'',isChoice:true};
 }
-export function runRoute(run){return pathFor(run).map((id,index)=>({index,id,bossId:id,chapter:id?CHAPTER_BY_BOSS[id]:null,choices:!run.legacyRoute&&(index===3||index===6)?ROUTE_CHOICES[index===3?'crossing':'archive'].options:[],cleared:index<run.history.length,current:index===run.chapter,recruit:id?RECRUIT_AFTER[id]||null:null}));}
-export function routeOptions(run){return !run.legacyRoute&&run.phase==='route'?(ROUTE_CHOICES[routeGroup(run)]?.options||[]):[];}
-export function currentEvent(run){return !run.legacyRoute?CAMP_EVENTS[eventGroup(run)]||null:null;}
-export function endingForRun(run){
+export function runRoute(run){if(learning.isLearningRun(run))return learning.runRoute(run);return pathFor(run).map((id,index)=>({index,id,bossId:id,chapter:id?CHAPTER_BY_BOSS[id]:null,choices:!run.legacyRoute&&(index===3||index===6)?ROUTE_CHOICES[index===3?'crossing':'archive'].options:[],cleared:index<run.history.length,current:index===run.chapter,recruit:id?RECRUIT_AFTER[id]||null:null}));}
+export function routeOptions(run){if(learning.isLearningRun(run))return learning.routeOptions(run);return !run.legacyRoute&&run.phase==='route'?(ROUTE_CHOICES[routeGroup(run)]?.options||[]):[];}
+export function currentEvent(run){if(learning.isLearningRun(run))return learning.currentEvent(run);return !run.legacyRoute?CAMP_EVENTS[eventGroup(run)]||null:null;}
+export function endingForRun(run){if(learning.isLearningRun(run))return learning.endingForRun(run);
  const scores={rescue:0,evidence:0,infrastructure:0};
  if(run.routes?.crossing==='tide')scores.rescue++;else if(run.routes?.crossing==='furnace')scores.infrastructure++;
  if(run.routes?.archive==='orrery')scores.evidence++;else if(run.routes?.archive==='arbiter')scores.rescue++;
@@ -47,13 +49,14 @@ export function endingForRun(run){
  const id=Object.keys(scores).sort((a,b)=>scores[b]-scores[a]||(a===last?-1:b===last?1:0))[0];
  return {...ENDINGS[id],scores};
 }
-export function createRun(difficulty='standard',{legacyRoute=false,gmAllHeroes=false}={}){
+export function createRun(difficulty='standard',{legacyRoute=false,gmAllHeroes=false,skipTutorial=false,seed}={}){
+  if(!legacyRoute&&!skipTutorial)return learning.createLearningRun(difficulty,{gmAllHeroes,seed});
   if(typeof difficulty!=='string'||!Object.hasOwn(DIFFICULTIES,difficulty))difficulty='standard';
   const run={version:4,id:String(Date.now()),difficulty,chapter:0,phase:'dialogue',dialogue:'before',line:0,legacyRoute:!!legacyRoute,routes:{crossing:null,archive:null},events:{crossing:null,archive:null},partyIds:[...ORIGINAL_PARTY],
     unlockedHeroes:[...ORIGINAL_PARTY],upgrades:[],loadouts:normalizeLoadouts(),history:[],battle:null,lastReward:null,focusHero:'knibbs'};
   return gmAllHeroes===true?unlockRunHeroes(run):run;
 }
-export function unlockRunHeroes(run){
+export function unlockRunHeroes(run){if(learning.isLearningRun(run))return learning.unlockRunHeroes(run);
   if(!run||typeof run!=='object')return run;
   run.gmAllHeroes=true;run.unlockedHeroes=HEROES.map(hero=>hero.id);
   delete run.gmBattleParty;
@@ -67,7 +70,7 @@ function settleRunParty(run){
   delete run.gmBattleParty;
   return run;
 }
-export function disableRunHeroes(run){
+export function disableRunHeroes(run){if(learning.isLearningRun(run))return learning.disableRunHeroes(run);
   if(!run||typeof run!=='object')return run;
   const gmRewardKeys=gmRewardKeysFor(run);
   if(gmRewardKeys.length)run.gmRewardKeys=gmRewardKeys;else delete run.gmRewardKeys;
@@ -79,13 +82,13 @@ export function disableRunHeroes(run){
   else settleRunParty(run);
   return run;
 }
-export function runDialogue(run){
+export function runDialogue(run){if(learning.isLearningRun(run))return learning.runDialogue(run);
  if(run.dialogue==='route')return ROUTE_CHOICES[routeGroup(run)]?.options.find(o=>o.id===run.routes[routeGroup(run)])?.lines||[];
  if(run.dialogue==='event')return currentEvent(run)?.options.find(o=>o.id===run.events[eventGroup(run)])?.lines||[];
  if(run.dialogue==='ending')return endingForRun(run).lines;
  return currentChapter(run)?.[run.dialogue]||[];
 }
-export function dialogueNextLabel(run){
+export function dialogueNextLabel(run){if(learning.isLearningRun(run))return learning.dialogueNextLabel(run);
  if(run.line<runDialogue(run).length-1)return '继续对话';
  if(run.dialogue==='before')return '进入战斗';
  if(run.dialogue==='route')return '进入整备';
@@ -93,8 +96,8 @@ export function dialogueNextLabel(run){
  if(currentChapter(run).bossId==='final')return '看看后来';
  return run.dialogue==='after'&&currentEvent(run)?'安排接下来的工作':'领取成长奖励';
 }
-export function rewardOptions(run){return poolFor(currentChapter(run).bossId).map(id=>REWARDS[id]).filter(r=>r&&!run.upgrades.includes(r.id)&&run.unlockedHeroes.includes(r.heroId));}
-export function consequenceNotes(run){
+export function rewardOptions(run){if(learning.isLearningRun(run))return learning.rewardOptions(run);return learning.pickThree(poolFor(currentChapter(run).bossId).map(id=>REWARDS[id]).filter(r=>r&&!run.upgrades.includes(r.id)&&run.unlockedHeroes.includes(r.heroId)),run.id+'/'+currentChapter(run).bossId);}
+export function consequenceNotes(run){if(learning.isLearningRun(run))return learning.consequenceNotes(run);
  const id=currentChapter(run).bossId,notes=[];
  if(run.legacyRoute)return notes;
  if(id==='golem'){
@@ -113,7 +116,7 @@ export function consequenceNotes(run){
  }
  return notes;
 }
-export function battleForRun(run,previewHero){
+export function battleForRun(run,previewHero){if(learning.isLearningRun(run))return learning.battleForRun(run,previewHero);
   let partyIds=[...run.partyIds];
   if(previewHero&&!partyIds.includes(previewHero))partyIds=[previewHero,...partyIds.slice(0,2)];
   const battle=createBattle(run.difficulty,currentChapter(run).bossId,{partyIds,upgrades:run.upgrades,loadouts:run.loadouts});
@@ -137,7 +140,7 @@ export function battleForRun(run,previewHero){
   }
   return battle;
 }
-export function advanceDialogue(run,skip=false){
+export function advanceDialogue(run,skip=false){if(learning.isLearningRun(run))return learning.advanceDialogue(run,skip);
   if(run.phase!=='dialogue')return false;
   if(!skip&&run.line<runDialogue(run).length-1){run.line++;return true;}
   run.line=0;
@@ -150,7 +153,7 @@ export function advanceDialogue(run,skip=false){
   }else run.phase=currentEvent(run)?'event':'reward';
   return true;
 }
-export function completeEncounter(run,battle){
+export function completeEncounter(run,battle){if(learning.isLearningRun(run))return learning.completeEncounter(run,battle);
   if(run.phase!=='battle'||battle.mode!=='victory'||battle.boss.id!==pathFor(run)[run.chapter]||run.history.length!==run.chapter)return false;
   run.history.push({bossId:battle.boss.id,round:battle.round,damage:battle.stats.damage,breaks:battle.stats.breaks,partyIds:battle.heroes.map(h=>h.id)});
   const recruit=RECRUIT_AFTER[battle.boss.id];
@@ -159,7 +162,7 @@ export function completeEncounter(run,battle){
   if(!run.gmAllHeroes)settleRunParty(run);
   return true;
 }
-export function claimReward(run,id){
+export function claimReward(run,id){if(learning.isLearningRun(run))return learning.claimReward(run,id);
   if(run.phase!=='reward'||!rewardOptions(run).some(r=>r.id===id))return {ok:false,error:'请选择本场提供的一项奖励。'};
   const reward=REWARDS[id];
   run.upgrades.push(id);run.loadouts=normalizeLoadouts(run.upgrades,run.loadouts);
@@ -173,16 +176,16 @@ export function claimReward(run,id){
   run.lastReward={id,replaced};run.chapter++;run.phase=pathFor(run)[run.chapter]?'camp':'route';run.dialogue='before';run.line=0;
   return {ok:true,reward};
 }
-export function chooseRoute(run,id){
+export function chooseRoute(run,id){if(learning.isLearningRun(run))return learning.chooseRoute(run,id);
  if(!routeOptions(run).some(o=>o.id===id))return {ok:false,error:'请在分岔处选择本次开放的一条路线。'};
  run.routes[routeGroup(run)]=id;run.phase='dialogue';run.dialogue='route';run.line=0;return {ok:true};
 }
-export function chooseEvent(run,id){
+export function chooseEvent(run,id){if(learning.isLearningRun(run))return learning.chooseEvent(run,id);
  const event=currentEvent(run),option=event?.options.find(o=>o.id===id);
  if(run.phase!=='event'||!option||run.events[eventGroup(run)])return {ok:false,error:'这项安排现在不可选择。'};
  run.events[eventGroup(run)]=id;run.phase='dialogue';run.dialogue='event';run.line=0;return {ok:true};
 }
-export function storyHistory(run){
+export function storyHistory(run){if(learning.isLearningRun(run))return learning.storyHistory(run);
  const entries=[];
  for(const [index,id] of pathFor(run).entries()){
   if(index>run.chapter||!id)continue;
@@ -203,27 +206,27 @@ export function storyHistory(run){
  if(!run.legacyRoute&&(run.dialogue==='ending'||run.phase==='complete'))entries.push({title:endingForRun(run).title,lines:run.phase==='complete'?endingForRun(run).lines:endingForRun(run).lines.slice(0,run.line+1)});
  return entries;
 }
-export function replacePartyMember(run,slot,heroId){
+export function replacePartyMember(run,slot,heroId){if(learning.isLearningRun(run))return learning.replacePartyMember(run,slot,heroId);
   if(run.phase!=='camp'||!Number.isInteger(slot)||slot<0||slot>2||!run.unlockedHeroes.includes(heroId))return false;
   const oldIndex=run.partyIds.indexOf(heroId),outgoing=run.partyIds[slot];
   run.partyIds[slot]=heroId;if(oldIndex>=0&&oldIndex!==slot)run.partyIds[oldIndex]=outgoing;
   run.focusHero=heroId;return true;
 }
-export function equipSkill(run,heroId,slot,skillId){
+export function equipSkill(run,heroId,slot,skillId){if(learning.isLearningRun(run))return learning.equipSkill(run,heroId,slot,skillId);
   if(run.phase!=='camp'||!run.unlockedHeroes.includes(heroId)||!Number.isInteger(slot)||slot<0||slot>=SKILL_SLOTS)return {ok:false,error:'请在战间整备时调整技能。'};
   const skill=SKILLS[heroId]?.find(s=>s.id===skillId);
   if(!skill)return {ok:false,error:'未知技能。'};
   if(skill.unlockKey&&!run.upgrades.includes(skill.unlockKey))return {ok:false,error:'这项技能尚未通过战斗奖励解锁。'};
   const old=run.loadouts[heroId].indexOf(skillId);
-  if(old>=0)return {ok:true,slot:old};
+  if(old>=0){[run.loadouts[heroId][slot],run.loadouts[heroId][old]]=[run.loadouts[heroId][old],run.loadouts[heroId][slot]];return {ok:true,slot};}
   run.loadouts[heroId][slot]=skillId;return {ok:true,slot};
 }
-export function startNextChapter(run){
+export function startNextChapter(run){if(learning.isLearningRun(run))return learning.startNextChapter(run);
   if(run.phase!=='camp')return false;
   if(!run.gmAllHeroes)settleRunParty(run);
   run.phase='dialogue';run.dialogue='before';run.line=0;run.battle=null;return true;
 }
-export function regroup(run){
+export function regroup(run){if(learning.isLearningRun(run))return learning.regroup(run);
   if(run.phase!=='battle')return false;
   run.phase='camp';run.battle=null;run.dialogue='before';run.line=0;
   if(!run.gmAllHeroes)settleRunParty(run);
@@ -260,7 +263,7 @@ function normalizeLegacyRun(value){
   return copy;
 }
 
-export function normalizeRun(value){
+export function normalizeRun(value){if(learning.isLearningRun(value))return learning.normalizeLearningRun(value);
  if(!value||typeof value!=='object')return null;
  if([1,2,3].includes(value.version)||value.version===4&&value.legacyRoute===true){
   const legacy=normalizeLegacyRun(value.version===4?{...value,version:3}:value);

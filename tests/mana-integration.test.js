@@ -56,10 +56,10 @@ test('mana integration: emergency and low-stock reclamation do not retain the or
   }
 });
 
-test('mana integration: choosing evade never bypasses the secondary-resource cycle',()=>{
+test('mana integration: disabled generic evade never bypasses the secondary-resource cycle',()=>{
   for(const id of manaIds){
     const s=setup(id),h=heroOf(s,id);h.resource=4;h.secondary=2;h.records=id==='patch'?2:0;
-    assert.ok(prepareResponse(s,'evade',id).ok);assert.ok(endRound(s).ok);assert.equal(h.resource,4);assert.equal(h.secondary,2);assert.equal(h.attackBuff,15);assert.ok(h.attackBuffTurns>0);
+    assert.equal(prepareResponse(s,'evade',id).ok,false);assert.ok(endRound(s).ok);assert.equal(h.resource,4);assert.equal(h.secondary,2);assert.equal(h.attackBuff,0);assert.equal(h.attackBuffTurns,0);
   }
 });
 

@@ -1,3 +1,4 @@
+import {runPolicy} from '../scripts/pressure-probe.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -16,7 +17,7 @@ function refuse(state, action) {
   assert.deepEqual(state,before,'a refused action must be atomic');
 }
 function valid(state) {
-  assert.equal(state.version,8);
+  assert.equal(state.version,10);
   assert.ok(Object.hasOwn(BOSSES,state.boss.id));
   assert.ok(['playing','victory','defeat'].includes(state.mode));
   assert.equal(state.maxAp,6+state.roundCarry);
@@ -44,26 +45,7 @@ test('v2: all three encounters start in each difficulty with explicit boss ident
   assert.equal(createBattle('standard','missing').boss.id,'golem');
 });
 
-test('v2: response selection spends one AP, switching tactic or actor spends none',()=>{
-  for(const bossId of Object.keys(BOSSES)) {
-    const state=createBattle('standard',bossId);
-    assert.deepEqual(responseOptions(state).map(option=>option.id).sort(),['counter','evade','parry']);
-    assert.equal(prepareResponse(state,'parry','knibbs').ok,true);assert.equal(state.ap,5);
-    assert.equal(state.response.id,'parry');assert.equal(state.response.actor,'knibbs');
-    assert.equal(prepareResponse(state,'evade','apeilia').ok,true);assert.equal(state.ap,5);
-    assert.equal(state.response.id,'evade');assert.equal(state.response.actor,'apeilia');
-    state.ap=0;
-    assert.equal(prepareResponse(state,'counter','ric').ok,true);assert.equal(state.ap,0);
-    assert.equal(state.response.id,'counter');assert.equal(state.response.actor,'ric');valid(state);
-  }
-});
 
-test('v2: changing the selected hero previews their response rewards without changing the prepared actor',()=>{
-  const state=createBattle('standard','duelist');prepareResponse(state,'evade','knibbs');state.selected='apeilia';
-  const before=clone(state),options=responseOptions(state);
-  assert.ok(options.find(option=>option.id==='evade').reward.includes('艾佩莉雅连击'));
-  assert.equal(state.response.actor,'knibbs');assert.deepEqual(state,before);
-});
 
 test('v2: invalid responses, absent or fallen actors and exhausted AP preserve state',()=>{
   let state=createBattle('standard','duelist');
@@ -76,22 +58,6 @@ test('v2: invalid responses, absent or fallen actors and exhausted AP preserve s
   }
 });
 
-test('v2: the opening telegraph supports three responses with distinct resolved rewards',()=>{
-  for(const bossId of Object.keys(BOSSES)){
-    const outcomes=[];
-    for(const responseId of ['parry','evade','counter']){
-      const state=createBattle('standard',bossId);
-      assert.equal(prepareResponse(state,responseId,'knibbs').ok,true);
-      const result=endRound(state);assert.equal(result.ok,true);valid(state);
-      outcomes.push(JSON.stringify({
-        hp:state.heroes.map(hero=>hero.hp),shield:state.heroes.map(hero=>hero.shield),
-        resource:state.heroes.map(hero=>hero.resource),intuition:heroOf(state,'knibbs').intuition,
-        bossHp:state.boss.hp,stagger:state.boss.stagger,mirror:state.boss.mirror,spores:state.boss.spores
-      }));
-    }
-    assert.equal(new Set(outcomes).size,3,`${bossId} response choices must produce different tradeoffs`);
-  }
-});
 
 test('v2: skill previews are pure and match resolved damage and resource use',()=>{
   for(const bossId of Object.keys(BOSSES))for(const hero of HEROES)for(const skill of SKILLS[hero.id].slice(0,4)){
@@ -139,29 +105,7 @@ for(const bossId of ['duelist','cantor'])for(const difficulty of Object.keys(DIF
   });
 }
 
-test('v2: a prepared response survives save restoration and resolves deterministically',()=>{
-  for(const bossId of Object.keys(BOSSES))for(const responseId of ['parry','evade','counter']){
-    const state=createBattle('standard',bossId);
-    assert.equal(prepareResponse(state,responseId,'apeilia').ok,true);
-    const resumed=normalizeSave(JSON.parse(JSON.stringify(state)));assert.ok(resumed);
-    assert.deepEqual(resumed.response,state.response);
-    const original=endRound(state),restored=endRound(resumed);
-    assert.deepEqual(restored,original);
-    assert.deepEqual(resumed,{...state,elapsed:0});assert.equal(state.response,null);valid(state);
-  }
-});
 
-test('v2: breaking a prepared enemy cancels its response and only carries unspent AP',()=>{
-  for(const bossId of Object.keys(BOSSES)){
-    const state=createBattle('standard',bossId);state.boss.stagger=8;
-    assert.equal(prepareResponse(state,'parry','knibbs').ok,true);
-    assert.equal(useSkill(state,'knibbs','shot').ok,true);assert.equal(state.boss.broken,true);
-    const health=state.heroes.map(hero=>hero.hp);
-    assert.equal(endRound(state).ok,true);assert.deepEqual(state.heroes.map(hero=>hero.hp),health);
-    assert.equal(state.response,null);assert.equal(state.ap,8);assert.equal(state.maxAp,8);assert.equal(state.roundCarry,2);valid(state);
-    assert.equal(endRound(state).ok,true);assert.equal(state.ap,8);assert.equal(state.maxAp,8);assert.equal(state.roundCarry,2);valid(state);
-  }
-});
 
 test('v2: full intuition enhances the next heavy shot then begins a new three-step cycle',()=>{
   const state=createBattle();
@@ -184,7 +128,7 @@ test('v2: alternating damage types increases Apeilia damage and refund while rep
   assert.equal(result.events.find(event=>event.type==='attack').amount,2*Math.round(27*1.25*.82));
   state=createBattle();heroOf(state,'apeilia').resource=6;heroOf(state,'apeilia').lastKind='physical';
   const preview=skillPreview(state,'apeilia','sentinel');useSkill(state,'apeilia','sentinel');
-  assert.equal(preview.damage,130);assert.equal(heroOf(state,'apeilia').resource,1);valid(state);
+  assert.equal(preview.damage,78);assert.equal(heroOf(state,'apeilia').resource,1);valid(state);
 });
 
 test('v2: Ric crossing zero provides directional team support only to living allies',()=>{
@@ -212,7 +156,7 @@ test('v2: mirror stance reflects once per physical skill after guard and shield,
   const state=createBattle('standard','duelist');state.boss.intent='mirror';state.boss.mirror=3;
   const hero=heroOf(state,'knibbs');hero.guard=true;hero.shield=2;
   const preview=skillPreview(state,'knibbs','scatter'),result=useSkill(state,'knibbs','scatter');
-  assert.equal(preview.damage,54);assert.equal(result.events.find(event=>event.type==='attack').amount,54);
+  assert.equal(preview.damage,36);assert.equal(result.events.find(event=>event.type==='attack').amount,36);
   const reflections=result.events.filter(event=>event.label==='折镜反噬');assert.equal(reflections.length,1);
   assert.deepEqual(reflections[0].amounts,{knibbs:5});assert.equal(hero.hp,165);assert.equal(hero.shield,0);
   assert.ok(preview.notes.some(note=>note.includes('基础')&&note.includes('防御 / 护盾前')));
@@ -249,17 +193,6 @@ test('v2: recovery grants one full round of control immunity and then permits a 
   }
 });
 
-test('v2: a response-induced break exposes a damage window but does not skip a second enemy action',()=>{
-  const state=createBattle('standard','duelist');state.boss.stagger=15;prepareResponse(state,'parry','knibbs');
-  const attacked=endRound(state);assert.ok(attacked.events.some(event=>event.type==='boss'));
-  assert.equal(state.boss.broken,false);assert.equal(state.boss.exposed,true);assert.equal(state.boss.controlImmune,1);assert.equal(state.ap,8);assert.equal(state.roundCarry,2);valid(state);
-  const attack=useSkill(state,'knibbs','shot');assert.equal(attack.ok,true);assert.equal(state.boss.exposed,true);
-  // Two remaining mirrors apply 20% physical resistance, then the 50% opening.
-  assert.equal(attack.events.find(event=>event.type==='attack').amount,Math.round(27*.8*1.5));
-  assert.equal(prepareResponse(state,'evade','knibbs').ok,true,'next telegraph still accepts a response');
-  const recovered=endRound(state);assert.ok(recovered.events.some(event=>event.type==='boss'));
-  assert.equal(state.boss.exposed,false);assert.equal(state.boss.broken,false);assert.equal(state.boss.controlImmune,0);valid(state);
-});
 
 test('v2: direct interruption previews the entire lost posture instead of ordinary skill stagger',()=>{
   for(const [bossId,intent] of [['duelist','pierce'],['cantor','drain']]){
@@ -269,81 +202,18 @@ test('v2: direct interruption previews the entire lost posture instead of ordina
   }
 });
 
-test('v2: a counter crossing a golem phase cannot add an unannounced follow-up to that action',()=>{
-  const state=createBattle();state.boss.hp=750;
-  prepareResponse(state,'counter','knibbs');const result=endRound(state);
-  assert.equal(state.boss.stage,1);assert.equal(state.boss.charging,true);
-  assert.deepEqual(result.events.filter(event=>event.type==='boss').map(event=>event.label),['势能重击']);
-  assert.equal(heroOf(state,'apeilia').hp,145);assert.equal(heroOf(state,'ric').hp,160);valid(state);
-});
 
-test('v2: a counter exposes the golem core for two full rounds without an extra grace round',()=>{
-  const state=createBattle();state.boss.hp=1;prepareResponse(state,'counter','knibbs');endRound(state);
-  assert.equal(state.boss.core,true);assert.equal(state.boss.coreFresh,false);assert.equal(state.boss.coreTurns,2);valid(state);
-  endRound(state);assert.equal(state.boss.coreTurns,1);assert.equal(state.boss.core,true);
-  endRound(state);assert.equal(state.boss.core,false);assert.equal(state.boss.reforms,1);valid(state);
-});
 
-test('v2: mirror stance parry removes two mirrors while counter removes one without reflecting',()=>{
-  for(const [response,remaining,damage] of [['parry',1,0],['counter',2,80]]){
-    const state=createBattle('standard','duelist');state.boss.intent='mirror';state.boss.mirror=3;
-    prepareResponse(state,response,'knibbs');const result=endRound(state);
-    assert.equal(state.boss.mirror,remaining);assert.equal(state.boss.maxHp-state.boss.hp,damage);
-    assert.ok(!result.events.some(event=>event.label==='折镜反噬'));valid(state);
-  }
-});
 
-test('v2: drain parry prevents healing, while the stronger counter permits the advertised drain',()=>{
-  for(const [response,healing,damage] of [['parry',0,0],['counter',66,104]]){
-    const state=createBattle('standard','cantor');state.boss.intent='drain';state.boss.spores=3;state.boss.hp-=200;
-    const before=state.boss.hp;prepareResponse(state,response,'knibbs');const result=endRound(state);
-    assert.equal(result.events.find(event=>event.type==='heal'&&event.actor==='boss').amount,healing);
-    assert.equal(state.boss.hp,before+healing-damage);valid(state);
-  }
-});
 
-test('v2: bloom counter scales from the telegraphed spores even though release consumes them',()=>{
-  const state=createBattle('standard','cantor');state.boss.intent='bloom';state.boss.spores=5;
-  prepareResponse(state,'counter','knibbs');const result=endRound(state);
-  assert.equal(result.events.find(event=>event.type==='attack').amount,125);
-  assert.equal(state.boss.spores,0);valid(state);
-});
 
-test('v2: an absent response initiator is replaced by a survivor without losing the response',()=>{
-  const state=createBattle('standard','cantor');prepareResponse(state,'evade','knibbs');heroOf(state,'knibbs').hp=0;
-  assert.ok(normalizeSave(state));const result=endRound(state);assert.equal(result.ok,true);
-  assert.equal(heroOf(state,'apeilia').resource,2);assert.equal(state.boss.spores,1);assert.equal(state.response,null);valid(state);
-});
 
-test('v2: Ric evasion approaches zero without negative-zero serialization drift',()=>{
-  const state=createBattle('standard','cantor');heroOf(state,'ric').resource=-1;prepareResponse(state,'evade','ric');endRound(state);
+test('v2: Ric natural balance recovery approaches zero without negative-zero serialization drift',()=>{
+  const state=createBattle('standard','cantor');heroOf(state,'ric').resource=-1;endRound(state);
   assert.equal(heroOf(state,'ric').resource,0);assert.equal(Object.is(heroOf(state,'ric').resource,-0),false);valid(state);
 });
 
-function playEncounter(bossId,difficulty){
-  const state=createBattle(difficulty,bossId),history=[];
-  function cast(id,skill){
-    if(canUse(state,id,skill))return false;
-    assert.equal(useSkill(state,id,skill).ok,true);history.push(`R${state.round} ${id}/${skill}`);valid(state);return true;
-  }
-  for(let step=0;state.mode==='playing'&&state.round<=50&&step<500;step++){
-    const low=[...state.heroes].sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0];
-    if(low.hp<40&&state.potions>0&&state.ap>0){assert.equal(usePotion(state,low.id).ok,true);valid(state);continue;}
-    if(!state.boss.broken&&!state.boss.controlImmune&&['pierce','duel','drain','bloom'].includes(state.boss.intent)&&cast('ric','bind'))continue;
-    if(low.hp/low.maxHp<.5&&cast('ric','mend'))continue;
-    if(!state.response&&!state.boss.broken&&state.ap>0){assert.equal(prepareResponse(state,'parry','knibbs').ok,true);valid(state);continue;}
-    if(bossId==='duelist'&&state.boss.mirror>0){if(cast('apeilia','purify'))continue;if(cast('ric','rune'))continue;}
-    if(bossId==='cantor'&&state.boss.spores>0){if(cast('knibbs','scatter'))continue;if(cast('apeilia','eden'))continue;if(cast('apeilia','blade'))continue;}
-    if(!state.boss.marked&&cast('knibbs','focus'))continue;
-    const apeilia=heroOf(state,'apeilia');
-    if(apeilia.lastKind==='physical'){if(cast('apeilia','sentinel'))continue;if(cast('apeilia','purify'))continue;}
-    if(apeilia.lastKind==='magic'&&cast('apeilia','eden'))continue;
-    if(cast('apeilia','blade'))continue;
-    if(cast('knibbs','shot'))continue;
-    assert.equal(endRound(state).ok,true);valid(state);
-  }
-  return {state,history};
-}
+function playEncounter(bossId,difficulty){const r=runPolicy(bossId,'tactical',difficulty,{includeState:true,onState:valid});return {state:r.state,history:r.actions};}
 
 for(const bossId of ['duelist','cantor'])for(const difficulty of Object.keys(DIFFICULTIES)){
   test(`v2 whole battle ${bossId}/${difficulty}: public-API tactics can win without state edits`,()=>{

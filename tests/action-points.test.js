@@ -52,17 +52,17 @@ test('AP: saved points can be spent and unused rollover cannot grow beyond two',
 
 test('AP: all paid tactical actions reduce the amount available to carry',()=>{
   const state=make();state.ap=2;
-  assert.equal(prepareResponse(state,'parry').ok,true);
+  assert.equal(useSkill(state,'apeilia','reboot').ok,true);
   assert.equal(state.ap,1);assert.equal(actionPointInfo(state).nextCarry,1);
-  assert.equal(prepareResponse(state,'evade','ric').ok,true);
-  assert.equal(state.ap,1,'changing a prepaid response remains free');
+  assert.equal(prepareResponse(state,'evade','ric').ok,false);
+  assert.equal(state.ap,1,'removed generic responses cannot affect the budget');
   endRound(state);
   assert.equal(state.ap,7);assert.equal(state.roundCarry,1);
 });
 
-test('AP: cancelling a prepaid response does not refund it or create carry points',()=>{
+test('AP: breaking an enemy does not refund a character defense or create carry points',()=>{
   const state=make();state.ap=2;state.boss.stagger=1;
-  assert.equal(prepareResponse(state,'parry').ok,true);
+  assert.equal(useSkill(state,'apeilia','reboot').ok,true);
   cast(state,'knibbs','shot');
   assert.equal(state.boss.broken,true);assert.equal(state.ap,0);
   endRound(state);
@@ -88,7 +88,7 @@ test('AP: conserving points cannot prolong the giant core deadline',()=>{
   assert.equal(state.ap,8);assert.equal(state.boss.core,false);assert.equal(state.boss.reforms,1);
 });
 
-test('AP: terminal deadline advances and still requires a live prepared response',()=>{
+test('AP: terminal deadline advances and still requires current character protection',()=>{
   const state=make('party','final');
   Object.assign(state.boss,{hp:0,finale:true,finaleFresh:false,finaleTurns:2,seals:0,finalePhysical:1,finaleMagic:1});state.ap=2;
   for(const hero of state.heroes)hero.guard=true;
@@ -128,7 +128,7 @@ test('AP saves: v6 and v7 saves without carry migrate once with their old base b
   for(const mode of ['party','solo'])for(const version of [6,7]){
     const old=make(mode);old.version=version;old.round=3;old.ap=2;delete old.roundCarry;
     const migrated=normalizeSave(old);assert.ok(migrated);
-    assert.equal(migrated.version,8);assert.equal(migrated.roundCarry,0);assert.equal(migrated.ap,2);assert.equal(migrated.maxAp,baseActionPoints(mode));
+    assert.equal(migrated.version,10);assert.equal(migrated.roundCarry,0);assert.equal(migrated.ap,2);assert.equal(migrated.maxAp,baseActionPoints(mode));
     endRound(migrated);assert.equal(migrated.roundCarry,2);assert.equal(migrated.ap,baseActionPoints(mode)+2);
     assert.ok(normalizeSave(migrated));
   }

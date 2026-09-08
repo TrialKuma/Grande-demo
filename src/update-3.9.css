@@ -1,0 +1,35 @@
+[draggable="true"][data-drag-skill]{cursor:grab;touch-action:none;user-select:none}
+[draggable="true"][data-drag-skill]:active{cursor:grabbing}
+.skill-dragging{opacity:.35}
+.skill-drop-target{outline:2px solid #f3d18e!important;outline-offset:3px;box-shadow:0 0 20px #e6bd6766!important}
+.skill-target-type{font-size:10px;color:#c4dbe6;padding:1px 4px;border:1px solid #91acbe55;border-radius:2px;white-space:nowrap}
+.enemy-targets{pointer-events:auto;margin-top:9px;padding:8px 10px;background:#0b192ae8;border:1px solid #95b4c642;border-radius:4px}
+.target-heading{display:flex;justify-content:space-between;gap:8px;color:#aebecd;font-size:11px;margin-bottom:7px}
+.target-cards{display:flex;gap:6px;overflow-x:auto}
+.enemy-target{flex:1;min-width:100px;padding:8px;background:#162639;color:#c2d2de;border:1px solid #6d899b55;border-radius:3px;text-align:left}
+.enemy-target.selected{border-color:#e9c381;background:#343329;box-shadow:inset 0 0 0 1px #e9c38144}
+.enemy-target.defeated{opacity:.45}
+.enemy-target-title,.enemy-target-values{display:flex;justify-content:space-between;gap:4px;align-items:center;font-size:12px}
+.enemy-target-title b{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.enemy-target-title small{font-size:9px;white-space:nowrap}
+.enemy-target-hp{display:block;height:4px;background:#07111d;margin:6px 0}
+.enemy-target-hp i{display:block;height:100%;background:#a3c9ba;transition:width .15s}
+.enemy-target-values{font-size:11px}.enemy-target-values small{font-size:10px;color:#bba77e}
+.additional-threats{margin-top:12px}.additional-threats h3{font-size:14px;color:#e4c994;margin:10px 0}
+.additional-threats article{padding:11px 12px;background:#132333ed;border:1px solid #91a6b43a;border-radius:4px;margin:7px 0}
+.additional-threats header{display:flex;justify-content:space-between;gap:5px;align-items:center;font-size:11px;color:#8da3b9;margin-bottom:8px}
+.additional-threats header button{display:flex;align-items:center;gap:5px;font-size:13px;color:#bad6e8;text-align:left}
+.additional-threats strong{display:flex;align-items:center;gap:6px;font-size:14px;color:#e7d0a1}.additional-threats .icon{width:16px;height:16px}
+.additional-threats p{font-size:13px;line-height:1.75;color:#becdd8;margin:6px 0 0}.additional-threats .danger{border-color:#d2936566}
+.battle-layout.has-multiple-enemies .foe-summary{margin-top:5px}
+@media(min-width:1001px){
+ #app.in-battle:has(.has-multiple-enemies) #scene{top:180px}
+ .battle-layout.has-multiple-enemies .foe-hud{width:clamp(440px,42vw,740px)}
+ .battle-layout.has-multiple-enemies .foe-summary{display:none}
+ .battle-layout.has-multiple-enemies .foe-stagger{display:none}
+}
+@media(min-width:1001px) and (max-height:850px){
+ #app.in-battle:has(.has-multiple-enemies) #scene{top:140px}
+ .enemy-targets{margin-top:5px;padding:6px}.enemy-target{padding:5px 7px}.target-heading{margin-bottom:4px}
+}
+@media(max-width:1000px){.enemy-targets{margin-top:5px;padding:5px}.enemy-target{padding:5px}.target-heading{font-size:10px}.enemy-target-title b{font-size:11px}.enemy-target-values small{display:none}}

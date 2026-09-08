@@ -1,3 +1,4 @@
+import {runPolicy} from '../scripts/pressure-probe.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {HEROES,SKILLS,BOSSES,REWARDS,createBattle,heroOf,canUse,useSkill,usePotion,guard,endRound,prepareResponse,skillPreview,activeSkills,normalizeLoadouts} from '../src/combat.js';
@@ -7,7 +8,7 @@ import {grantShield} from '../src/shields.js';
 const clone=value=>structuredClone(value);
 function partyFor(id){return [id,...HEROES.filter(h=>h.id!==id).slice(0,2).map(h=>h.id)];}
 function valid(state){
-  assert.equal(state.version,8);assert.equal(state.heroes.length,3);assert.equal(new Set(state.heroes.map(h=>h.id)).size,3);
+  assert.equal(state.version,10);assert.equal(state.heroes.length,3);assert.equal(new Set(state.heroes.map(h=>h.id)).size,3);
   assert.ok(state.ap>=0&&state.ap<=state.maxAp);assert.ok(state.boss.hp>=0&&state.boss.hp<=state.boss.maxHp);
   for(const h of state.heroes){assert.ok(h.hp>=0&&h.hp<=h.maxHp);assert.ok(h.resource>=(h.id==='ric'?-10:0)&&h.resource<=h.maxResource);assert.ok(h.reflect>=0&&h.reflect<=2);assert.equal(activeSkills(state,h.id).length,5);}
   if(state.mode==='playing')assert.ok(normalizeSave(state),'live state must restore');
@@ -21,7 +22,7 @@ function castPreview(state,id,skill){
 }
 
 test('expansion: the ten original-roster three-person combinations preserve identity, slot order and saves',()=>{
-  assert.equal(HEROES.length,7);assert.equal(Object.keys(BOSSES).length,10);
+  assert.equal(HEROES.length,7);assert.equal(Object.values(BOSSES).filter(b=>!b.isTutorial&&!b.isSkirmish&&!b.isMinion).length,10);
   for(let a=0;a<3;a++)for(let b=a+1;b<4;b++)for(let c=b+1;c<5;c++){
     const ids=[HEROES[c].id,HEROES[a].id,HEROES[b].id],state=createBattle('standard','warden',{partyIds:ids});valid(state);
     assert.deepEqual(state.heroes.map(h=>h.id),ids);assert.deepEqual(normalizeSave(state).heroes.map(h=>h.id),ids);
@@ -72,7 +73,7 @@ test('expansion: Haart links conversion, small cash-outs and enemy debuffs witho
   assert.equal(h.resource,10);
   castPreview(state,'haart','rest');assert.equal(h.resource,2);assert.equal(h.secondary,4);assert.ok(state.heroes.every(x=>x.shield===0));
   castPreview(state,'haart','anchor');assert.equal(h.resource,5);assert.equal(h.secondary,3);assert.ok(state.heroes.every(x=>x.attackBuff===25));
-  castPreview(state,'haart','soothe');assert.equal(h.resource,8);assert.equal(h.secondary,2);assert.equal(state.boss.weakened,1);
+  castPreview(state,'haart','soothe');assert.equal(h.resource,8);assert.equal(h.secondary,2);assert.equal(state.boss.confusion?.actor,'haart');
   const afterMana=h.resource;endRound(state);assert.equal(h.resource,afterMana);valid(state);
   const {preview}=castPreview(state,'haart','relay');assert.equal(preview.hits,3);assert.equal(preview.refund,4);assert.equal(h.resource,10);assert.equal(h.secondary,0);
   const before=clone(state);assert.match(canUse(state,'haart','soothe'),/念线不足/);
@@ -83,7 +84,7 @@ test('expansion: Qianxing armor survives saves, retaliates against physical hits
   const state=createBattle('standard','duelist',{partyIds:['qianxing','haart','ric']}),h=heroOf(state,'qianxing');
   castPreview(state,'qianxing','repair');assert.equal(h.resource,1);assert.equal(h.secondary,3);assert.equal(h.shield,0);
   castPreview(state,'qianxing','armor');assert.equal(h.resource,5);assert.equal(h.secondary,2);assert.equal(h.reflect,1);
-  assert.equal(guard(state,'qianxing').ok,true);assert.equal(h.resource,5);
+  assert.equal(guard(state,'qianxing').ok,false);assert.equal(h.protection,55);assert.equal(h.resource,5);
   const saved=normalizeSave(state);assert.equal(heroOf(saved,'qianxing').reflect,1);
   const result=endRound(state);assert.equal(h.resource,5);assert.equal(h.reflect,0);
   assert.equal(result.events.filter(e=>e.label==='钉刺反击').length,1);valid(state);
@@ -105,8 +106,8 @@ test('expansion: Ric crossing zero grants one-use reward charges that remain val
 test('expansion: Warden physical hits discharge, and Weaver changes its sealed damage type each round',()=>{
   const warden=createBattle('standard','warden');warden.boss.charge=6;
   castPreview(warden,'knibbs','scatter');assert.equal(warden.boss.charge,0);
-  const weaver=createBattle('standard','weaver');assert.equal(skillPreview(weaver,'knibbs','shot').damage,15);
-  castPreview(weaver,'apeilia','purify');assert.equal(weaver.boss.seals,0);assert.equal(skillPreview(weaver,'knibbs','shot').damage,27);
+  const weaver=createBattle('standard','weaver');assert.equal(skillPreview(weaver,'knibbs','shot').damage,7);
+  castPreview(weaver,'apeilia','purify');assert.equal(weaver.boss.seals,0);assert.equal(skillPreview(weaver,'knibbs','shot').damage,14);
   endRound(weaver);assert.equal(weaver.boss.sealedKind,'magic');assert.equal(weaver.boss.seals,2);valid(weaver);
 });
 
@@ -132,7 +133,7 @@ test('expansion: unlocked extinction beam requires three converted charges and k
     const h=heroOf(state,'qianxing');grantShield(h,shield);
     assert.match(canUse(state,'qianxing','nova'),/充能不足/);for(let i=0;i<3;i++)castPreview(state,'qianxing','spike');assert.equal(h.resource,1);assert.equal(h.secondary,3);
     const {preview}=castPreview(state,'qianxing','nova');
-    assert.equal(preview.hits,3);assert.equal(preview.damage,258);assert.equal(preview.resourceAfter,7);assert.equal(preview.secondaryAfter,0);assert.equal(preview.empowered,false);
+    assert.equal(preview.hits,3);assert.equal(preview.damage,129);assert.equal(preview.resourceAfter,7);assert.equal(preview.secondaryAfter,0);assert.equal(preview.empowered,false);
   }
 });
 
@@ -143,44 +144,20 @@ test('expansion: final barriers fall through alternating types and third synchro
 });
 
 function finaleFixture(){const s=createBattle('standard','final');s.boss.hp=1;useSkill(s,'knibbs','shot');assert.equal(s.boss.finale,true);assert.equal(s.mode,'playing');return s;}
-test('expansion: final victory requires both damage types and a resolved response, never HP zero alone',()=>{
+test('expansion: final victory requires both damage types and a character defense, never HP zero alone',()=>{
   const state=finaleFixture();assert.equal(state.boss.finalePhysical,0);assert.equal(state.boss.finaleMagic,0);
   useSkill(state,'knibbs','shot');useSkill(state,'ric','bind');assert.equal(state.mode,'playing');endRound(state);assert.equal(state.mode,'playing');
-  prepareResponse(state,'evade','ric');endRound(state);assert.equal(state.mode,'victory');valid(state);
+  useSkill(state,'ric','shelter');endRound(state);assert.equal(state.mode,'victory');valid(state);
 });
 test('expansion: finale timeout restores 22 percent HP and enemy-phase entry grants exactly two full turns',()=>{
-  const state=finaleFixture();prepareResponse(state,'evade','ric');endRound(state);assert.equal(state.boss.finaleTurns,2);
-  prepareResponse(state,'evade','ric');endRound(state);assert.equal(state.boss.finaleTurns,1);
-  prepareResponse(state,'evade','ric');endRound(state);assert.equal(state.boss.finale,false);assert.equal(state.boss.hp,Math.round(state.boss.maxHp*.22));valid(state);
-  const counter=createBattle('standard','final');counter.boss.hp=1;prepareResponse(counter,'counter','knibbs');endRound(counter);
+  const state=finaleFixture();useSkill(state,'apeilia','reboot');endRound(state);assert.equal(state.boss.finaleTurns,2);
+  useSkill(state,'apeilia','reboot');endRound(state);assert.equal(state.boss.finaleTurns,1);
+  useSkill(state,'apeilia','reboot');endRound(state);assert.equal(state.boss.finale,false);assert.equal(state.boss.hp,Math.round(state.boss.maxHp*.22));valid(state);
+  const counter=createBattle('standard','final',{partyIds:['qianxing','knibbs','ric']});counter.boss.hp=1;heroOf(counter,'qianxing').secondary=1;useSkill(counter,'qianxing','armor');endRound(counter);
   assert.equal(counter.boss.finale,true);assert.equal(counter.boss.finaleFresh,false);assert.equal(counter.boss.finaleTurns,2);valid(counter);
 });
 
-function playExpanded(id,difficulty){
-  const state=createBattle(difficulty,id),history=[];
-  const cast=(h,k)=>{if(canUse(state,h,k))return false;useSkill(state,h,k);history.push(`R${state.round} ${h}/${k}`);valid(state);return true;};
-  for(let step=0;step<500&&state.mode==='playing'&&state.round<60;step++){
-    const low=[...state.heroes].sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0];
-    if(low.hp<40&&state.ap&&state.potions){usePotion(state,low.id);continue;}
-    if(state.boss.finale){
-      if(!state.boss.finalePhysical&&(cast('knibbs','shot')||cast('apeilia','blade')))continue;
-      if(!state.boss.finaleMagic&&(cast('ric','bind')||cast('apeilia','purify')))continue;
-      if(!state.response&&state.ap&&prepareResponse(state,'evade',state.heroes.find(h=>h.hp>0).id).ok)continue;endRound(state);valid(state);continue;
-    }
-    if(!state.boss.broken&&!state.boss.controlImmune&&['storm','silence','rewrite','zero_pulse'].includes(state.boss.intent)&&cast('ric','bind'))continue;
-    if(low.hp/low.maxHp<.5&&cast('ric','mend'))continue;
-    const response=id==='final'&&state.boss.intent!=='zero_reset'?'evade':'parry';
-    if(!state.response&&!state.boss.broken&&state.ap&&prepareResponse(state,response,state.heroes.find(h=>h.hp>0).id).ok)continue;
-    if(id==='warden'&&state.boss.charge>=3&&(cast('knibbs','scatter')||cast('apeilia','eden')||cast('apeilia','blade')))continue;
-    if(id==='weaver'&&state.boss.seals){if(state.boss.sealedKind==='physical'){if(cast('apeilia','purify')||cast('ric','rune'))continue;}else if(cast('knibbs','scatter')||cast('apeilia','eden')||cast('apeilia','blade'))continue;}
-    if(id==='final'&&state.boss.seals&&state.boss.lastKind==='physical'&&(cast('apeilia','sentinel')||cast('apeilia','purify')||cast('ric','rune')))continue;
-    if(!state.boss.marked&&cast('knibbs','focus'))continue;
-    const apeilia=heroOf(state,'apeilia');if(apeilia.lastKind==='physical'&&(cast('apeilia','sentinel')||cast('apeilia','purify')))continue;
-    if(apeilia.lastKind==='magic'&&cast('apeilia','eden'))continue;
-    if(cast('apeilia','blade')||cast('knibbs','shot'))continue;endRound(state);valid(state);
-  }
-  return {state,history};
-}
+function playExpanded(id,difficulty){const r=runPolicy(id,'tactical',difficulty,{includeState:true,onState:valid});return {state:r.state,history:r.actions};}
 for(const id of ['warden','weaver','final'])for(const difficulty of ['story','standard','challenge']){
   test(`expansion whole battle ${id}/${difficulty}: public APIs complete victory`,()=>{
     const {state,history}=playExpanded(id,difficulty);assert.equal(state.mode,'victory',history.join(', '));valid(state);

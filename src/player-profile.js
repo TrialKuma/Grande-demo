@@ -1,5 +1,5 @@
 import {HEROES,BOSSES} from './combat.js';
-import {STARTING_HEROES,earnedCompanions} from './roster-unlocks.js';
+import {STARTING_HEROES,LEGACY_STARTING_HEROES,earnedCompanions} from './roster-unlocks.js';
 
 export {STARTING_HEROES};
 
@@ -8,11 +8,12 @@ export function normalizeProfile(value){
   const gmAllHeroes=value?.gmAllHeroes===true;
   const hasNatural=Array.isArray(value?.naturalHeroes);
   const previous=hasNatural?value.naturalHeroes:gmAllHeroes?[]:Array.isArray(value?.unlockedHeroes)?value.unlockedHeroes:[];
-  const naturalHeroes=[...new Set([...STARTING_HEROES,...previous.filter(id=>known.has(id))])];
+  const starting=value&&value.version!==4?LEGACY_STARTING_HEROES:STARTING_HEROES;
+  const naturalHeroes=[...new Set([...starting,...previous.filter(id=>known.has(id))])];
   const gmLegacyRecovery=value?.gmLegacyRecovery===true||gmAllHeroes&&!hasNatural;
-  const bossIds=Object.keys(BOSSES),gmAllBosses=value?.gmAllBosses===true;
+  const bossIds=Object.values(BOSSES).filter(b=>!b.isTutorial&&!b.isSkirmish&&!b.isMinion).map(b=>b.id),gmAllBosses=value?.gmAllBosses===true;
   const defeatedBosses=bossIds.filter(id=>Array.isArray(value?.defeatedBosses)&&value.defeatedBosses.includes(id));
-  return {version:3,naturalHeroes,unlockedHeroes:gmAllHeroes?[...known]:[...naturalHeroes],defeatedBosses,unlockedBosses:gmAllBosses?bossIds:[...defeatedBosses],...(gmAllHeroes?{gmAllHeroes:true}:{}),...(gmAllBosses?{gmAllBosses:true}:{}),...(gmLegacyRecovery?{gmLegacyRecovery:true}:{})};
+  return {version:4,naturalHeroes,unlockedHeroes:gmAllHeroes?[...known]:[...naturalHeroes],defeatedBosses,unlockedBosses:gmAllBosses?bossIds:[...defeatedBosses],...(gmAllHeroes?{gmAllHeroes:true}:{}),...(gmAllBosses?{gmAllBosses:true}:{}),...(gmLegacyRecovery?{gmLegacyRecovery:true}:{})};
 }
 
 // Legacy battle records only contained victories; newer explicit result fields

@@ -1,3 +1,5 @@
+import {enemyById,livingEnemies,selectEnemyTarget,enemyTargets,withEnemy,ensureEnemySelection,enemyDefaults,stampEnemyEvents,ENEMY_LIMITS} from './multi-enemy.js';
+export {enemyById,selectEnemyTarget,enemyTargets};
 import {BOSSES,BOSS_INTENTS} from './encounters.js';
 import {REWARDS} from './rewards.js';
 import {NEW_HEROES,NEW_SKILLS,CAPTAIN_SKILLS,TRANSFERABLE_LAYERS,SPECIMEN_NAMES} from './expedition-heroes.js';
@@ -8,7 +10,7 @@ export {BOSSES,BOSS_INTENTS};
 export {REWARDS};
 
 export const HEROES = [
-  {id:'knibbs',name:'尼布斯拉姆',short:'尼布斯',role:'直感枪手',tag:'物理 · 标记 · 反击',color:'#efbc75',maxHp:170,maxResource:10,resourceName:'气息',passiveName:'直感',passiveDesc:'每次攻击积攒 1 直感，最多 3。满层时，下次单发确认、扩散弹或迎击伤害 +40%、削韧 +12，消耗直感。',quote:'探险家岂能老死于病榻？',bio:'尼布斯联合工会的创始人。积攒直感，以特殊子弹标记目标，在敌人出手时反击。'},
+  {id:'knibbs',name:'尼布斯拉姆',short:'尼布斯',role:'直感枪手',tag:'物理 · 标记 · 反击',color:'#efbc75',maxHp:170,maxResource:10,resourceName:'气息',passiveName:'直感',passiveDesc:'每次攻击积攒 1 直感，最多 3。满层时，下次单发确认、扩散弹或掩护截击伤害增加40%、削韧增加12，消耗直感。',quote:'探险家岂能老死于病榻？',bio:'尼布斯联合工会的创始人。积攒直感，以特殊子弹标记目标，在敌人出手时反击。'},
   {id:'apeilia',name:'艾佩莉雅',short:'艾佩莉雅',role:'深渊监视器',tag:'双系 · 交替 · 连击',color:'#80d9df',maxHp:145,maxResource:10,resourceName:'连击',passiveName:'交叉火力',passiveDesc:'物理与魔法技能交替时，伤害 +25%、削韧 +6，并额外获得 1 连击。连续使用螳螂刀只获得 1 连击。',quote:'以绝对的火力击垮敌人！',bio:'来自钢核都市的人形构造体。交替使用螳螂刀与双枪，驱动高效的双系武装循环。'},
   {id:'ric',name:'雷克老板',short:'雷克',role:'领域驱魔师',tag:'魔法 · 打断 · 调和',color:'#bf9aef',maxHp:160,maxResource:3,resourceName:'平衡',passiveName:'领域调和',passiveDesc:'平衡由负向过零（含回到 0），全队获得 10 护盾；由正向过零，全队回复 8 生命。初始 0 出发不触发。',quote:'今天的账，记在谁头上？',bio:'酒吧的老板，也是深渊之门的守门人。交替正负领域，把治疗、防护与控制编织成循环。'},
   {id:'haart',name:'哈特蒙斯',short:'哈特',role:'心灵操纵师',tag:'魔力 · 念线 · 干扰',color:'#afa2eb',maxHp:150,maxResource:10,resourceName:'魔力',passiveName:'心智通路',passiveDesc:'魔力转化为二级资源，兑现二级资源后返还魔力。',quote:'行了，别催。我在看。',bio:'博洛伦特纳的院长，嫌麻烦，却总在奇怪的地方出现。用书本建立队友间的心智通路，安排攻击、安抚与保护。'},
@@ -44,15 +46,22 @@ Object.assign(SKILLS,NEW_SKILLS);
 SKILLS.ric=[
  {id:'rune',name:'剑式 · 试锋',sub:'DRAWN BLADE',ap:1,kind:'physical',damage:32,hits:1,stagger:10,shift:2,icon:'blade',style:'slash',desc:'32 物理伤害、削韧 10，平衡 +2。施放前平衡至少 +4 或持有剑势时，直接变为强化剑招。',hint:'正向剑战 · 平衡 +2'},
  {id:'bind',name:'枪式 · 咒弹',sub:'HEX REVOLVER',ap:2,kind:'magic',damage:66,hits:1,stagger:28,shift:-3,interrupt:true,cooldown:2,icon:'crosshair',style:'shot',desc:'66 魔法伤害、削韧 28，平衡 −3，冷却 2 轮；可打断指定蓄力，服从抗控。平衡不高于 −4 或目标被束缚时，变为两段封行咒弹。',hint:'负向枪战 · 可打断 · 平衡 −3'},
- {id:'shelter',name:'正域 · 肉身同调',sub:'EMPOWERED FLESH',ap:2,shield:30,selfShield:true,shift:4,cleanse:1,edge:2,icon:'shield',style:'guard',desc:'自身获得 30 护盾与 2 次剑势，平衡 +4；剑势强化之后的剑式。负向过零额外全队获得 10 护盾。',hint:'强化自己 · 剑势 2 次 · 平衡 +4'},
+ {id:'shelter',name:'正域 · 肉身同调',sub:'EMPOWERED FLESH',ap:2,shield:30,selfShield:true,protection:55,selfProtection:true,shift:4,cleanse:1,edge:2,icon:'shield',style:'guard',desc:'自身获得两轮的 30 护盾与 2 次剑势，本轮承伤降低 55%，平衡 +4；剑势强化之后的剑式。负向过零额外全队获得 10 护盾。',hint:'强化自己 · 剑势 2 次 · 平衡 +4'},
  {id:'mend',name:'负域 · 缚足同化',sub:'BINDING DOMAIN',ap:2,shift:-4,cleanse:1,weaken:true,vulnerable:true,icon:'bind',style:'rune',desc:'平衡向负域移动 4 点，压低敌人下一次行动的全部伤害 20%，并令其两轮内受到伤害增加 15%。净化全队 1 层共鸣；束缚同时使枪式获得强化。重复施加不叠加数值。',hint:'削弱敌人 · 枪战准备 · 平衡 −4'},
- {id:'crossing',name:'领域换向',sub:'CROSS THE THRESHOLD',ap:1,crossing:true,shield:12,selfShield:true,once:true,icon:'repeat',style:'guard',desc:'将当前平衡反转（零点时进入 −4），自身获得 12 护盾，每轮一次。保留过零调和；切换剑战或枪战路线。',hint:'主动换向 · 每轮一次'},
+ {id:'crossing',name:'领域换向',sub:'CROSS THE THRESHOLD',ap:1,crossing:true,shield:12,selfShield:true,protection:35,selfProtection:true,once:true,icon:'repeat',style:'guard',desc:'将当前平衡反转（零点时进入 −4），自身获得两轮的 12 护盾，本轮承伤降低 35%，每轮一次。保留过零调和；切换剑战或枪战路线。',hint:'主动换向 · 每轮一次'},
  {...SKILLS.ric.find(s=>s.id==='equilibrium')}
 ];
-SKILLS.knibbs.push({id:'cover',name:'掩护射击',sub:'COVER FIRE',ap:2,cost:3,kind:'physical',damage:43,hits:1,stagger:14,shield:14,icon:'crosshair',style:'shot',desc:'43 物理伤害、削韧 14，全队获得 14 护盾；消耗 3 气息。',hint:'边打边护 · 团队缓冲'});
-SKILLS.apeilia.push({id:'reboot',name:'战术重整',sub:'TACTICAL RESET',ap:1,gain:2,heal:15,self:true,once:true,icon:'wind',style:'guard',desc:'回复 2 连击与自身 15 生命，每轮一次，不改变上一击属性。',hint:'主动准备连击 · 每轮一次'});
+SKILLS.knibbs.push({id:'cover',name:'掩护射击',sub:'COVER FIRE',ap:2,cost:3,kind:'physical',damage:43,hits:1,stagger:14,shield:14,protection:30,icon:'crosshair',style:'shot',desc:'消耗 3 气息，造成 43 物理伤害、削韧 14。全队获得两轮的 14 护盾，并使本轮剩余时间受到的伤害降低 30%；多次保护只取最高值。',hint:'边打边护 · 团队缓冲'});
+SKILLS.apeilia.push({id:'reboot',name:'战术重整',sub:'TACTICAL RESET',ap:1,gain:2,heal:15,self:true,once:true,protection:55,selfProtection:true,icon:'wind',style:'guard',desc:'回复 2 连击与自身 15 生命，并通过战术位移让自身本轮承伤降低 55%。每轮一次，不改变上一击属性。',hint:'主动准备连击 · 每轮一次'});
 for(const hero of HEROES)if(MANA_HERO_OVERRIDES[hero.id])Object.assign(hero,MANA_HERO_OVERRIDES[hero.id]);
 Object.assign(SKILLS,MANA_SKILLS);
+// Functional identity: covering fire, one-hit evasion, self empowerment and surgery.
+Object.assign(SKILLS.knibbs.find(s=>s.id==='cover'),{damage:0,hits:0,stagger:0,shield:0,protection:0,coverFire:true,counterDamage:55,counterStagger:30,once:true,desc:'花2行动点与3气息，盯住选中的敌人。本轮它攻击前，尼布斯先反击55物理伤害、削韧30；若击杀或打断，取消它的出手，否则该次攻击伤害降低50%。满直感时反击伤害增加40%、额外削韧12，并消耗直感。不产生护盾，每轮一次。',hint:'监视敌人 · 出手前截击 · 打断或压制'});
+Object.assign(SKILLS.knibbs.find(s=>s.id==='scatter'),{targeting:'all',damage:9,hits:6,desc:'花2行动点与6气息，向全部存活敌人各发射6枚弹丸，每枚9物理伤害、每敌削韧18。群体攻击不被护卫分担；只有一个敌人时火力低于单发确认。资源与直感只结算一次。',hint:'全体六段 · 清理编队 · 核心命中'});
+Object.assign(SKILLS.apeilia.find(s=>s.id==='reboot'),{protection:0,evasion:1,desc:'花1行动点，回复2连击与自身15生命，并准备一次战术位移：本轮受到的第一段攻击完全闪开，后续段仍会命中。每轮一次，保留上一击属性。',hint:'一段闪避 · 补充连击 · 每轮一次'});
+Object.assign(SKILLS.apeilia.find(s=>s.id==='eden'),{execute:true,desc:'花2行动点与6连击，对选中敌人造成4段各25物理伤害，削韧32。目标生命不高于30%时，处决伤害再提高40%；接在魔法后仍享受交叉火力。',hint:'单体处决 · 高削韧 · 六连击'});
+Object.assign(SKILLS.apeilia.find(s=>s.id==='sentinel'),{targeting:'all',damage:62,desc:'花2行动点与6连击，向全部敌人投放穿透炮火，每敌62魔法伤害、削韧22，无视魔抗。每名敌人分别受击，交叉火力与资源仅结算一次。',hint:'全体穿透 · 清理护卫'});
+Object.assign(SKILLS.ric.find(s=>s.id==='crossing'),{shield:0,protection:0,desc:'花1行动点，将当前平衡反转，零点时进入负4。每轮一次，保留过零调和，切换剑战或枪战路线。本身不提供护盾或减伤。',hint:'纯换向 · 过零调和 · 路线切换'});
 export const SKILL_SLOTS=5;
 export const SOLO_RULES=Object.freeze({ap:ACTION_POINT_RULES.solo,bossHp:.64,bossDamage:.9,stagger:120,staggerRegen:10,coreHits:4,finaleHits:2});
 export const isSolo=state=>state.challengeMode==='solo';
@@ -66,18 +75,30 @@ export const DIFFICULTIES = {
 export function isSkillUnlocked(upgrades,heroId,skillId){
   const skill=skillOf(heroId,skillId);return !!skill&&(!skill.unlockKey||(Array.isArray(upgrades)&&upgrades.includes(skill.unlockKey)));
 }
-export function normalizeLoadouts(upgrades=[],loadouts={}){
+export function normalizeSkillAccess(skillAccess){
+  if(!skillAccess||typeof skillAccess!=='object'||Array.isArray(skillAccess))return null;
+  const result={};
+  for(const h of HEROES){
+    const ids=skillAccess[h.id];
+    // Omitted heroes keep their normal challenge access; an explicit empty list
+    // remains empty. Campaign code supplies the learned list for every member.
+    if(Array.isArray(ids))result[h.id]=[...new Set(ids.filter(id=>skillOf(h.id,id)))];
+  }
+  return result;
+}
+export function normalizeLoadouts(upgrades=[],loadouts={},skillAccess=null){
   const result={};
   for(const h of HEROES){
     const ids=loadouts?.[h.id];
-    const defaults=SKILLS[h.id].filter(s=>!s.unlockKey).slice(0,SKILL_SLOTS).map(s=>s.id);
-    const valid=Array.isArray(ids)&&[4,SKILL_SLOTS].includes(ids.length)&&new Set(ids).size===ids.length&&ids.every(id=>isSkillUnlocked(upgrades,h.id,id));
+    const access=skillAccess?.[h.id],allowed=id=>(!Array.isArray(access)||access.includes(id))&&isSkillUnlocked(upgrades,h.id,id);
+    const defaults=SKILLS[h.id].filter(s=>!s.unlockKey&&allowed(s.id)).slice(0,SKILL_SLOTS).map(s=>s.id);
+    const valid=Array.isArray(ids)&&ids.length<=SKILL_SLOTS&&new Set(ids).size===ids.length&&ids.every(allowed)&&(Array.isArray(access)||[4,SKILL_SLOTS].includes(ids.length));
     result[h.id]=valid?[...ids,...defaults.filter(id=>!ids.includes(id))].slice(0,SKILL_SLOTS):defaults;
   }
   return result;
 }
 export function activeSkills(state,heroId){
-  const loadout=normalizeLoadouts(state.upgrades,state.loadouts)[heroId]||[];
+  const loadout=normalizeLoadouts(state.upgrades,state.loadouts,state.skillAccess)[heroId]||[];
   return loadout.map(id=>skillOf(heroId,id));
 }
 export function createBattle(difficulty='standard',bossId='golem',options={}) {
@@ -85,17 +106,66 @@ export function createBattle(difficulty='standard',bossId='golem',options={}) {
   if(!Object.hasOwn(BOSSES,bossId))bossId='golem';
   const upgrades=[...new Set(Array.isArray(options.upgrades)?options.upgrades.filter(id=>typeof id==='string'&&Object.hasOwn(REWARDS,id)):[])];
   const requested=options.partyIds;
-  const solo=options.mode==='solo'||options.challengeMode==='solo',partySize=solo?1:3;
+  const solo=options.mode==='solo'||options.challengeMode==='solo',partySize=solo?1:Array.isArray(requested)&&[1,2,3].includes(requested.length)?requested.length:3;
   const partyIds=Array.isArray(requested)&&requested.length===partySize&&new Set(requested).size===partySize&&requested.every(id=>HEROES.some(h=>h.id===id))?requested:solo?['knibbs']:['knibbs','apeilia','ric'];
-  const loadouts=normalizeLoadouts(upgrades,options.loadouts);
-  const hp=Math.round(DIFFICULTIES[difficulty].hp*BOSSES[bossId].hpMultiplier*(solo?SOLO_RULES.bossHp:1)),maxAp=baseActionPoints(solo?'solo':'party'),maxStagger=solo?SOLO_RULES.stagger:160;
-  return {version:8,mode:'playing',challengeMode:solo?'solo':'party',difficulty,upgrades,loadouts,round:1,roundCarry:0,ap:maxAp,maxAp,selected:partyIds[0],response:null,
-    heroes:partyIds.map(id=>HEROES.find(h=>h.id===id)).map(h=>({...h,...manaHeroDefaults(h.id),hp:h.maxHp,shield:0,shieldLayers:[],attackBuff:0,attackBuffTurns:0,tauntTurns:0,regenTurns:0,regenAmount:0,resource:['knibbs','haart','qianxing','youmu','patch'].includes(h.id)?10:0,resonance:0,cooldowns:{},used:[],guard:false,intuition:0,lastKind:null,balanceBursts:0,grace:false,verdict:false,reflect:0,ricEdge:0,youmuForm:'doctor',surgicalReady:false,specimen:null,captainTurns:0,captainUsed:false,exhaustedTurns:0,exhaustionFresh:false,patchForm:'observe',records:0,recordProgress:0,patchRetaliation:false,patchObserved:false,patchRecorded:false})),
-    boss:{id:bossId,hp,maxHp:hp,stage:0,core:false,corePhysical:0,coreMagic:0,coreHits:0,coreTurns:2,coreFresh:false,reforms:0,stagger:maxStagger,maxStagger,broken:false,exposed:false,marked:false,weakened:0,vulnerable:0,hardControl:0,healSuppression:0,dot:null,fog:0,charging:false,phasePending:false,mirror:bossId==='duelist'?2:0,spores:bossId==='cantor'?1:0,controlImmune:0,charge:bossId==='warden'?2:0,seals:bossId==='weaver'?2:bossId==='final'?3:0,sealedKind:'physical',lastKind:null,sync:0,finale:false,finalePhysical:0,finaleMagic:0,finaleHits:0,finaleTurns:2,finaleFresh:false,waterLevel:bossId==='tide'?2:0,valveHits:0,heat:bossId==='furnace'?2:0,furnaceOpen:false,prediction:0,forecastSkill:null,decree:'light',violations:0,intent:BOSS_INTENTS[bossId][0],intentTarget:partyIds[0]},
+  const skillAccess=normalizeSkillAccess(options.skillAccess),loadouts=normalizeLoadouts(upgrades,options.loadouts,skillAccess);
+  const tutorialScale=BOSSES[bossId].isTutorial?({scout:[1,1,1],bulwark:[.4,.85,1],conduit:[.18,.65,1]}[bossId][partyIds.length-1]):1;
+  const hp=Math.round((BOSSES[bossId].isTutorial?900:DIFFICULTIES[difficulty].hp)*BOSSES[bossId].hpMultiplier*tutorialScale*(solo?SOLO_RULES.bossHp:1)),maxAp=baseActionPoints({challengeMode:solo?'solo':'party',partySize:partyIds.length}),maxStagger=BOSSES[bossId].isTutorial?{scout:48,bulwark:64,conduit:80}[bossId]:solo?SOLO_RULES.stagger:160;
+  const state={version:10,selectedEnemyId:'boss',mode:'playing',challengeMode:solo?'solo':'party',difficulty,upgrades,loadouts,skillAccess,round:1,roundCarry:0,ap:maxAp,maxAp,selected:partyIds[0],response:null,
+    heroes:partyIds.map(id=>HEROES.find(h=>h.id===id)).map(h=>({...h,...manaHeroDefaults(h.id),hp:h.maxHp,shield:0,shieldLayers:[],attackBuff:0,attackBuffTurns:0,tauntTurns:0,regenTurns:0,regenAmount:0,resource:['knibbs','haart','qianxing','youmu','patch'].includes(h.id)?10:0,resonance:0,cooldowns:{},used:[],guard:false,protection:0,intuition:0,lastKind:null,balanceBursts:0,grace:false,verdict:false,reflect:0,ricEdge:0,youmuForm:'doctor',surgicalReady:false,specimen:null,captainTurns:0,captainUsed:false,exhaustedTurns:0,exhaustionFresh:false,patchForm:'observe',records:0,recordProgress:0,patchRetaliation:false,patchObserved:false,patchRecorded:false,evasion:0,fieldCare:0,executionRefund:false})),
+    boss:{...enemyDefaults(bossId,'boss',BOSSES[bossId].modelId?'minion':'boss'),id:bossId,hp,maxHp:hp,stage:0,core:false,corePhysical:0,coreMagic:0,coreHits:0,coreTurns:2,coreFresh:false,reforms:0,stagger:maxStagger,maxStagger,broken:false,exposed:false,marked:false,weakened:0,vulnerable:0,hardControl:0,healSuppression:0,dot:null,fog:0,charging:false,phasePending:false,mirror:bossId==='duelist'?2:0,spores:bossId==='cantor'?1:0,controlImmune:0,charge:bossId==='warden'?2:0,seals:bossId==='weaver'?2:bossId==='final'?3:0,sealedKind:'physical',lastKind:null,sync:0,finale:false,finaleProtected:false,finalePhysical:0,finaleMagic:0,finaleHits:0,finaleTurns:2,finaleFresh:false,waterLevel:bossId==='tide'?2:0,valveHits:0,heat:bossId==='furnace'?2:0,furnaceOpen:false,prediction:0,forecastSkill:null,decree:'light',violations:0,intent:BOSS_INTENTS[bossId][0],intentTarget:partyIds[0]},
     potions:3,log:[{text:`你们踏入${BOSSES[bossId].region}。${BOSSES[bossId].name}已现身。`,tone:'system'}],stats:{damage:0,healed:0,breaks:0,interrupts:0,actions:0,turns:0},serial:0};
+  state.enemies=[state.boss];
+  if(!options.singleEnemy)seedEncounter(state);
+  return state;
 }
+
+function ensureEnemyState(state){if(!state.enemies)state.enemies=[state.boss];else if((state.boss.unitId||'boss')==='boss')state.enemies[0]=state.boss;}
+function selectedEnemy(state,targetId){ensureEnemyState(state);return enemyById(state,targetId===undefined?(state.selectedEnemyId||state.boss.unitId||'boss'):targetId);}
+export function canUse(state,id,skillId,targetId){const e=selectedEnemy(state,targetId);return e?withEnemy(state,e,()=>canUseCurrent(state,id,skillId)):'未知敌方目标';}
+export function resolvedSkill(state,id,skillId,targetId){const e=selectedEnemy(state,targetId);return e?withEnemy(state,e,()=>resolvedSkillCurrent(state,id,skillId)):skillOf(id,skillId);}
+export function skillPreview(state,id,skillId,targetId){
+ const e=selectedEnemy(state,targetId);if(!e)return {damage:0,hits:0,stagger:0,notes:['未知敌方目标']};
+ const preview=withEnemy(state,e,()=>skillPreviewCurrent(state,id,skillId));
+ const projected=structuredClone(state);projected.boss=projected.enemies?.[0]||projected.boss;projected.ap=Math.max(projected.ap,preview.ap||0);
+ if(!canUse(projected,id,skillId,e.unitId)){
+   const result=useSkill(projected,id,skillId,e.unitId),damages={};
+   for(const event of result.events.filter(event=>event.type==='attack'))for(const target of event.targets||[])if(enemyById(projected,target))damages[target]=(damages[target]||0)+(event.hpLosses?.[target]??event.amounts?.[target]??0);
+   preview.damage=damages[e.unitId]||0;preview.targetDamages=damages;preview.totalDamage=Object.values(damages).reduce((a,b)=>a+b,0);
+   preview.stagger=Math.max(0,e.stagger-enemyById(projected,e.unitId).stagger);
+   preview.resourceAfter=heroOf(projected,id).resource;
+ }
+ if(livingEnemies(state).some(other=>other.guardianFor===e.unitId&&!other.broken&&!other.hardControl)&&preview.targeting!=='all')preview.notes.push('护卫分担此目标50%的单体伤害；先击破护卫或使用群体攻击可绕过分担。');
+ return preview;
+}
+export function useSkill(state,id,skillId,targetId){
+ const e=selectedEnemy(state,targetId);if(!e)return {ok:false,error:'未知敌方目标',events:[]};
+ const result=withEnemy(state,e,()=>useSkillCurrent(state,id,skillId));
+ ensureEnemySelection(state);stampEnemyEvents(state,result.events);return result;
+}
+export function enemyThreats(state){return livingEnemies(state).map((e,i)=>withEnemy(state,e,()=>{const spec=attackSpec(state);return {id:e.unitId,name:BOSSES[e.id].name,intent:intentInfo(state),order:i+1,targets:spec.group?alive(state).map(h=>h.id):[enemyTarget(state)],damage:scaled(state,spec.damage||0),hits:spec.hits||1,kind:spec.kind,interruptible:canInterrupt(state)};})).sort((a,b)=>(!!enemyById(state,a.id).recordedIntent)-(!!enemyById(state,b.id).recordedIntent)).map((x,i)=>({...x,order:i+1}));}
+function spawnEnemy(state,id,{role='minion',guardianFor=null}={},events=[]){
+ if(livingEnemies(state).length>=ENEMY_LIMITS.alive||state.enemies.length>=ENEMY_LIMITS.history)return null;
+ const base=createBattle(state.difficulty,id,{mode:state.challengeMode,partyIds:state.heroes.map(h=>h.id),singleEnemy:true}).boss;
+ const unitId='enemy-'+state.enemies.length;Object.assign(base,enemyDefaults(id,unitId,role),{guardianFor,intentTarget:alive(state)[state.enemies.length%alive(state).length].id});
+ state.enemies.push(base);events.push({type:'spawn',actor:state.boss.unitId,targets:[unitId],label:BOSSES[id].name+'加入战斗'});return base;
+}
+function seedEncounter(state){
+ if(['patrol','weaver'].includes(state.boss.id))spawnEnemy(state,'escort',{guardianFor:'boss'});
+ if(state.boss.id==='warden')spawnEnemy(state,'relay',{role:'device'});
+ if(state.boss.id==='relay_guard'){state.boss.role='device';spawnEnemy(state,'escort');spawnEnemy(state,'drone');}
+}
+function defeatEnemy(state,events,label){
+ const e=state.boss;if(e.defeated)return;e.defeated=true;e.hp=0;e.charging=false;e.broken=false;e.exposed=false;e.cover=null;e.confusion=null;e.recordedIntent=null;e.dot=null;e.core=false;e.coreFresh=false;e.corePhysical=0;e.coreMagic=0;e.coreHits=0;e.finale=false;e.finaleFresh=false;e.finaleProtected=false;e.finalePhysical=0;e.finaleMagic=0;e.finaleHits=0;
+ events.push({type:'enemy-defeat',actor:e.unitId,targets:[e.unitId],label});
+ if(e.role==='device')for(const other of livingEnemies(state)){other.charge=0;other.supportCharge=0;if(!other.core&&!other.finale){other.broken=true;other.stagger=0;other.hardControl=0;other.controlImmune=0;}events.push({type:'break',actor:other.unitId,targets:[other.unitId],label:'供能中断 · 停机'});}
+ ensureEnemySelection(state);
+ if(!livingEnemies(state).length){state.mode='victory';events.push({type:'victory',actor:e.unitId,targets:[e.unitId],label});log(state,'敌方全部失去行动能力。战斗结束。','good');}
+}
+
 export function heroOf(state,id){return state.heroes.find(h=>h.id===id);}
 export function skillOf(id,skill){return Object.hasOwn(SKILLS,id)?SKILLS[id].find(s=>s.id===skill):undefined;}
+export const isDefensiveSkill=skill=>!!(skill&&(skill.protection||skill.personalProtection||skill.shield||skill.allShield||skill.weaken||skill.selfGuard||skill.transform||skill.coverFire||skill.evasion||skill.fieldCare||skill.confuse||skill.recordIntent));
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 function log(state,text,tone='normal'){state.log.unshift({text,tone});if(state.log.length>80)state.log.length=80;}
 function alive(state){return state.heroes.filter(h=>h.hp>0);}
@@ -115,23 +185,28 @@ function tickWound(state,events){
 // Capture the phase at this event, before later events can advance the battle.
 function bossPhaseEvent(state,type,label){
   const b=state.boss;
-  return {type,actor:'boss',targets:['boss'],bossId:b.id,label,hpAfter:b.hp,phaseAfter:{stage:b.stage,core:b.core,finale:b.finale}};
+  return {type,actor:state.boss.unitId||'boss',targets:[state.boss.unitId||'boss'],bossId:b.id,label,hpAfter:b.hp,phaseAfter:{stage:b.stage,core:b.core,finale:b.finale}};
 }
 const usesMana=h=>h.resourceName==='魔力';
 const manaRefund=(h,s)=>usesMana(h)?manaRefundFor(h,Math.min(h.secondary||0,s.secondaryCost||0)):0;
-const allyActed=(state,h,skillId)=>isSolo(state)?h.used.some(id=>id!==skillId):state.heroes.some(other=>other.id!==h.id&&other.used.length>0);
+const allyActed=(state,h,skillId)=>isSolo(state)||state.heroes.length===1?h.used.some(id=>id!==skillId):state.heroes.some(other=>other.id!==h.id&&other.used.length>0);
 function resourceAfterSkill(h,s,alternating=false){
   if(usesMana(h))return manaAfterSkill(h,s).resource;
   return clamp(h.resource-(s.cost||0)+(s.gain||0)+(s.shift||0)+(alternating?1:0),h.id==='ric'?-10:0,h.maxResource);
 }
-export function canUse(state,id,skillId){
+function canUseCurrent(state,id,skillId){
   const h=heroOf(state,id),source=skillOf(id,skillId);
   if(state.mode!=='playing')return '战斗已结束';
   if(!h||!source)return '未知技能';
+  if(Array.isArray(state.skillAccess?.[id])&&!state.skillAccess[id].includes(skillId))return '此技能尚未学会，推进旅程后解锁';
   if(!isSkillUnlocked(state.upgrades,id,skillId))return '此技能尚未在战间奖励中解锁';
   if(!activeSkills(state,id).some(s=>s.id===skillId))return '此技能尚未装配，请在战间营地调整';
   const {skill:s}=tunedSkill(state,h,source);
   if(h.hp<=0)return '角色已倒下';
+  if(state.boss.defeated)return '目标已倒下';
+  if(s.coverFire&&state.boss.cover)return '该目标本轮已有掩护射击';
+  if(s.confuse&&state.boss.confusion)return '该目标已有杀意改写';
+  if(s.recordIntent&&state.boss.recordedIntent)return '当前预告已被记录';
   if(state.ap<s.ap)return '行动点不足';
   if(s.cost&&h.resource<s.cost)return `${h.resourceName}不足（需要 ${s.cost}）`;
   if(usesMana(h)){const error=manaSkillError(state,h,s);if(error)return error;}
@@ -144,14 +219,14 @@ export function canUse(state,id,skillId){
 }
 function canInterrupt(state){
   const b=state.boss;
-  return !b.core&&!b.finale&&!b.broken&&!b.controlImmune&&(b.charging||['tide_breaker','furnace_drop','orbit_collapse','edict_audit'].includes(b.intent)||(b.id==='duelist'&&['pierce','duel'].includes(b.intent))||(b.id==='cantor'&&['drain','bloom'].includes(b.intent))||(b.id==='warden'&&b.intent==='storm')||(b.id==='weaver'&&['silence','rewrite'].includes(b.intent))||(b.id==='final'&&b.intent==='zero_pulse'));
+  return !b.core&&!b.finale&&!b.broken&&!b.controlImmune&&(b.charging||['relay_blast','relay_feed','drone_charge','escort_stamp','scout_ram','bulwark_stamp','conduit_discharge','tide_breaker','furnace_drop','orbit_collapse','edict_audit'].includes(b.intent)||(b.id==='duelist'&&['pierce','duel'].includes(b.intent))||(b.id==='cantor'&&['drain','bloom'].includes(b.intent))||(b.id==='warden'&&b.intent==='storm')||(b.id==='weaver'&&['silence','rewrite'].includes(b.intent))||(b.id==='final'&&b.intent==='zero_pulse'));
 }
 function breakBoss(state,events,label='架势击破'){
   const b=state.boss;if(b.core||b.finale||b.broken)return;
   if(b.controlImmune){b.stagger=Math.max(1,b.stagger);return;}
   const interrupted=canInterrupt(state);
   b.stagger=0;b.broken=true;b.hardControl=0;state.stats.breaks++;if(interrupted)state.stats.interrupts++;b.charging=false;
-  events.push({type:'break',actor:'boss',targets:['boss'],label});
+  events.push({type:'break',actor:state.boss.unitId||'boss',targets:[state.boss.unitId||'boss'],label});
   log(state,`${label}！${bossName(state)}韧性归零，受到伤害 +50%；恢复架势后有一整轮抗控。`,'good');
 }
 function reduceStagger(state,n,events){
@@ -160,7 +235,7 @@ function reduceStagger(state,n,events){
 }
 function coreCheck(state,events){
   const b=state.boss;
-  if(b.core&&(isSolo(state)?b.coreHits>=SOLO_RULES.coreHits:b.corePhysical>=3&&b.coreMagic>=3)){state.mode='victory';events.push({type:'victory',actor:'boss',targets:['boss'],label:'核心净化'});log(state,isSolo(state)?'连续命中切断了核心供能。博洛伦的雾，散了。':'物理与魔法同时击穿核心。博洛伦的雾，散了。','good');}
+  if(b.core&&(isSolo(state)?b.coreHits>=SOLO_RULES.coreHits:b.corePhysical>=3&&b.coreMagic>=3)){defeatEnemy(state,events,'核心净化');log(state,isSolo(state)?'连续命中切断了核心供能。博洛伦的雾，散了。':'物理与魔法同时击穿核心。博洛伦的雾，散了。','good');}
 }
 function tunedSkill(state,h,s){
   const t=usesMana(h)?tuneManaSkill(state,h,s):{...s},notes=[],empowerNotes=t.empowerReason?[t.empowerReason]:[],owned=id=>(state.upgrades||[]).includes(id);
@@ -179,6 +254,7 @@ function tunedSkill(state,h,s){
     if(owned('youmu_transplant')&&t.transplant){t.shield=26;t.heal=40;t.desc=`将${SPECIMEN_NAMES[h.specimen]}标本转化为全队 26 护盾，主目标回复 40、其他人 10；支付 2 气息 / 2 AP，标本随后消耗。`;empowerNotes.push('无菌移植：全队护盾 26、主目标治疗 40');}
     if(owned('youmu_resolve')&&s.id==='bloodoath'&&t.transform){t.shield=36;t.desc='花 1 AP / 2 气息，主动献血至 40% 生命（已低于则不扣），游墓接管并嘲讽两轮，获得 36 护盾；承伤 −35%，退出后虚脱两轮，每场一次。';}
   }
+  if(h.id==='knibbs'&&s.coverFire&&h.intuition>=3)empowerNotes.push('直感反制：预备截击伤害提高40%、额外削韧12，并消耗满层直感');
   const intuition=h.id==='knibbs'&&h.intuition>=3&&(['focus','scatter'].includes(s.id)||s.id==='response_counter');
   const alternating=h.id==='apeilia'&&s.kind&&h.lastKind&&h.lastKind!==s.kind&&s.id!=='response_counter';
   let consumeGrace=false,consumeVerdict=false;
@@ -188,13 +264,14 @@ function tunedSkill(state,h,s){
   if(owned('apeilia_zero')&&s.id==='sentinel'&&alternating&&h.resource>=6){t.ap=1;empowerNotes.push('零时点火：6 连击与物理衔接，哨兵仅耗 1 行动点');}
   if(owned('ric_grace')&&s.id==='shelter'&&h.grace){t.ap=1;t.shield=38;t.desc='消费余响，1 AP 获得自身 38 护盾和 2 次剑势，平衡 +4；负向过零额外全队获得 10 护盾。';consumeGrace=true;empowerNotes.push('余响同调：消耗余响，1 行动点施放 38 自身护盾与剑势');}
   if(owned('ric_verdict')&&s.id==='rune'&&h.verdict){t.name='剑式 · 清账三连';t.damage=24;t.hits=3;t.stagger=20;t.desc='1 AP，3 × 24 物理伤害、削韧 20，平衡 +2；消费清账，若持有剑势也会消费 1 次。';consumeVerdict=true;empowerNotes.push('清账三连：消耗清账，3 × 24 物理伤害 / 削韧 20');}
+  if(s.execute&&state.boss.hp>0&&state.boss.hp/state.boss.maxHp<=.30){t.damage*=1.4;empowerNotes.push('处决窗口：目标生命不高于30%，伤害增加40%');}
   if(s.resetBalance)t.shift=-h.resource;
   if(intuition){t.damage*=1.4;t.stagger=(t.stagger||0)+12;notes.push('直感满层：伤害 +40%、削韧 +12');}
   if(alternating){t.damage*=1.25;t.stagger=(t.stagger||0)+6;notes.push('交叉火力：伤害 +25%、削韧 +6、连击 +1');}
   if(h.id==='apeilia'&&s.id==='blade'&&h.lastKind==='physical'){t.gain=1;notes.push('连续物理：螳螂刀仅获得 1 连击');}
   if(owned('knibbs_steadyhands')&&s.id==='breathe'&&h.intuition>=2){t.selfAttackBuff=30;empowerNotes.push('稳手装填：至少 2 直感时，下一次主动攻击增伤 30%，两轮内有效');}
   if(owned('knibbs_crossfire')&&s.id==='cover'&&state.boss.marked){t.stripBuffs=1;empowerNotes.push('交叉封锁：掩护射击命中前额外清除 1 层敌方增益');}
-  if(owned('apeilia_brace')&&s.id==='reboot'&&h.lastKind==='magic'){t.selfGuard=true;empowerNotes.push('折返防线：魔法攻击后重整，同时进入本轮个人防御');}
+  if(owned('apeilia_brace')&&s.id==='reboot'&&h.lastKind==='magic'){t.heal=30;empowerNotes.push('折返防线：魔法攻击后重整，维修恢复提高到30生命');}
   if(owned('apeilia_puncture')&&s.id==='sentinel'&&(state.boss.broken||state.boss.exposed)){t.gain=2;empowerNotes.push('弱点回收：打入破绽额外回收 2 连击');}
   if(owned('ric_erosion')&&s.id==='mend'){t.healSuppression=2;empowerNotes.push('负域侵蚀：敌方两轮内治疗效果降低 50%');}
   if(owned('ric_discipline')&&s.id==='bind'&&(h.resource<=-4||state.boss.weakened)){t.stripBuffs=2;empowerNotes.push('封行剥夺：强化咒弹命中前清除 2 层敌方增益');}
@@ -205,7 +282,7 @@ function tunedSkill(state,h,s){
   notes.push(...empowerNotes);
   return {skill:t,intuition,alternating,consumeGrace,consumeVerdict,notes,empowered:empowerNotes.length>0&&(!usesMana(h)||!manaSkillError(state,h,t)),empowerReason:empowerNotes.join('；')};
 }
-export function resolvedSkill(state,heroId,skillId){const h=heroOf(state,heroId),s=skillOf(heroId,skillId);return h&&s?tunedSkill(state,h,s).skill:s;}
+function resolvedSkillCurrent(state,heroId,skillId){const h=heroOf(state,heroId),s=skillOf(heroId,skillId);return h&&s?tunedSkill(state,h,s).skill:s;}
 function damageFactor(b,s){
   let factor=1;
   if(b.id==='golem'&&s.kind==='magic'&&!s.pierce)factor*=.82;
@@ -240,7 +317,7 @@ function trackBossSkill(b,s,actor){
   }
   if(b.id==='arbiter'&&((b.decree==='light'&&s.ap>=2)||(b.decree==='heavy'&&s.ap===1)))b.violations=Math.min(3,b.violations+1);
 }
-export function skillPreview(state,heroId,skillId){
+function skillPreviewCurrent(state,heroId,skillId){
   const h=heroOf(state,heroId),s=skillOf(heroId,skillId);
   if(!h||!s)return {damage:0,hits:0,stagger:0,resourceBefore:0,resourceAfter:0,notes:['未知技能']};
   const {skill:t,alternating,notes,empowered,empowerReason}=tunedSkill(state,h,s),b={...state.boss};let damage=0;
@@ -259,8 +336,8 @@ export function skillPreview(state,heroId,skillId){
   if(state.boss.id==='duelist'&&state.boss.intent==='mirror'&&!state.boss.broken&&t.kind==='physical'&&state.boss.mirror){
     // Backlash may consume a retaliation or trigger another boss phase.
     // Resolve this conditional chain on a copy instead of duplicating its rules.
-    if(!canUse(state,heroId,skillId)){
-      const projected=structuredClone(state),result=useSkill(projected,heroId,skillId);
+    if(!canUseCurrent(state,heroId,skillId)){
+      const projected=structuredClone(state),result=useSkill(projected,heroId,skillId,state.boss.unitId);
       damage=result.events.filter(event=>event.type==='attack'&&event.targets?.includes('boss')).reduce((total,event)=>total+(event.amount||0),0);
       resourceAfter=heroOf(projected,heroId).resource;
       const backlash=result.events.find(event=>event.label==='折镜反噬');
@@ -280,7 +357,7 @@ export function skillPreview(state,heroId,skillId){
     notes.push(t.kind===state.boss.sealedKind?(state.boss.seals>0&&!s.pierce?'命中封存系：伤害 −45%':'封页已破或攻击穿透抗性'):`拆除 ${Math.min(state.boss.seals,t.hits||1)} 封页`);
   }
   if(state.boss.id==='final'&&t.kind){
-    if(state.boss.finale)notes.push(isSolo(state)?`独狼终幕：任意属性命中 +${Math.min(SOLO_RULES.finaleHits-b.finaleHits,t.hits||1)}；仍需战术应对与存活`:`终幕登记：${t.kind==='physical'?'物理':'魔法'}命中完成；还需另一系与战术应对`);
+    if(state.boss.finale)notes.push(isSolo(state)?`独狼终幕：任意属性命中 +${Math.min(SOLO_RULES.finaleHits-b.finaleHits,t.hits||1)}；仍需角色防护与存活`:`终幕登记：${t.kind==='physical'?'物理':'魔法'}命中完成；还需另一系与角色防护`);
     else if(state.boss.lastKind&&state.boss.lastKind!==t.kind)notes.push('双系同步 +1，归零屏障 −1');
   }
   if(state.boss.id==='tide'&&t.damage)notes.push(`三击排水：水位 ${state.boss.waterLevel} → ${b.waterLevel}，阀击进度 ${b.valveHits}/3`);
@@ -291,8 +368,18 @@ export function skillPreview(state,heroId,skillId){
   if(t.shift&&h.resource>0&&resourceAfter<=0)notes.push('正向过零：全队额外回复 8 生命');
   if(t.interrupt&&canInterrupt(state))notes.push('直接打断当前预告');
   if(state.boss.controlImmune&&t.damage)notes.push('本轮抗控：无法打断，韧性最低保留 1');
-  if(state.boss.exposed&&t.damage)notes.push('应对破韧留下破绽：伤害 +50%，敌人本轮仍会出招');
+  if(state.boss.exposed&&t.damage)notes.push('反击破韧留下破绽：伤害 +50%，敌人本轮仍会出招');
+  if(t.targeting==='all')notes.push('攻击当前全部存活敌人；每名敌人分别结算伤害，行动点、资源与回转被动仅支付或触发一次。');
+  if(t.coverFire)notes.push('本轮监视这个敌人：它开始攻击前反击55物理/削韧30，满直感强化40%并额外削韧12。击杀或破韧取消出手，否则本次全部伤害降低50%。');
+  if(t.evasion)notes.push('本轮闪开受到的第一段攻击；多段攻击的后续段仍会命中。');
+  if(t.fieldCare)notes.push('准备切除并抑制敌人治疗；本轮首次受伤后若仍存活，立即自行包扎恢复'+t.fieldCare+'生命。');
+  if(t.confuse)notes.push('改写下次杀意：单体攻击转向另一名敌人；群体攻击或敌方只剩一人时，改为该次伤害降低55%。不影响终幕规则。');
+  if(t.deviceInterrupt)notes.push('选中装置时可直接打断供能或放电；其他角色仍可通过削韧或击毁装置阻止供能。');
+  if(t.recordIntent)notes.push('记录当前预告：该招本轮最后出手，伤害降低25%，取消治疗、召唤、补充护层与抽取资源的附加效果；核心与终幕附加规则不受影响。');
   if(t.shield)notes.push(`${t.selfShield?'自身':'全队'}护盾 +${t.shield}`);
+  if(t.protection)notes.push(`${t.selfProtection?'自身':'全队'}本轮受到的伤害减少 ${t.protection}%；同类保护只取最高值，之后再扣护盾`);
+  if(t.personalProtection)notes.push(`施法者自身本轮保护提高至 ${t.personalProtection}%；队友仍按团队保护结算，不叠加相乘`);
+  if(state.boss.finale&&isDefensiveSkill(t))notes.push('这次角色防护会建立本轮的终幕防护；完成命中登记后，存活度过最后放电即可停机');
   if(t.allShield)notes.push(`额外全队护盾 +${t.allShield}`);
   if(t.reflect)notes.push(`钉刺反击 +${t.reflect} 次：受到物理攻击后回击 28 物理伤害`);
   if(t.heal)notes.push(t.self?`自身回复 ${t.heal}`:`最低生命比例回复 ${t.heal}，其他人 +${t.allHeal||0}`);
@@ -308,11 +395,11 @@ export function skillPreview(state,heroId,skillId){
   if(t.transform)notes.push('船长接管两轮，退出后虚脱两轮；每战一次');
   if(t.captainFinish)notes.push('炮击后立即结束接管并进入虚脱');
   const stagger=state.boss.core||state.boss.finale||state.boss.broken?0:t.interrupt&&canInterrupt(state)?state.boss.stagger:Math.min(t.stagger||0,Math.max(0,state.boss.stagger-(state.boss.controlImmune?1:0)));
-  return {damage,hits:t.damage?t.hits||1:0,stagger,resourceBefore:h.resource,resourceAfter,notes,empowered,empowerReason,ap:t.ap,cost:t.cost||0,refund:manaRefund(h,t),heal:t.heal||0,allHeal:t.allHeal||0,shield:t.shield||0,allShield:t.allShield||0,cleanse:t.cleanse||0,allCleanse:t.allCleanse||0,weaken:!!t.weaken,vulnerable:!!t.vulnerable,hardControl:!!t.hardControl,stripBuffs:t.stripBuffs||0,self:!!t.self,selfShield:!!t.selfShield,reflect:t.reflect||0,regenTurns:t.regenTurns||0,regenAmount:t.regenAmount||0,revive:t.revive||0,attackBuff:t.attackBuff||t.selfAttackBuff||0,mark:!!t.mark,name:t.name,description:t.desc,desc:t.desc,icon:t.icon,style:t.style,kind:t.kind,variant:t.variant||null,variantReason:empowerReason,secondaryBefore:h.secondary||0,secondaryAfter:usesMana(h)?manaAfterSkill(h,t).secondary:0,secondarySpend:t.secondaryCost||0,secondaryCost:t.secondaryCost||0,secondaryGain:t.secondaryGain||0,recordsBefore:h.secondary||0,recordsAfter:usesMana(h)?manaAfterSkill(h,t).secondary:0};
+  return {targeting:t.targeting||(t.damage||t.coverFire||t.confuse||t.recordIntent||t.weaken||t.hardControl||t.vulnerable?'single':t.self||t.selfShield?'self':'allies'),coverFire:!!t.coverFire,counterDamage:t.counterDamage||0,counterStagger:t.counterStagger||0,evasion:t.evasion||0,fieldCare:t.fieldCare||0,confuse:!!t.confuse,recordIntent:!!t.recordIntent,protection:t.protection||0,personalProtection:t.personalProtection||0,selfProtection:!!t.selfProtection,defensive:isDefensiveSkill(t),damage,hits:t.damage?t.hits||1:0,stagger,resourceBefore:h.resource,resourceAfter,notes,empowered,empowerReason,ap:t.ap,cost:t.cost||0,refund:manaRefund(h,t),heal:t.heal||0,allHeal:t.allHeal||0,shield:t.shield||0,allShield:t.allShield||0,cleanse:t.cleanse||0,allCleanse:t.allCleanse||0,weaken:!!t.weaken,vulnerable:!!t.vulnerable,hardControl:!!t.hardControl,stripBuffs:t.stripBuffs||0,self:!!t.self,selfShield:!!t.selfShield,reflect:t.reflect||0,regenTurns:t.regenTurns||0,regenAmount:t.regenAmount||0,revive:t.revive||0,attackBuff:t.attackBuff||t.selfAttackBuff||0,mark:!!t.mark,name:t.name,description:t.desc,desc:t.desc,icon:t.icon,style:t.style,kind:t.kind,variant:t.variant||null,variantReason:empowerReason,secondaryBefore:h.secondary||0,secondaryAfter:usesMana(h)?manaAfterSkill(h,t).secondary:0,secondarySpend:t.secondaryCost||0,secondaryCost:t.secondaryCost||0,secondaryGain:t.secondaryGain||0,recordsBefore:h.secondary||0,recordsAfter:usesMana(h)?manaAfterSkill(h,t).secondary:0};
 }
 export function heroStatus(state,heroId){
   const h=heroOf(state,heroId);if(!h)return '';
-  if(h.id==='knibbs')return h.intuition>=3?'直感 3/3 · 强技 / 迎击 +40% 伤害，削韧 +12':`直感 ${h.intuition}/3 · 每次攻击积攒 1`;
+  if(h.id==='knibbs')return h.intuition>=3?'直感 3/3 · 强技 / 掩护截击 +40% 伤害，削韧 +12':`直感 ${h.intuition}/3 · 每次攻击积攒 1`;
   if(h.id==='apeilia')return !h.lastKind?'交叉火力 · 物理 / 魔法交替强化':`上一击${h.lastKind==='physical'?'物理':'魔法'} · 下一${h.lastKind==='physical'?'魔法':'物理'}技 +25%伤害 / 6削韧 / 1连击`;
   if(h.id==='haart')return manaStatus(h);
   if(h.id==='qianxing')return manaStatus(h);
@@ -348,7 +435,7 @@ export function bossSummary(state){
   if(b.id==='orrery')result.push({label:'测绘锁定',value:`${b.prediction}/3 · 重复上一项攻击 +1，换招 −1`,tone:b.prediction>=2?'warning':'normal'},{label:'已记录',value:b.forecastSkill?skillOf(...b.forecastSkill.split('/'))?.name||'上一项攻击':'尚未记录；反击与辅助技能不纳入预测',tone:'normal'});
   if(b.id==='arbiter')result.push({label:'现行法令',value:b.decree==='light'?'轻击令 · 允许 1 AP 攻击':'重击令 · 允许至少 2 AP 攻击',tone:'warning'},{label:'违令',value:`${b.violations}/3 · 增强本轮判罚；辅助技能不计，新回合清零换令`,tone:b.violations?'warning':'normal'});
   if(b.id==='final'){
-    if(b.finale)result.push({label:'终幕',value:`${isSolo(state)?`任意属性 ${b.finaleHits}/${SOLO_RULES.finaleHits}`:`物理 ${b.finalePhysical}/1 · 魔法 ${b.finaleMagic}/1`} · ${state.response?'应对已准备':'还需准备应对'}`,tone:'warning'},{label:'剩余',value:`${b.finaleTurns} 个完整回合 · 命中与应对齐备后存活结束回合`,tone:'warning'});
+    if(b.finale)result.push({label:'终幕',value:`${isSolo(state)?`任意属性 ${b.finaleHits}/${SOLO_RULES.finaleHits}`:`物理 ${b.finalePhysical}/1 · 魔法 ${b.finaleMagic}/1`} · ${b.finaleProtected?'角色防护已建立':'还需使用角色防护技能'}`,tone:'warning'},{label:'剩余',value:`${b.finaleTurns} 个完整回合 · 命中与角色防护齐备后存活结束回合`,tone:'warning'});
     else result.push({label:'归零屏障',value:`${b.seals} / 3 · 减伤 ${b.seals*12}%`,tone:b.seals?'warning':'good'},{label:'双系同步',value:`${b.sync} / 3 · ${b.lastKind?`上次${b.lastKind==='physical'?'物理':'魔法'}，换系拆 1 屏障`:'先攻击，再用另一系衔接'}${b.sync>=3?' · 伤害 +20%':''}`,tone:b.sync>=3?'good':'normal'});
   }
   if(b.id!=='golem')result.push({label:'阶段',value:b.finale?'第三阶段 · 停机过载':b.stage?'第二阶段':'第一阶段',tone:b.stage?'warning':'normal'});
@@ -357,7 +444,10 @@ export function bossSummary(state){
   return result;
 }
 function dealToBoss(state,skill,events,actor,{response=false}={}){
-  const b=state.boss,wasCore=b.core,wasFinale=b.finale,h=heroOf(state,actor),reflect=b.id==='duelist'&&b.intent==='mirror'&&!b.broken&&b.mirror&&skill.kind==='physical'&&!response,reflection=7+b.mirror*3;
+  const b=state.boss;if(b.defeated)return;
+  const guardian=skill.targeting!=='all'&&!skill.bypassGuard&&!b.core&&!b.finale?livingEnemies(state).find(e=>e.guardianFor===b.unitId&&!e.broken&&!e.hardControl):null;
+  if(guardian){const split={...skill,damage:skill.damage*.5,bypassGuard:true,stagger:0,interrupt:false,mark:false};withEnemy(state,guardian,()=>dealToBoss(state,split,events,actor,{response:true}));skill={...skill,damage:skill.damage*.5};}
+  const wasCore=b.core,wasFinale=b.finale,h=heroOf(state,actor),reflect=b.id==='duelist'&&b.intent==='mirror'&&!b.broken&&b.mirror&&skill.kind==='physical'&&!response,reflection=7+b.mirror*3;
   let total=0;const hitAmounts=[];
   for(let i=0;i<(skill.hits||1);i++){
     if(wasCore){if(skill.kind==='physical')b.corePhysical=Math.min(3,b.corePhysical+1);if(skill.kind==='magic')b.coreMagic=Math.min(3,b.coreMagic+1);b.coreHits=Math.min(SOLO_RULES.coreHits,b.coreHits+1);}
@@ -368,27 +458,23 @@ function dealToBoss(state,skill,events,actor,{response=false}={}){
   }
   trackBossSkill(b,skill,actor);
   state.stats.damage+=total;
-  events.push({type:'attack',actor,targets:['boss'],bossId:b.id,skillId:skill.id,variant:skill.variant||null,kind:skill.kind,style:skill.style,hits:skill.hits||1,amount:total,amounts:{boss:total},hpLosses:{boss:total},hitAmounts:{boss:hitAmounts},absorbedAmounts:{boss:0},label:skill.name});
-  if(wasCore){log(state,`${h.short} · ${skill.name}：核心 ${isSolo(state)?`任意命中 ${b.coreHits}/${SOLO_RULES.coreHits}`:`物理 ${b.corePhysical}/3，魔法 ${b.coreMagic}/3`}。`,'good');coreCheck(state,events);return;}
-  if(wasFinale){log(state,`${h.short} · ${skill.name}：接入 ${isSolo(state)?`任意命中 ${b.finaleHits}/${SOLO_RULES.finaleHits}`:`物理 ${b.finalePhysical}/1，魔法 ${b.finaleMagic}/1`}；准备应对，守住最后放电后关闭核心。`,'good');return;}
-  log(state,`${h.short} · ${skill.name}，造成 ${total} ${skill.kind==='magic'?'魔法':'物理'}伤害。`);
+  events.push({type:'attack',actor,targets:[state.boss.unitId||'boss'],bossId:b.id,skillId:skill.id,variant:skill.variant||null,kind:skill.kind,style:skill.style,hits:skill.hits||1,amount:total,amounts:{[b.unitId||'boss']:total},hpLosses:{[b.unitId||'boss']:total},hitAmounts:{[b.unitId||'boss']:hitAmounts},absorbedAmounts:{[b.unitId||'boss']:0},label:skill.name});
+  if(wasCore){log(state,`${h?.short||BOSSES[enemyById(state,actor)?.id]?.name||'反制'} · ${skill.name}：核心 ${isSolo(state)?`任意命中 ${b.coreHits}/${SOLO_RULES.coreHits}`:`物理 ${b.corePhysical}/3，魔法 ${b.coreMagic}/3`}。`,'good');coreCheck(state,events);return;}
+  if(wasFinale){log(state,`${h?.short||BOSSES[enemyById(state,actor)?.id]?.name||'反制'} · ${skill.name}：接入 ${isSolo(state)?`任意命中 ${b.finaleHits}/${SOLO_RULES.finaleHits}`:`物理 ${b.finalePhysical}/1，魔法 ${b.finaleMagic}/1`}；使用角色防护技能，守住最后放电后关闭核心。`,'good');return;}
+  log(state,`${h?.short||BOSSES[enemyById(state,actor)?.id]?.name||'反制'} · ${skill.name}，造成 ${total} ${skill.kind==='magic'?'魔法':'物理'}伤害。`);
   if(b.hp<=0){
     if(b.id==='final'){
-      b.hardControl=0;b.dot=null;b.finale=true;b.finaleFresh=true;b.finaleTurns=2;b.finalePhysical=0;b.finaleMagic=0;b.finaleHits=0;b.broken=false;b.exposed=false;b.charging=false;b.controlImmune=0;b.seals=0;
+      b.hardControl=0;b.dot=null;b.finale=true;b.finaleProtected=false;b.finaleFresh=true;b.finaleTurns=2;b.finalePhysical=0;b.finaleMagic=0;b.finaleHits=0;b.broken=false;b.exposed=false;b.charging=false;b.controlImmune=0;b.seals=0;
       events.push(bossPhaseEvent(state,'phase','停机过载'));
-      log(state,`核心进入停机过载！接下来 2 个完整回合内，${isSolo(state)?'以任意属性累计命中 2 次':'以物理与魔法各命中一次完成双系接入'}，再准备战术应对。守住最后放电即可停机；超时则核心恢复 22% 生命。`,'warning');return;
+      log(state,`核心进入停机过载！接下来 2 个完整回合内，${isSolo(state)?'以任意属性累计命中 2 次':'以物理与魔法各命中一次完成双系接入'}，再使用角色防护技能。守住最后放电即可停机；超时则核心恢复 22% 生命。`,'warning');return;
     }
     if(b.id!=='golem'){
-      state.mode='victory';b.charging=false;b.broken=false;b.exposed=false;state.response=null;
-      const endings={duelist:['折镜崩落','镜片落地，回廊重归寂静。'],cantor:['菌冠寂灭','菌丝消散，紫雾中的面具终于落下。'],warden:['风暴熄止','雷针熄灭，栈桥上只剩远处的风声。'],weaver:['封页解开','封存的文字重新浮现，通向天井的路被写了出来。']};
-      const ending=endings[b.id]||['通路已打开','设施停止运转，前方的通道重新开放。'];
-      events.push({type:'victory',actor:'boss',targets:['boss'],label:ending[0]});
-      log(state,`${bossName(state)}已被击败。${ending[1]}`,'good');return;
+      defeatEnemy(state,events,'敌人倒下');return;
     }
     b.hardControl=0;b.dot=null;b.core=true;b.coreFresh=true;b.corePhysical=0;b.coreMagic=0;b.coreHits=0;b.coreTurns=2;b.broken=false;b.exposed=false;b.charging=false;b.phasePending=false;b.fog=5;
     events.push(bossPhaseEvent(state,'core','核心暴露'));log(state,`躯壳崩解！在接下来的 2 个完整回合内，${isSolo(state)?'对核心累计造成 4 次任意属性命中':'对核心造成 3 次物理与 3 次魔法命中'}。`,'warning');return;
   }
-  const stage=b.id==='golem'?Math.min(4,Math.floor((1-b.hp/b.maxHp)*5)):(b.hp<=b.maxHp*.5?1:0);
+  const stage=BOSSES[b.id].isTutorial||BOSSES[b.id].isSkirmish||BOSSES[b.id].isMinion?0:b.id==='golem'?Math.min(4,Math.floor((1-b.hp/b.maxHp)*5)):(b.hp<=b.maxHp*.5?1:0);
   if(stage>b.stage){
     b.stage=stage;
     if(b.id==='golem'){
@@ -428,8 +514,8 @@ function harmony(state,h,before,events){
     events.push({type:'heal',actor:h.id,targets:targets.map(p=>p.id),amount:8,amounts,style:'rune',label:'领域调和 · 负生'});log(state,'正向过零：领域调和为全队回复 8 生命。','good');
   }
 }
-export function useSkill(state,id,skillId){
-  const error=canUse(state,id,skillId);if(error)return{ok:false,error,events:[]};
+function useSkillCurrent(state,id,skillId){
+  const error=canUseCurrent(state,id,skillId);if(error)return{ok:false,error,events:[]};
   const h=heroOf(state,id),source=skillOf(id,skillId),{skill:s,intuition,alternating,consumeGrace,consumeVerdict,empowerReason}=tunedSkill(state,h,source),events=[],before=h.resource;
   state.ap-=s.ap;state.selected=id;state.stats.actions++;state.serial++;h.used.push(s.id);
   const mana=usesMana(h)?manaAfterSkill(h,s):null;
@@ -438,10 +524,15 @@ export function useSkill(state,id,skillId){
   if(s.consumeAttackBuff){h.attackBuff=0;h.attackBuffTurns=0;}
   if(s.consumeEdge)h.ricEdge=Math.max(0,h.ricEdge-1);
   if(s.edge)h.ricEdge=Math.min(2,s.edge);
+  if(s.coverFire){state.boss.cover={actor:id,damage:s.counterDamage||55,stagger:s.counterStagger||30,stripBuffs:s.stripBuffs||0,intuition:h.intuition>=3};if(h.intuition>=3)h.intuition=0;events.push({type:'buff',actor:id,targets:[state.boss.unitId],style:'shot',label:'掩护射击 · 监视出手'});}
+  if(s.evasion)h.evasion=1;
+  if(s.fieldCare){h.fieldCare=s.fieldCare;h.surgicalReady=true;state.boss.healSuppression=2;}
+  if(s.confuse){state.boss.confusion={actor:id};state.boss.weakened=0;}
+  if(s.recordIntent)state.boss.recordedIntent={actor:id,intent:state.boss.finale?'zero_end':state.boss.charging?'quake':state.boss.intent};
   if(s.weaken)state.boss.weakened=1;
   if(s.vulnerable)state.boss.vulnerable=2;
   if(s.healSuppression)state.boss.healSuppression=2;
-  if(s.stripBuffs)stripBossBuffs(state.boss,s.stripBuffs);
+  if(s.stripBuffs&&!s.coverFire)stripBossBuffs(state.boss,s.stripBuffs);
   if(s.selfGuard)h.guard=true;
   if(s.mark&&!s.damage)state.boss.marked=true;
   if(s.dotDamage&&!state.boss.core&&!state.boss.finale)state.boss.dot={damage:s.dotDamage,turns:2,actor:id,kind:'physical'};
@@ -461,8 +552,18 @@ export function useSkill(state,id,skillId){
   if(s.damage){
     if(intuition){h.intuition=0;log(state,'直感兑现：本次强技伤害 +40%、削韧 +12。','good');}
     if(alternating)log(state,'交叉火力：交替强化伤害、削韧，回收 1 连击。','good');
-    dealToBoss(state,s,events,id);if(h.id==='knibbs')h.intuition=Math.min(3,h.intuition+(s.intuitionGain||1));if(h.id==='apeilia')h.lastKind=s.kind;
+    const targets=s.targeting==='all'?[...livingEnemies(state)]:[state.boss];
+    for(const target of targets){if(target.defeated||state.mode!=='playing')continue;withEnemy(state,target,()=>dealToBoss(state,s,events,id));}
+    if(h.id==='knibbs')h.intuition=Math.min(3,h.intuition+(s.intuitionGain||1));if(h.id==='apeilia')h.lastKind=s.kind;
   }
+  if(s.protection){
+    const targets=s.selfProtection?[h]:alive(state);
+    for(const target of targets)target.protection=Math.max(target.protection||0,s.protection);
+    if(s.personalProtection)h.protection=Math.max(h.protection,s.personalProtection);
+    events.push({type:'buff',actor:id,targets:targets.map(target=>target.id),style:'guard',label:`${s.name} · 本轮减伤 ${s.protection}%`});
+    log(state,`${h.short}建立防护，${s.selfProtection?'自身':'全队'}本轮承伤降低 ${s.protection}%；同类保护只取最高值。`,'good');
+  }
+  if(isDefensiveSkill(s))for(const enemy of livingEnemies(state))if(enemy.finale)enemy.finaleProtected=true;
   if(s.shield){
     const targets=s.selfShield?[h]:alive(state),amounts={};targets.forEach(p=>{amounts[p.id]=grantShield(p,s.shield);p.resonance=Math.max(0,p.resonance-(s.cleanse||0));if(s.reflect)p.reflect=Math.min(2,(p.reflect||0)+s.reflect);});
     events.push({type:'shield',actor:id,targets:targets.map(p=>p.id),amount:s.shield,amounts,style:'guard',label:s.name});log(state,`${h.short} · ${s.name}：${s.selfShield?'自身':'全队'}获得 ${s.shield} 护盾${s.reflect?`与 ${s.reflect} 次钉刺反击`:''}。`,'good');
@@ -481,12 +582,12 @@ export function useSkill(state,id,skillId){
   }
   if(s.regenTurns){const target=[...alive(state)].sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0];target.regenTurns=s.regenTurns;target.regenAmount=s.regenAmount;events.push({type:'buff',actor:id,targets:[target.id],style:'rune',label:'精密缝合 · 持续恢复'});}
   if(s.attackBuff||s.selfAttackBuff){const targets=s.selfAttackBuff?[h]:alive(state);for(const target of targets){target.attackBuff=Math.max(target.attackBuff,s.selfAttackBuff||s.attackBuff);target.attackBuffTurns=2;}events.push({type:'buff',actor:id,targets:targets.map(x=>x.id),style:'rune',label:'心智增幅 · 下次攻击强化'});}
-  if(s.hardControl&&!state.boss.core&&!state.boss.finale&&!state.boss.broken&&!state.boss.controlImmune&&!state.boss.hardControl){state.boss.hardControl=1;state.stats.interrupts++;events.push({type:'buff',actor:id,targets:['boss'],style:'rune',label:'强制停机 · 行动封锁'});}
+  if(s.hardControl&&!state.boss.core&&!state.boss.finale&&!state.boss.broken&&!state.boss.controlImmune&&!state.boss.hardControl){state.boss.hardControl=1;state.stats.interrupts++;events.push({type:'buff',actor:id,targets:[state.boss.unitId||'boss'],style:'rune',label:'强制停机 · 行动封锁'});}
   if(s.cleanse&&!s.shield&&!s.heal)for(const target of alive(state))target.resonance=Math.max(0,target.resonance-s.cleanse);
   if(s.allCleanse)for(const target of alive(state))target.resonance=Math.max(0,target.resonance-s.allCleanse);
   if(s.shift||s.resetBalance)harmony(state,h,before,events);
   if(s.captainFinish)leaveCaptain(state,h);
-  if(!events.length)events.push({type:'buff',actor:id,targets:s.weaken||s.vulnerable||s.stripBuffs||s.mark?['boss']:[id],style:s.style,label:s.name});
+  if(!events.length)events.push({type:'buff',actor:id,targets:s.weaken||s.vulnerable||s.stripBuffs||s.mark||s.confuse||s.recordIntent?[state.boss.unitId]:[id],style:s.style,label:s.name});
   return{ok:true,events};
 }
 function leaveCaptain(state,h){h.youmuForm='doctor';h.captainTurns=0;h.tauntTurns=0;h.exhaustedTurns=2;h.exhaustionFresh=true;log(state,'游墓退去。游木虚脱两轮：输出 −20%、承伤 +20%；仍可治疗、用药与行动。','warning');}
@@ -499,19 +600,21 @@ export function usePotion(state,targetId){
   log(state,`使用应急药剂：${h.short}${down?'重新站起，并':''}回复 ${amount} 生命，共鸣清零。`,'good');
   return{ok:true,events:[{type:'heal',actor:state.selected,targets:[h.id],amount,amounts:{[h.id]:amount},style:'rune',label:down?'重新站起':'应急药剂'}]};
 }
-export function guard(state,id){
-  const h=heroOf(state,id);
-  if(state.mode!=='playing'||!h||h.hp<=0||state.ap<1||h.guard)return{ok:false,error:h?.guard?'已处于防御状态':'无法防御',events:[]};
-  h.guard=true;state.ap--;state.stats.actions++;state.serial++;log(state,`${h.short}采取防御，下轮开始前受到的伤害减少 55%。`,'good');
-  return{ok:true,events:[{type:'shield',actor:id,targets:[id],label:'防御',style:'guard',amount:0}]};
-}
-const enemyMultiplier=state=>DIFFICULTIES[state.difficulty].damage*(isSolo(state)?SOLO_RULES.bossDamage:1)*(state.boss.weakened?.8:1);
+export function guard(){return {ok:false,error:'通用防御已合并到角色技能，请装配并使用角色的防护能力。',events:[]};}
+const enemyMultiplier=state=>(BOSSES[state.boss.id].isTutorial?.75:DIFFICULTIES[state.difficulty].damage)*(isSolo(state)?SOLO_RULES.bossDamage:1)*(state.boss.weakened?.8:1)*(state.boss.actionSuppression||1);
 function scaled(state,n){return Math.round(n*enemyMultiplier(state));}
-function attackSpec(state){
+export function attackSpec(state){
   const b=state.boss,bonus=b.stage?(b.id==='duelist'?6:b.id==='final'?7:5):0;
   if(b.finale)return{key:'zero_end',name:'停机过载 · 最后放电',damage:65,kind:'magic',group:true,style:'burst'};
   if(b.charging)return{key:'quake',name:'地裂',damage:70,kind:'physical',group:true,style:'quake'};
   const table={
+    drone_shot:{name:'瞄准射击',damage:25+(b.supportCharge||0)*8,kind:'physical',style:'shot'},drone_charge:{name:'蓄能贯射',damage:40+(b.supportCharge||0)*8,kind:'physical',style:'shot'},
+    escort_bash:{name:'护卫推击',damage:22,kind:'physical',style:'quake'},escort_stamp:{name:'重踏警戒',damage:18,kind:'physical',group:true,style:'quake'},
+    relay_feed:{name:'中继供能',damage:0,kind:'magic',style:'rune'},relay_blast:{name:'中继放电',damage:18,kind:'magic',group:true,style:'burst'},
+    spore_shot:{name:'游孢喷吐',damage:15,kind:'magic',style:'mist'},spore_feed:{name:'菌丝供养',damage:10,kind:'magic',style:'rune'},
+    scout_swing:{name:'迟缓挥臂',damage:12,kind:'physical',style:'slash'},scout_ram:{name:'亮灯冲撞',damage:24,kind:'physical',style:'quake'},
+    bulwark_punch:{name:'石拳推击',damage:18,kind:'physical',style:'quake'},bulwark_stamp:{name:'碎石踏步',damage:20,kind:'physical',group:true,style:'quake'},
+    conduit_zap:{name:'短路电击',damage:22,kind:'magic',style:'shot'},conduit_discharge:{name:'积电释放',damage:24,kind:'magic',group:true,style:'burst'},
     slam:{name:'势能重击',damage:85,kind:'physical',style:'quake'},missiles:{name:'碎岩连弹',damage:31,hits:3,kind:'physical',style:'shot'},
     fog:{name:'迷雾孢子',damage:24,kind:'magic',group:true,style:'mist'},compression:{name:'魔力压缩',damage:48,kind:'magic',group:true,style:'rune'},reclaim:{name:'元素回收',damage:22,kind:'magic',group:true,style:'rune'},
     rend:{name:'裂锋三连',damage:28+bonus,hits:3,kind:'physical',style:'slash'},mirror:{name:'折镜架势',damage:75+bonus+b.mirror*5,kind:'physical',style:'slash'},
@@ -534,144 +637,22 @@ function attackSpec(state){
     edict_audit:{name:'全庭核验',damage:46+bonus+b.violations*10,kind:'magic',group:true,style:'burst'},edict_revoke:{name:'权限收回',damage:33+bonus+b.violations*8,kind:'magic',group:true,style:'rune'}
   };return{key:b.intent,...table[b.intent]};
 }
-// Each response trades incoming damage against a distinct, deterministic payoff.
-function responseProfile(state,id){
-  const key=attackSpec(state).key,b=state.boss;
-  const p=id==='parry'?{factor:.45,stagger:22,resource:0,damage:0}:id==='evade'?{factor:.15,stagger:0,resource:2,damage:0}:{factor:.85,stagger:10,resource:0,damage:76};
-  Object.assign(p,{special:'',mirror:0,spores:0,charge:0,seals:0,cleanse:0,water:0,heat:0,prediction:0,noSeed:false,keepResource:false,healFactor:1});
-  if(id==='parry'){
-    if(key==='quake'){p.factor=.5;p.stagger=34;}
-    if(key==='missiles'||key==='rend'){p.factor=.35;p.stagger=30;}
-    if(key==='compression')p.stagger=20;
-    if(key==='fog'){p.cleanse=2;p.stagger=18;p.special='驱散 2 层迷雾';}
-    if(key==='reclaim'){p.healFactor=0;p.stagger=18;p.special='阻止元素回收治疗';}
-    if(key==='mirror'){p.mirror=2;p.stagger=24;p.special='拆除 2 镜片';}
-    if(key==='rend'){p.mirror=1;p.special='拆除 1 镜片';}
-    if(key==='pierce'){p.factor=.6;p.stagger=32;p.mirror=1;p.special='拆除 1 镜片';}
-    if(key==='duel'){p.factor=.35;p.stagger=40;}
-    if(key==='sow'){p.spores=1;p.stagger=18;p.special='播种后剥离 1 孢压';}
-    if(key==='drain'){p.healFactor=0;p.stagger=24;p.special='阻止司祭吸血';}
-    if(key==='bloom'){p.factor=.6;p.stagger=38;}
-    if(key==='weave'){p.spores=2;p.stagger=24;p.special='重织后剥离 2 孢压';}
-    if(key==='arc'){p.factor=.35;p.stagger=30;p.charge=2;p.special='接地泄能 2 点';}
-    if(key==='ground'){p.stagger=34;p.charge=1;p.special='额外泄能 1 点';}
-    if(key==='storm'){p.factor=.5;p.stagger=38;p.special='风暴清空蓄电，招架争取破韧';}
-    if(key==='charge'){p.charge=3;p.stagger=24;p.special='充能后泄去 3 点蓄电';}
-    if(key==='script'){p.seals=1;p.stagger=24;p.special='刻写后拆除 1 封页';}
-    if(key==='silence'){p.keepResource=true;p.stagger=30;p.special='保护全队资源，不受封缄抽取';}
-    if(key==='rewrite'){p.healFactor=0;p.seals=1;p.special='阻止复写治疗，复写后拆除 1 封页';}
-    if(key==='sever'){p.factor=.5;p.stagger=38;p.seals=1;p.special='拆除 1 封页';}
-    if(key==='zero_lance'){p.factor=.35;p.stagger=30;p.seals=1;p.special='拆除 1 归零屏障';}
-    if(key==='zero_field'){p.seals=1;p.stagger=26;p.special='抵消本次增加的 1 屏障';}
-    if(key==='zero_pulse'){p.factor=.5;p.stagger=40;}
-    if(key==='zero_reset'){p.healFactor=0;p.seals=1;p.stagger=24;p.special='阻止重置治疗，重置后拆除 1 屏障';}
-    if(key==='zero_end'){p.factor=.45;p.stagger=0;p.special='物理与魔法记录齐全时，守住终幕即可获胜';}
-    if(key.startsWith('tide_')){p.water=key==='tide_fill'?2:1;p.stagger=key==='tide_breaker'?36:26;p.special=`主招之后排水 ${p.water} 级`;}
-    if(key==='furnace_lift'){p.factor=.35;p.stagger=30;}
-    if(key==='furnace_vent'){p.heat=2;p.stagger=26;p.special='开炉后额外泄热 2';}
-    if(key==='furnace_drop'){p.factor=.4;p.stagger=38;}
-    if(key==='furnace_feed'){p.heat=3;p.special='投料后泄热 3，抵消本次升温';}
-    if(key==='orbit_calibrate'){p.healFactor=0;p.prediction=2;p.special='阻止校准治疗，校准后锁定 −2';}
-    if(key==='orbit_lance'){p.prediction=1;p.stagger=30;p.special='主招后锁定 −1';}
-    if(key==='orbit_collapse')p.stagger=38;
-    if(key==='edict_sentence'){p.factor=.35;p.stagger=36;}
-    if(key==='edict_audit')p.stagger=38;
-    if(key==='edict_revoke'){p.keepResource=true;p.special='阻止本次权限抽取资源';}
-  }
-  if(id==='evade'){
-    if(key==='quake'||key==='pierce'){p.factor=.1;p.resource=3;}
-    if(key==='bloom'){p.factor=.2;p.resource=3;}
-    if(key==='fog'){p.cleanse=3;p.special='驱散 3 层迷雾';}
-    if(key==='sow'){p.noSeed=true;p.special='阻止本次播种增加孢压';}
-    if(key==='drain'||key==='reclaim')p.special='敌人仍会恢复生命';
-    if(key==='weave'){p.resource=3;p.special='司祭仍会重织';}
-    if(key==='mirror')p.special='保留镜片，安全撤步';
-    if(['storm','sever','zero_pulse'].includes(key)){p.factor=.1;p.resource=3;}
-    if(key==='charge'){p.resource=3;p.special='守卫仍会充能，可在下轮用物理泄能';}
-    if(key==='silence'){p.keepResource=true;p.resource=1;p.special='保护全队资源，发起者再回复 1 资源';}
-    if(key==='rewrite'||key==='zero_reset'){p.resource=3;p.special='敌人仍会恢复生命与防护层';}
-    if(key==='zero_end'){p.factor=.1;p.special='物理与魔法记录齐全时，以最低承伤守住终幕';}
-    if(['tide_breaker','furnace_drop','orbit_collapse','edict_audit'].includes(key)){p.resource=3;p.factor=.1;}
-    if(key==='tide_fill'){p.resource=3;p.special='监守仍会涨水；下轮可用三段命中排水';}
-    if(key==='furnace_vent'){p.resource=3;p.special='炉门将在排汽后敞开，可在下轮连击泄热';}
-    if(key==='orbit_calibrate'){p.resource=3;p.special='校准治疗与锁定仍会生效';}
-    if(key==='edict_revoke'){p.keepResource=true;p.resource=1;p.special='保护自身资源，发起者回复 1';}
-  }
-  if(id==='counter'){
-    if(key==='quake'){p.factor=.8;p.damage=110;p.stagger=18;}
-    if(key==='duel'){p.factor=.75;p.damage=112;p.stagger=24;}
-    if(key==='pierce'){p.damage=96;p.mirror=1;p.special='拆除 1 镜片';}
-    if(key==='mirror'){p.damage=100;p.mirror=1;p.special='拆除 1 镜片，反击不触发折镜反噬';}
-    if(key==='fog'){p.damage=70;p.cleanse=1;p.special='驱散 1 层迷雾';}
-    if(key==='reclaim'){p.damage=92;p.healFactor=.5;p.special='元素回收治疗减半';}
-    if(key==='drain'){p.damage=104;p.special='司祭仍会吸血';}
-    if(key==='bloom'){p.damage=65+b.spores*12;p.stagger=18;}
-    if(key==='weave'){p.damage=94;p.healFactor=.5;p.special='重织治疗减半';}
-    if(key==='arc'){p.damage=88;p.charge=1;p.special='额外泄能 1 点';}
-    if(key==='ground'){p.damage=104;p.stagger=24;}
-    if(key==='storm'){p.damage=90+b.charge*10;p.stagger=22;}
-    if(key==='charge'){p.damage=100;p.charge=1;p.special='充能后泄能 1 点';}
-    if(key==='script'){p.damage=90;p.seals=1;p.special='拆除 1 封页';}
-    if(key==='silence'){p.damage=104;p.special='仍会受封缄抽取资源，先拆封可阻止';}
-    if(key==='rewrite'){p.damage=110;p.healFactor=.5;p.special='复写治疗减半';}
-    if(key==='sever'){p.damage=116;p.stagger=24;}
-    if(key==='zero_lance'){p.damage=106;p.stagger=20;}
-    if(key==='zero_field'){p.damage=96;p.seals=1;p.special='拆除 1 归零屏障';}
-    if(key==='zero_pulse'){p.damage=128;p.stagger=24;}
-    if(key==='zero_reset'){p.damage=110;p.healFactor=.5;p.special='重置治疗减半';}
-    if(key==='zero_end'){p.damage=76;p.special='迎击也计入发起者对应伤害系的终幕记录';}
-    if(key.startsWith('tide_')){p.damage=key==='tide_breaker'?110:94;p.water=1;p.special='主招后排水 1；迎击命中也计入三击排水';}
-    if(key==='furnace_vent'){p.damage=102;p.heat=1;p.special='开炉后泄热 1，迎击享受敞口易伤并再泄热 1';}
-    if(key==='furnace_drop'){p.damage=120;p.stagger=24;}
-    if(key==='furnace_feed'){p.damage=98;p.heat=1;p.special='投料后泄热 1';}
-    if(key==='orbit_calibrate'){p.damage=100;p.healFactor=.5;p.special='校准治疗减半；反击不增加重复锁定';}
-    if(key==='orbit_collapse'){p.damage=118;p.stagger=24;}
-    if(key==='edict_sentence'){p.damage=118;p.stagger=24;}
-    if(key==='edict_audit'){p.damage=110;p.stagger=24;}
-    if(key==='edict_revoke'){p.damage=106;p.special='若仍有至少 2 违令，资源抽取照常生效';}
-  }
-  // A single team response cannot nearly erase a party-wide attack. Shields,
-  // personal guard and dismantling the boss's layers still multiply its value.
-  if(attackSpec(state).group){
-    if(id==='parry')p.factor=Math.max(.7,p.factor);
-    if(id==='evade')p.factor=Math.max(.4,p.factor);
-  }
-  if(isSolo(state)){
-    if(id==='parry')p.factor=Math.max(.55,p.factor);
-    if(id==='evade')p.factor=Math.max(attackSpec(state).group?.45:.3,p.factor);
-    if(key==='zero_end')p.special=id==='counter'?'迎击也计入独狼任意命中记录':'任意属性累计命中 2 次后，准备应对并存活至主招结束即胜利';
-  }
-  return p;
-}
-export function responseOptions(state){
-  const h=heroOf(state,state.selected)||state.heroes[0],inactive=state.boss.core||state.boss.broken||state.boss.hardControl;
-  return ['parry','evade','counter'].map(id=>{
-    const p=responseProfile(state,id),spec=attackSpec(state),names={parry:['招架','shield'],evade:['回避','wind'],counter:['迎击','blades']};
-    const damage=Math.round(spec.damage*enemyMultiplier(state)*p.factor)*(spec.hits||1);
-    let reward=id==='parry'?`削韧 ${p.stagger}`:id==='evade'&&usesMana(h)?`${h.short}两轮内下次主动攻击增伤 15%（不直接回魔）`:id==='evade'?`${h.short}${h.id==='ric'?'向 0 调和最多 '+p.resource+' 点':h.resourceName+' +'+p.resource}`:`${p.damage} 基础${['ric','haart','patch'].includes(h.id)?'魔法':'物理'}反击伤害，削韧 ${p.stagger}`;
-    if(id==='counter'&&h.id==='knibbs'&&h.intuition>=3)reward+='；满直感再强化 40% / 12 削韧';if(p.special)reward+='；'+p.special;
-    return{id,name:names[id][0],icon:names[id][1],ap:1,damage,damageFactor:p.factor,baseDamage:scaled(state,spec.damage)*(spec.hits||1),group:!!spec.group,hits:spec.hits||1,description:inactive?`当前无敌方主招；已准备的应对取消且不退款，下轮获得基础 ${baseActionPoints(state)} AP，并保留最多 2 点未使用 AP`:`${spec.group?'群体主招':'单体主招'}减伤 ${Math.round((1-p.factor)*100)}%${spec.damage?`，${spec.group?'每人':'受击者'}预计承伤 ${damage}（护盾 / 防御前）`:'；本次主招无直接伤害'}`,reward};
-  });
-}
-export function prepareResponse(state,id,actorId=state.selected){
-  const h=heroOf(state,actorId),error=state.mode!=='playing'?'战斗已结束':!['parry','evade','counter'].includes(id)?'未知的战术应对':!h||h.hp<=0?'请选择存活队员':state.boss.core?'核心阶段无需准备应对':(state.boss.broken||state.boss.hardControl)?'敌人本轮无法行动，无需新增应对':!state.response&&state.ap<1?'行动点不足':'';
-  if(error)return{ok:false,error,events:[]};if(!state.response){state.ap--;state.stats.actions++;}
-  state.response={id,actor:actorId};state.serial++;
-  const name={parry:'招架',evade:'回避',counter:'迎击'}[id];log(state,`${h.short}准备${name}：应对下一次敌方主招，同轮可免费更改。敌招被打断则取消应对，已付的 1 AP 不退还；下轮获得基础 ${baseActionPoints(state)} AP，并保留最多 2 点未使用 AP。`,'good');
-  return{ok:true,events:[{type:'shield',actor:actorId,targets:alive(state).map(p=>p.id),style:'guard',amount:0,label:`准备${name}`}]};
-}
-function hurtParty(state,events,ids,base,kind,label,style='quake',resonance=true,responseFactor=1){
-  let total=0;const amounts={},absorbedAmounts={},targets=ids.filter(id=>heroOf(state,id)?.hp>0),reflections=[];
+export function responseOptions(){return [];}
+export function prepareResponse(){return {ok:false,error:'通用应对已合并到角色技能，请选择角色的防护、削弱或控制能力。',events:[]};}
+function hurtParty(state,events,ids,base,kind,label,style='quake',resonance=true){
+  let total=0;const amounts={},absorbedAmounts={},afterHit=[],targets=ids.filter(id=>heroOf(state,id)?.hp>0),reflections=[];
   for(const id of targets){
-    const h=heroOf(state,id);let n=Math.round(base*enemyMultiplier(state)*(h.guard?.45:1)*responseFactor*(h.youmuForm==='captain'?.65:1)*(h.exhaustedTurns>0?1.2:1));
+    const h=heroOf(state,id);let n=Math.round(base*enemyMultiplier(state)*(100-Math.max(h.guard?55:0,h.protection||0))/100*(h.youmuForm==='captain'?.65:1)*(h.exhaustedTurns>0?1.2:1));
+    if(h.evasion>0){h.evasion--;n=0;events.push({type:'buff',actor:id,targets:[id],style:'guard',label:'战术位移 · 闪开一击'});}
     const shield=absorbShield(h,n);n-=shield;const actual=Math.min(h.hp,n);h.hp-=actual;total+=actual;amounts[id]=actual;absorbedAmounts[id]=shield;
     if(h.reflect>0&&h.hp>0&&(h.id!=='qianxing'||kind==='physical')){h.reflect--;reflections.push(h.id);}
     if(resonance&&h.hp>0&&state.boss.id==='golem')h.resonance=Math.min(5,h.resonance+(kind==='physical'?1:0));
+    if(h.fieldCare>0&&actual>0&&h.hp>0){const healed=healHero(state,h,h.fieldCare);h.fieldCare=0;afterHit.push({type:'heal',actor:id,targets:[id],amount:healed,amounts:{[id]:healed},style:'rune',label:'预备包扎 · 受击后处理'});}
     if(h.hp<=0)log(state,`${h.short}倒下了。可选择其头像，使用药剂救起。`,'bad');
   }
-  events.push({type:'boss',actor:'boss',targets,bossId:state.boss.id,intentId:state.boss.intent,kind,style,amount:total/Math.max(1,targets.length),amounts,hpLosses:{...amounts},absorbedAmounts,label});
-  if(total)log(state,`${label}命中，队伍受到 ${total} 生命伤害。`,'bad');else log(state,`${label}被应对与护盾化解。`,'good');
-  if(alive(state).length===0){state.mode='defeat';events.push({type:'defeat',actor:'boss',targets:state.heroes.map(h=>h.id),label:'远征未竟'});}
+  events.push({type:'boss',actor:state.boss.unitId||'boss',targets,bossId:state.boss.id,intentId:state.boss.intent,kind,style,amount:total/Math.max(1,targets.length),amounts,hpLosses:{...amounts},absorbedAmounts,label});events.push(...afterHit);
+  if(total)log(state,`${label}命中，队伍受到 ${total} 生命伤害。`,'bad');else log(state,`${label}被角色防护与护盾化解。`,'good');
+  if(alive(state).length===0){state.mode='defeat';events.push({type:'defeat',actor:state.boss.unitId||'boss',targets:state.heroes.map(h=>h.id),label:'远征未竟'});}
   for(const id of reflections){
     if(state.mode!=='playing')break;
     const physical=id==='qianxing';
@@ -680,16 +661,24 @@ function hurtParty(state,events,ids,base,kind,label,style='quake',resonance=true
 }
 function healBoss(state,events,amount,label){
   const n=Math.min(state.boss.maxHp-state.boss.hp,Math.round(amount*(state.boss.healSuppression?.5:1)));state.boss.hp+=n;
-  events.push({type:'heal',actor:'boss',targets:['boss'],amount:n,amounts:{boss:n},label});log(state,`${label}：${bossName(state)}回复 ${n} 生命。`,n?'warning':'good');
+  events.push({type:'heal',actor:state.boss.unitId||'boss',targets:[state.boss.unitId||'boss'],amount:n,amounts:{[state.boss.unitId||'boss']:n},label});log(state,`${label}：${bossName(state)}回复 ${n} 生命。`,n?'warning':'good');
 }
 export function intentInfo(state){
   const b=state.boss;
-  if(b.finale)return{name:'停机过载 · 最后放电',desc:`${isSolo(state)?'独狼':'全队'}承受 ${scaled(state,65)} 魔法伤害 · ${isSolo(state)?`任意命中 ${b.finaleHits}/${SOLO_RULES.finaleHits}`:`物理 ${b.finalePhysical}/1、魔法 ${b.finaleMagic}/1`}、${state.response?'应对已准备':'还需准备任一应对'} · 接入后守住最后放电即可关闭核心 · 剩余 ${b.finaleTurns} 个完整回合，超时恢复 22% 生命`,icon:'crystal',danger:true,responses:responseOptions(state)};
+  if(b.finale)return{name:'停机过载 · 最后放电',desc:`${isSolo(state)?'独狼':'全队'}承受 ${scaled(state,65)} 魔法伤害 · ${isSolo(state)?`任意命中 ${b.finaleHits}/${SOLO_RULES.finaleHits}`:`物理 ${b.finalePhysical}/1、魔法 ${b.finaleMagic}/1`}、${b.finaleProtected?'角色防护已建立':'还需使用角色防护技能'} · 接入后守住最后放电即可关闭核心 · 剩余 ${b.finaleTurns} 个完整回合，超时恢复 22% 生命`,icon:'crystal',danger:true,responses:responseOptions(state)};
   if(b.core)return{name:'核心重组',desc:`剩余 ${b.coreTurns} 个完整回合 · ${isSolo(state)?`任意属性累计命中 ${b.coreHits}/${SOLO_RULES.coreHits}`:'需要物理与魔法各 3 次'}`,icon:'crystal',danger:true,responses:responseOptions(state)};
+  if(b.defeated)return {name:'已倒下',desc:'不能行动；其余敌人仍须击败。',icon:'break',good:true,responses:[]};
   if(b.hardControl&&!b.core&&!b.finale)return{name:'行动封锁',desc:'下一次普通敌方行动被取消；之后一整轮抗控。此状态不附带破韧增伤。',icon:'bind',good:true,responses:responseOptions(state)};
   if(b.broken)return{name:'架势崩溃',desc:'本轮停止行动 · 受到伤害 +50% · 下一轮抗控',icon:'break',good:true,responses:responseOptions(state)};
   const spec=attackSpec(state),target=heroOf(state,enemyTarget(state))?.short||'队员',base=scaled(state,spec.damage),hits=spec.hits||1;
-  let desc=spec.damage?`${spec.group?'全队':`目标：${target}`} · ${hits>1?`${hits} × `:''}${base} ${spec.kind==='magic'?'魔法':'物理'}伤害`:'',icon={slam:'hammer',missiles:'scatter',fog:'mist',compression:'rune',reclaim:'heal',quake:'quake',rend:'blades',mirror:'shield',pierce:'blade',duel:'blades',sow:'mist',drain:'rune',bloom:'crystal',weave:'heal',arc:'scatter',ground:'quake',storm:'crystal',charge:'rune',script:'book',silence:'bind',rewrite:'heal',sever:'blade',zero_lance:'twin',zero_field:'shield',zero_pulse:'crystal',zero_reset:'repeat',tide_hook:'blade',tide_fill:'mist',tide_breaker:'quake',tide_release:'scope',furnace_lift:'hammer',furnace_vent:'mist',furnace_drop:'quake',furnace_feed:'rune',orbit_lance:'target',orbit_sweep:'blades',orbit_calibrate:'heal',orbit_collapse:'crystal',edict_mark:'book',edict_sentence:'blade',edict_audit:'rune',edict_revoke:'bind'}[spec.key];
+  let desc=spec.damage?`${spec.group?'全队':`目标：${target}`} · ${hits>1?`${hits} × `:''}${base} ${spec.kind==='magic'?'魔法':'物理'}伤害`:'',icon={scout_swing:'blade',scout_ram:'quake',bulwark_punch:'hammer',bulwark_stamp:'quake',conduit_zap:'rune',conduit_discharge:'crystal',slam:'hammer',missiles:'scatter',fog:'mist',compression:'rune',reclaim:'heal',quake:'quake',rend:'blades',mirror:'shield',pierce:'blade',duel:'blades',sow:'mist',drain:'rune',bloom:'crystal',weave:'heal',arc:'scatter',ground:'quake',storm:'crystal',charge:'rune',script:'book',silence:'bind',rewrite:'heal',sever:'blade',zero_lance:'twin',zero_field:'shield',zero_pulse:'crystal',zero_reset:'repeat',tide_hook:'blade',tide_fill:'mist',tide_breaker:'quake',tide_release:'scope',furnace_lift:'hammer',furnace_vent:'mist',furnace_drop:'quake',furnace_feed:'rune',orbit_lance:'target',orbit_sweep:'blades',orbit_calibrate:'heal',orbit_collapse:'crystal',edict_mark:'book',edict_sentence:'blade',edict_audit:'rune',edict_revoke:'bind'}[spec.key];
+  if(b.cover)desc+=' · 已被掩护射击盯住，出手前受截击';
+  if(b.confusion)desc+=' · 杀意改写：单体打其他敌人，否则伤害降低55%';
+  if(b.recordedIntent)desc+=' · 预告被收录：最后行动、伤害降低25%，取消招式附效';
+  if(b.id==='escort')desc+=' · 未被击破或强控时替主敌分担50%单体伤害';
+  if(['relay','relay_guard'].includes(b.id))desc+=' · 供能增强同伴；破坏装置令其余敌人停机一轮';
+  if(b.id==='sporeling')desc+=' · 供养回合替司祭回复22生命';
+  if(BOSSES[b.id].isTutorial)desc+=['scout_ram','bulwark_stamp','conduit_discharge'].includes(spec.key)?' · 特殊招式：用角色防护技能降低承伤，或先削尽韧性取消攻击':' · 普通攻击：观察下轮预告，留好角色资源';
   if(spec.key==='fog')desc+=' · 释放 5 层迷雾 · 每次魔法命中驱散 1 层';
   if(spec.key==='reclaim')desc+=` · 吸收全队共鸣，回复 ${alive(state).reduce((n,h)=>n+h.resonance,0)*8} 生命 · 先用净化技能清除共鸣`;
   if(spec.key==='rend')desc+=' · 招后补充 1 镜片';
@@ -697,52 +686,48 @@ export function intentInfo(state){
   if(spec.key==='drain')desc+=` · 同时回复 ${30+b.spores*12} 生命`;
   if(spec.key==='sow')desc+=` · 孢压 +${b.stage?3:2}`;
   if(spec.key==='bloom')desc+=' · 每层孢压使基础伤害 +10，释放后清空';
-  if(spec.key==='weave')desc+=` · 回复 ${60+b.spores*12} 生命，孢压 +2 · 可迎击削减治疗`;
+  if(spec.key==='weave')desc+=` · 回复 ${60+b.spores*12} 生命，孢压 +2 · 使用治疗抑制、打断或强控阻止恢复`;
   if(spec.key==='arc')desc+=` · 每点蓄电使每段基础伤害 +3 · 物理命中泄能`;
   if(spec.key==='ground')desc+=` · 每点蓄电使基础伤害 +4 · 释放后蓄电 −2`;
   if(spec.key==='storm')desc+=' · 每点蓄电使基础伤害 +9 · 释放后清空蓄电';
-  if(spec.key==='charge')desc+=' · 蓄电 +3（最多 6） · 招架抵消本次充能，或迎击抢伤害';
+  if(spec.key==='charge')desc+=' · 蓄电 +3（最多 6） · 先用物理攻击泄能，或以角色防护承受充能冲击';
   if(spec.key==='script')desc+=' · 刻写后封页 +1';
-  if(spec.key==='silence')desc+=` · 若还存在封页，全队资源向 0 减少 ${b.stage?2:1} · 拆封 / 招架 / 回避可阻止`;
-  if(spec.key==='rewrite')desc+=` · 回复 ${b.stage?100:80} 生命，封页恢复至 3 · 招架阻止治疗 / 迎击治疗减半`;
+  if(spec.key==='silence')desc+=` · 若还存在封页，全队资源向 0 减少 ${b.stage?2:1} · 异系拆封或打断可阻止抽取`;
+  if(spec.key==='rewrite')desc+=` · 回复 ${b.stage?100:80} 生命，封页恢复至 3 · 治疗抑制可减半；打断或强控取消此次行动`;
   if(spec.key==='sever')desc+=' · 每层封页使基础伤害 +8 · 先用异系连击拆封';
   if(spec.key==='zero_lance')desc+=' · 每层屏障使每段基础伤害 +5';
   if(spec.key==='zero_field')desc+=' · 招后归零屏障 +1';
   if(spec.key==='zero_pulse')desc+=' · 每层屏障使基础伤害 +9 · 交替攻击拆屏障';
-  if(spec.key==='zero_reset')desc+=` · 回复 ${b.stage?90:65} 生命，屏障恢复至 3、同步归零 · 招架阻止治疗 / 迎击治疗减半`;
+  if(spec.key==='zero_reset')desc+=` · 回复 ${b.stage?90:65} 生命，屏障恢复至 3、同步归零 · 治疗抑制可减半；打断或强控取消此次行动`;
   if(b.id==='tide')desc+=` · 水位 ${b.waterLevel}/4 · 任意属性累计 3 次命中排水 1（当前 ${b.valveHits}/3）`;
-  if(spec.key==='tide_fill')desc+=' · 攻击后水位 +2，上限 4；招架随后排水 2';
+  if(spec.key==='tide_fill')desc+=' · 攻击后水位 +2，上限 4；任意三次命中排水 1';
   if(spec.key==='tide_breaker')desc+=' · 每级水位使基础伤害 +12，释放后水位清零';
   if(spec.key==='tide_release')desc+=' · 每级水位使基础伤害 +9，释放后排水 1';
   if(spec.key==='tide_hook')desc+=' · 每级水位使基础伤害 +5';
   if(spec.key==='furnace_vent')desc+=` · 炉热 ${b.heat}/6，每点使基础伤害 +8 · 释放后炉门敞开：受到伤害 +30%，每次命中泄热 1`;
   if(spec.key==='furnace_drop')desc+=` · 炉热 ${b.heat}/6，每点使基础伤害 +9 · 趁敞口连击泄热；落锤后关闭炉门并清空炉热`;
-  if(spec.key==='furnace_feed')desc+=' · 释放后炉热 +3（最多 6）、炉门关闭；招架抵消本次升温';
+  if(spec.key==='furnace_feed')desc+=' · 释放后炉热 +3（最多 6）、炉门关闭；在开炉后连击泄热，或用驱散削减炉热';
   if(spec.key==='orbit_lance'||spec.key==='orbit_sweep'||spec.key==='orbit_collapse')desc+=` · 锁定 ${b.prediction}/3 · 重复上一项攻击技能 +1，换攻击技能 −1；${spec.key==='orbit_lance'?'每层基础伤害 +14':spec.key==='orbit_sweep'?'每层基础伤害 +8':'每层基础伤害 +12，释放后锁定清零'}`;
-  if(spec.key==='orbit_calibrate')desc+=' · 回复 55 生命、锁定 +1（最多 3）；招架阻止治疗并在校准后锁定 −2';
+  if(spec.key==='orbit_calibrate')desc+=' · 回复 55 生命、锁定 +1（最多 3）；换招降低锁定，治疗抑制降低恢复量';
   if(b.id==='arbiter')desc+=` · ${b.decree==='light'?'轻击令：只允许 1 AP 攻击':'重击令：只允许至少 2 AP 攻击'} · 违令 ${b.violations}/3，当前伤害已计入判罚；辅助技能不计，新回合清零换令`;
-  if(spec.key==='edict_revoke')desc+=' · 若违令至少 2，资源向 0 减少 2；招架或回避可阻止抽取';
+  if(spec.key==='edict_revoke')desc+=' · 若违令至少 2，资源向 0 减少 2；遵守轻重击令或取消此次行动可防止抽取';
   if(canInterrupt(state))desc+=' · 可用咒弹或破韧打断';if(b.controlImmune)desc+=' · 本轮抗控，无法打断';
-  if(b.id==='golem'&&b.stage>=1)desc+=` · 追加 ${scaled(state,12)} 单体飞弹${b.stage>=3?`、${scaled(state,9)} 全队真空波`:''}（应对只覆盖主招）`;
+  if(b.id==='golem'&&b.stage>=1)desc+=` · 追加 ${scaled(state,12)} 单体飞弹${b.stage>=3?`、${scaled(state,9)} 全队真空波`:''}（角色减伤与护盾也覆盖追击）`;
   if(b.phasePending)desc+=' · 下一轮将完整预告地裂';
   if(b.exposed)desc+=' · 破绽：本轮受到伤害 +50%，仍会出招';
-  return{name:b.charging?'地裂 · 蓄力中':spec.name,desc,icon,danger:b.charging||['bloom','pierce','storm','sever','zero_pulse','tide_breaker','furnace_drop','orbit_collapse','edict_audit'].includes(spec.key),responses:responseOptions(state)};
+  return{name:b.charging?'地裂 · 蓄力中':spec.name,desc,icon,danger:b.charging||['scout_ram','bulwark_stamp','conduit_discharge','bloom','pierce','storm','sever','zero_pulse','tide_breaker','furnace_drop','orbit_collapse','edict_audit'].includes(spec.key),responses:responseOptions(state)};
 }
-function applyResponseReward(state,events,response,profile){
-  let h=heroOf(state,response.actor);if(!h||h.hp<=0){h=alive(state)[0];if(!h)return;log(state,`应对发起者倒下，${h.short}接续战术。`,'warning');}
-  const b=state.boss;b.mirror=Math.max(0,b.mirror-profile.mirror);b.spores=Math.max(0,b.spores-profile.spores);b.charge=Math.max(0,b.charge-profile.charge);b.seals=Math.max(0,b.seals-profile.seals);b.fog=Math.max(0,b.fog-profile.cleanse);
-  b.waterLevel=Math.max(0,b.waterLevel-profile.water);b.heat=Math.max(0,b.heat-profile.heat);b.prediction=Math.max(0,b.prediction-profile.prediction);
-  if(profile.resource&&usesMana(h)){h.attackBuff=Math.max(h.attackBuff,15);h.attackBuffTurns=3;log(state,`${h.short}回避稳住心神，下次主动攻击增伤 15%，不直接回复魔力。`,'good');}
-  else if(profile.resource){const before=h.resource;h.resource=h.id==='ric'?(Math.sign(before)*Math.max(0,Math.abs(before)-profile.resource)||0):Math.min(h.maxResource,h.resource+profile.resource);harmony(state,h,before,events);log(state,`${h.short}回避成功：${h.resourceName} ${before} → ${h.resource}。`,'good');}
-  if(profile.damage){
-    const s={id:'response_counter',name:'战术迎击',kind:['ric','haart','patch'].includes(h.id)?'magic':'physical',style:'counter',damage:profile.damage,stagger:profile.stagger,hits:1},t=tunedSkill(state,h,s);
-    if(t.intuition)h.intuition=0;dealToBoss(state,t.skill,events,h.id,{response:true});if(h.id==='knibbs')h.intuition=Math.min(3,h.intuition+1);
-  }else{reduceStagger(state,profile.stagger,events);events.push({type:'response',actor:h.id,targets:alive(state).map(p=>p.id),style:response.id,amount:0,label:response.id==='parry'?`招架 · 削韧 ${profile.stagger}`:'战术回避'});}
-  if(profile.special)log(state,profile.special+'。','good');
-}
-export function endRound(state){
+function resolveEnemyRound(state){
   if(state.mode!=='playing')return{ok:false,error:'战斗已结束',events:[]};
-  const b=state.boss,events=[],response=state.response,cancelledResponse=!!response&&(b.core||b.broken||b.hardControl),wasControlled=!!b.hardControl&&!b.core&&!b.finale,wasBroken=b.broken,wasCore=b.core,wasFinale=b.finale;state.stats.turns++;state.serial++;
+  const b=state.boss,events=[],wasControlled=!!b.hardControl&&!b.core&&!b.finale,wasBroken=b.broken,wasCore=b.core,wasFinale=b.finale;state.response=null;
+  if(b.defeated)return {ok:true,events};
+  const cover=b.cover;b.cover=null;
+  if(cover&&!wasControlled&&!wasBroken&&!wasCore&&heroOf(state,cover.actor)?.hp>0){
+    if(cover.stripBuffs)stripBossBuffs(b,cover.stripBuffs);
+    dealToBoss(state,{id:'cover_counter',name:'掩护射击 · 截击',kind:'physical',damage:cover.damage*(cover.intuition?1.4:1),hits:1,stagger:cover.stagger+(cover.intuition?12:0),mark:true,style:'shot'},events,cover.actor,{response:true});
+    heroOf(state,cover.actor).intuition=Math.min(3,heroOf(state,cover.actor).intuition+1);b.actionSuppression=.5;
+  }
+  if(b.defeated||state.mode!=='playing')return {ok:true,events};
   if(b.core){
     if(b.coreFresh){b.coreFresh=false;log(state,`核心稳定显形。接下来有 2 个完整回合完成${isSolo(state)?'四次任意命中':'双系净化'}。`,'warning');}
     else{b.coreTurns--;if(b.coreTurns<=0){
@@ -752,54 +737,63 @@ export function endRound(state){
   }else if(wasControlled)log(state,`${bossName(state)}的行动被封锁，本轮无法出招。`,'good');
   else if(b.broken)log(state,`${bossName(state)}重新稳住架势，错过本轮行动。`,'good');
   else{
-    const spec=attackSpec(state),profile=response?responseProfile(state,response.id):null,ids=alive(state).map(h=>h.id),target=enemyTarget(state),healFactor=profile?.healFactor??1,sporesBefore=b.spores,followupStage=b.stage;
-    if(spec.damage)for(let i=0;i<(spec.hits||1)&&state.mode==='playing';i++){
+    const spec=attackSpec(state),recorded=b.recordedIntent?.intent===spec.key,confused=b.confusion;
+    if(recorded)b.actionSuppression=(b.actionSuppression||1)*.75;
+    const redirected=confused&&!spec.group?livingEnemies(state).find(e=>e!==b):null;
+    if(confused&&!redirected)b.actionSuppression=(b.actionSuppression||1)*.45;
+    const ids=alive(state).map(h=>h.id),target=enemyTarget(state),sporesBefore=b.spores,followupStage=b.stage;
+    if(redirected&&spec.damage){for(let i=0;i<(spec.hits||1)&&state.mode==='playing'&&!redirected.defeated;i++)withEnemy(state,redirected,()=>dealToBoss(state,{id:'confused_attack',name:spec.name+' · 杀意改写',kind:spec.kind,damage:Math.round(spec.damage*enemyMultiplier({...state,boss:b})),hits:1,stagger:0,bypassGuard:true,noLayers:true,style:spec.style},events,b.unitId,{response:true}));}
+    if(!redirected&&spec.damage)for(let i=0;i<(spec.hits||1)&&state.mode==='playing'&&!b.defeated&&!b.core&&(wasFinale||!b.finale);i++){
       const currentTarget=heroOf(state,target)?.hp>0?target:alive(state)[0]?.id;
-      hurtParty(state,events,spec.group?alive(state).map(h=>h.id):[currentTarget],spec.damage,spec.kind,spec.name,spec.style,true,profile?.factor??1);
+      hurtParty(state,events,spec.group?alive(state).map(h=>h.id):[currentTarget],spec.damage,spec.kind,spec.name,spec.style,true);
     }
-    if(state.mode==='playing'){
-      if(spec.key==='fog'){b.fog=5;events.push({type:'boss',actor:'boss',targets:ids,style:'mist',kind:'magic',amount:0,label:'迷雾孢子'});log(state,'迷雾孢子扩散：每次魔法命中可清除 1 层。','warning');}
-      if(spec.key==='reclaim'){const stacks=alive(state).reduce((n,h)=>n+h.resonance,0);healBoss(state,events,stacks*8*healFactor,'元素回收');alive(state).forEach(h=>h.resonance=0);}
+    if(state.mode==='playing'&&!b.defeated){
+      if(!recorded){
+      if(spec.key==='fog'){b.fog=5;events.push({type:'boss',actor:state.boss.unitId||'boss',targets:ids,style:'mist',kind:'magic',amount:0,label:'迷雾孢子'});log(state,'迷雾孢子扩散：每次魔法命中可清除 1 层。','warning');}
+      if(spec.key==='reclaim'){const stacks=alive(state).reduce((n,h)=>n+h.resonance,0);healBoss(state,events,stacks*8,'元素回收');alive(state).forEach(h=>h.resonance=0);}
       if(spec.key==='rend')b.mirror=Math.min(3,b.mirror+1);
-      if(spec.key==='sow'&&!profile?.noSeed)b.spores=Math.min(5,b.spores+(b.stage?3:2));
-      if(spec.key==='drain')healBoss(state,events,(30+sporesBefore*12)*healFactor,'抽髓祷告');
+      if(spec.key==='sow'){b.spores=Math.min(5,b.spores+(b.stage?3:2));if(b.summons<3){const add=spawnEnemy(state,'sporeling',{},events);if(add)b.summons++;}}
+      if(spec.key==='drain')healBoss(state,events,(30+sporesBefore*12),'抽髓祷告');
       if(spec.key==='bloom')b.spores=0;
-      if(spec.key==='weave'){healBoss(state,events,(60+sporesBefore*12)*healFactor,'菌丝重织');b.spores=Math.min(5,b.spores+2);}
+      if(spec.key==='weave'){healBoss(state,events,(60+sporesBefore*12),'菌丝重织');b.spores=Math.min(5,b.spores+2);}
       if(spec.key==='ground')b.charge=Math.max(0,b.charge-2);
       if(spec.key==='storm')b.charge=0;
-      if(spec.key==='charge'){b.charge=Math.min(6,b.charge+3);events.push({type:'boss',actor:'boss',targets:['boss'],style:'rune',amount:0,label:'雷针充能'});log(state,`雷针充能：蓄电升至 ${b.charge}/6。`,'warning');}
+      if(spec.key==='charge'){b.charge=Math.min(6,b.charge+3);events.push({type:'boss',actor:state.boss.unitId||'boss',targets:[state.boss.unitId||'boss'],style:'rune',amount:0,label:'雷针充能'});log(state,`雷针充能：蓄电升至 ${b.charge}/6。`,'warning');}
       if(spec.key==='script')b.seals=Math.min(3,b.seals+1);
-      if(spec.key==='silence'&&b.seals>0&&!profile?.keepResource){
+      if(spec.key==='silence'&&b.seals>0){
         const loss=b.stage?2:1;
         for(const h of alive(state))h.resource=h.id==='ric'?(Math.sign(h.resource)*Math.max(0,Math.abs(h.resource)-loss)||0):Math.max(0,h.resource-loss);
         log(state,`资源封缄：封页未破，全队资源向 0 减少 ${loss}。`,'warning');
       }
-      if(spec.key==='rewrite'){healBoss(state,events,(b.stage?100:80)*healFactor,'命运复写');b.seals=3;}
+      if(spec.key==='rewrite'){healBoss(state,events,(b.stage?100:80),'命运复写');b.seals=3;}
       if(spec.key==='zero_field')b.seals=Math.min(3,b.seals+1);
-      if(spec.key==='zero_reset'){healBoss(state,events,(b.stage?90:65)*healFactor,'回响重置');b.seals=3;b.sync=0;b.lastKind=null;}
+      if(spec.key==='zero_reset'){healBoss(state,events,(b.stage?90:65),'回响重置');b.seals=3;b.sync=0;b.lastKind=null;}
       if(spec.key==='tide_fill')b.waterLevel=Math.min(4,b.waterLevel+2);
       if(spec.key==='tide_breaker')b.waterLevel=0;
       if(spec.key==='tide_release')b.waterLevel=Math.max(0,b.waterLevel-1);
       if(spec.key==='furnace_vent')b.furnaceOpen=true;
       if(spec.key==='furnace_drop'){b.furnaceOpen=false;b.heat=0;}
       if(spec.key==='furnace_feed'){b.heat=Math.min(6,b.heat+3);b.furnaceOpen=false;}
-      if(spec.key==='orbit_calibrate'){healBoss(state,events,55*healFactor,'星图校准');b.prediction=Math.min(3,b.prediction+1);}
+      if(spec.key==='orbit_calibrate'){healBoss(state,events,55,'星图校准');b.prediction=Math.min(3,b.prediction+1);}
       if(spec.key==='orbit_collapse')b.prediction=0;
-      if(spec.key==='edict_revoke'&&b.violations>=2&&!profile?.keepResource){
+      if(spec.key==='edict_revoke'&&b.violations>=2){
         for(const h of alive(state))h.resource=h.id==='ric'?(Math.sign(h.resource)*Math.max(0,Math.abs(h.resource)-2)||0):Math.max(0,h.resource-2);
         log(state,'权限收回：违令至少 2，全队资源向 0 减少 2。','warning');
       }
-      if(b.charging)b.charging=false;if(response)applyResponseReward(state,events,response,profile);
+      if(spec.key==='relay_feed')for(const other of livingEnemies(state).filter(e=>e!==b)){if(['drone','patrol'].includes(other.id))other.supportCharge=Math.min(2,other.supportCharge+1);if(other.id==='warden')other.charge=Math.min(6,other.charge+2);}
+      if(spec.key==='spore_feed'){const cantor=livingEnemies(state).find(e=>e.id==='cantor');if(cantor)withEnemy(state,cantor,()=>healBoss(state,events,22,'菌丝供养'));}
+      }
+      if(b.charging)b.charging=false;
       if(state.mode==='playing'&&spec.key==='zero_end'&&b.finale){
-        if(response&&(isSolo(state)?b.finaleHits>=SOLO_RULES.finaleHits:b.finalePhysical&&b.finaleMagic)){
-          state.mode='victory';b.finaleFresh=false;state.response=null;
-          events.push({type:'victory',actor:'boss',targets:['boss'],label:'核心关闭'});log(state,'接入完成，最后一道电流被挡住。核心终于停止运转，维修组的撤离通道重新打开了。','good');
+        if(b.finaleProtected&&(isSolo(state)?b.finaleHits>=SOLO_RULES.finaleHits:b.finalePhysical&&b.finaleMagic)){
+          b.finaleFresh=false;state.response=null;
+          defeatEnemy(state,events,'核心关闭');log(state,'接入完成，最后一道电流被挡住。核心终于停止运转，维修组的撤离通道重新打开了。','good');
         }else{
           if(b.finaleFresh)b.finaleFresh=false;else b.finaleTurns--;
           if(b.finaleTurns<=0){
-            b.finale=false;b.finaleFresh=false;b.finaleTurns=2;b.finalePhysical=0;b.finaleMagic=0;b.finaleHits=0;b.hp=Math.round(b.maxHp*.22);b.seals=3;b.sync=0;b.lastKind=null;b.stagger=Math.round(b.maxStagger*.65);b.reforms++;
+            b.finale=false;b.finaleProtected=false;b.finaleFresh=false;b.finaleTurns=2;b.finalePhysical=0;b.finaleMagic=0;b.finaleHits=0;b.hp=Math.round(b.maxHp*.22);b.seals=3;b.sync=0;b.lastKind=null;b.stagger=Math.round(b.maxStagger*.65);b.reforms++;
             events.push(bossPhaseEvent(state,'phase','停机失败 · 再启动'));log(state,'未能在期限内完成接入与防护。核心恢复 22% 生命；再次击破后可以重新尝试停机。','warning');
-          }else log(state,`终幕尚未结束：${isSolo(state)?`任意命中 ${b.finaleHits}/${SOLO_RULES.finaleHits}`:`物理 ${b.finalePhysical}/1、魔法 ${b.finaleMagic}/1`}，还需在准备应对后结束回合。`,'warning');
+          }else log(state,`终幕尚未结束：${isSolo(state)?`任意命中 ${b.finaleHits}/${SOLO_RULES.finaleHits}`:`物理 ${b.finalePhysical}/1、魔法 ${b.finaleMagic}/1`}，还需在使用角色防护技能后结束回合。`,'warning');
         }
       }
       if(state.mode==='playing'&&b.id==='golem'&&!b.core&&!b.broken){
@@ -810,7 +804,7 @@ export function endRound(state){
   }
   // Damage over time settles after the telegraphed action. Crossing a body/core
   // boundary cannot replace that action with an unseen attack from a new phase.
-  if(state.mode==='playing')tickWound(state,events);
+  if(state.mode==='playing'&&!b.defeated)tickWound(state,events);
   state.response=null;if(state.mode!=='playing')return{ok:true,events};
   for(const h of alive(state)){
     if(b.fog>0)h.resonance=Math.min(5,h.resonance+1);
@@ -821,14 +815,13 @@ export function endRound(state){
   // It must not receive the partial-turn grace reserved for player-phase exposure.
   if(!wasCore&&b.core)b.coreFresh=false;
   if(!wasFinale&&b.finale)b.finaleFresh=false;
-  state.round++;refreshActionPoints(state);
-  if(cancelledResponse)log(state,`敌方主招未出手，预备应对已取消；本轮正常恢复 ${state.maxAp} 行动点。`,'good');
+  b.finaleProtected=false;b.actionSuppression=1;b.confusion=null;b.recordedIntent=null;
   // A response breaks posture after the boss has already acted. Carry only its
   // damage window into the next player turn, not another cancelled enemy turn.
   const responseBreak=b.broken&&!wasBroken&&!wasControlled;
   b.exposed=responseBreak;b.hardControl=0;b.controlImmune=(wasBroken||responseBreak||wasControlled)?1:Math.max(0,b.controlImmune-1);
   b.broken=false;b.stagger=Math.min(b.maxStagger,b.stagger<=0?b.maxStagger:b.stagger+(isSolo(state)?SOLO_RULES.staggerRegen:12));b.marked=false;
-  if(responseBreak)log(state,'应对击出破绽：下一玩家回合伤害 +50%，敌人仍会按预告出招；该回合无法再次打断。','good');
+  if(responseBreak)log(state,'角色反击击出破绽：下一玩家回合伤害 +50%，敌人仍会按预告出招；该回合无法再次打断。','good');
   if(b.id==='duelist'&&b.stage)b.mirror=Math.min(3,b.mirror+1);
   if(b.id==='warden'&&b.stage)b.charge=Math.min(6,b.charge+1);
   if(b.id==='weaver'){b.sealedKind=b.sealedKind==='physical'?'magic':'physical';b.seals=Math.min(3,b.seals+1);}
@@ -836,21 +829,35 @@ export function endRound(state){
   if(b.finale||b.core){b.broken=false;b.exposed=false;b.controlImmune=0;}
   if(!wasBroken&&!wasCore&&!wasControlled)b.weakened=0;
   b.vulnerable=Math.max(0,b.vulnerable-1);b.healSuppression=Math.max(0,b.healSuppression-1);
+  if(!b.defeated){const cycle=BOSS_INTENTS[b.id];b.intent=cycle[state.round%cycle.length];b.intentTarget=alive(state)[state.round%alive(state).length].id;
+  if(b.phasePending&&!b.core){b.charging=!b.broken;b.phasePending=false;}}
+  return {ok:true,events};
+}
+export function endRound(state){
+  ensureEnemyState(state);
+  if(state.mode!=='playing')return {ok:false,error:'战斗已结束',events:[]};
+  state.stats.turns++;state.serial++;const events=[];
+  // Resolve a snapshot. New summons wait until the next enemy phase; dead units never act.
+  const order=[...livingEnemies(state)].sort((a,b)=>(!!a.recordedIntent)-(!!b.recordedIntent));
+  for(const enemy of order){if(state.mode!=='playing')break;if(enemy.defeated)continue;const result=withEnemy(state,enemy,()=>resolveEnemyRound(state));events.push(...result.events);}
+  for(const enemy of state.enemies||[state.boss]){enemy.actionSuppression=1;enemy.cover=null;}
+  if(state.mode!=='playing'){ensureEnemySelection(state);return {ok:true,events:stampEnemyEvents(state,events)};}
+  state.round++;refreshActionPoints(state);
   // Age every existing grant before any start-of-turn harmony creates new ones.
   for(const h of state.heroes){const expired=ageShields(h);if(expired)events.push({type:'shield-expire',actor:h.id,targets:[h.id],amount:expired,amounts:{[h.id]:expired},style:'guard',label:'护盾到期'});}
   for(const h of state.heroes){
     if(h.regenTurns>0&&h.hp>0){const amount=healHero(state,h,h.regenAmount);events.push({type:'heal',actor:'youmu',targets:[h.id],amount,amounts:{[h.id]:amount},style:'rune',label:'精密缝合 · 伤口愈合'});}
     h.regenTurns=Math.max(0,h.regenTurns-1);if(!h.regenTurns||h.hp<=0){h.regenTurns=0;h.regenAmount=0;}
     h.tauntTurns=Math.max(0,h.tauntTurns-1);h.attackBuffTurns=Math.max(0,h.attackBuffTurns-1);if(!h.attackBuffTurns)h.attackBuff=0;
-    h.guard=false;h.used=[];h.patchObserved=false;h.patchRecorded=false;
+    h.guard=false;h.protection=0;h.evasion=0;h.fieldCare=0;h.executionRefund=false;h.used=[];h.patchObserved=false;h.patchRecorded=false;
     for(const key of Object.keys(h.cooldowns))h.cooldowns[key]=Math.max(0,h.cooldowns[key]-1);
     if(['knibbs','youmu'].includes(h.id)&&h.hp>0)h.resource=Math.min(10,h.resource+2);
     if(h.id==='ric'&&h.hp>0){const before=h.resource;h.resource=Math.abs(before)<=2?0:Math.sign(before)*(Math.abs(before)-2);harmony(state,h,before,events);}
     if(h.youmuForm==='captain'){h.captainTurns--;if(h.captainTurns<=0||h.hp<=0)leaveCaptain(state,h);}
     if(h.exhaustionFresh)h.exhaustionFresh=false;else if(h.exhaustedTurns>0)h.exhaustedTurns--;
   }
-  const cycle=BOSS_INTENTS[b.id];b.intent=cycle[(state.round-1)%cycle.length];b.intentTarget=alive(state)[(state.round-1)%alive(state).length].id;
-  if(b.phasePending&&!b.core){b.charging=!b.broken;b.phasePending=false;}
+
   if(heroOf(state,state.selected)?.hp<=0)state.selected=alive(state)[0].id;
-  log(state,`第 ${state.round} 回合 · 行动点 ${state.ap}（基础 ${baseActionPoints(state)}${state.roundCarry?` ＋ 保留 ${state.roundCarry}`:''}）。`,'system');return{ok:true,events};
+  ensureEnemySelection(state);log(state,'第 '+state.round+' 回合 · 行动点 '+state.ap+'。','system');
+  return {ok:true,events:stampEnemyEvents(state,events)};
 }

@@ -23,8 +23,8 @@ export function manaPassiveDescription(h){return MANA_HERO_OVERRIDES[h.id]?.pass
 export const MANA_SKILLS={
   haart:[
     {id:'page',name:'书页投射',sub:'THOUGHT THREAD',ap:1,cost:2,secondaryGain:1,kind:'magic',damage:8,hits:1,stagger:4,icon:'book',style:'rune',desc:'消耗 2 魔力与 1 行动点，将一页术式编成 1 条念线，同时造成 8 魔法伤害，削韧 4。攻击只是准备过程，主要收益是为后续的心智技能建立念线。',hint:'弱攻击 · 逐条编织念线'},
-    {id:'relay',name:'通路回响',sub:'LINKED ECHO',ap:2,secondaryCost:2,kind:'magic',damage:40,hits:3,stagger:30,weaken:true,icon:'twin',style:'rune',desc:'消耗 2 条念线与 2 行动点，沿心智通路造成三段各 40 魔法伤害，削韧 30，并让敌人下一次行动的全部伤害降低 20%。拆解念线会触发心智通路被动；多段命中只结算一次回魔。',hint:'两条念线 · 三段进攻并压制敌人'},
-    {id:'soothe',name:'心智安抚 · 压下杀意',sub:'QUIET IMPULSE',ap:1,secondaryCost:1,weaken:true,icon:'bind',style:'rune',desc:'消耗 1 条念线与 1 行动点，让敌人下一次行动的全部伤害降低 20%。即使念线已满也只拆 1 条，适合维持压制和被动回转。重复使用不会叠加减伤，也不恢复同伴生命。',hint:'固定一条 · 压制下一次进攻'},
+    {id:'relay',name:'通路回响',sub:'LINKED ECHO',ap:2,secondaryCost:2,kind:'magic',damage:40,hits:3,stagger:30,weaken:true,stripBuffs:1,icon:'twin',style:'rune',desc:'消耗 2 条念线与 2 行动点，先扰乱并驱散敌人 1 层可消除的强化，再沿心智通路造成三段各 40 魔法伤害，削韧 30，并让敌人下一次行动的全部伤害降低 20%。拆解念线会触发心智通路被动；多段命中只结算一次回魔。',hint:'两条念线 · 三段进攻并压制敌人'},
+    {id:'soothe',name:'心智安抚 · 压下杀意',sub:'QUIET IMPULSE',ap:1,secondaryCost:1,confuse:true,icon:'bind',style:'rune',desc:'消耗1条念线与1行动点，改写选中敌人下一次出手的杀意：单体攻击转向另一名敌人；群体攻击或敌方只剩一个目标时，改为该次攻击伤害降低55%。重复使用不叠加；不改变核心与终幕规则。',hint:'固定一条 · 压制下一次进攻'},
     {id:'rest',name:'展开心智领域',sub:'OPEN MIND FIELD',ap:2,cost:8,secondaryGain:4,icon:'wind',style:'rune',desc:'消耗 8 魔力与 2 行动点，一次编好 4 条念线。需要空出全部念线容量，准备期间没有伤害、治疗或净化效果；适合在安全窗口提前为强力协同与连续施法作准备。',hint:'纯准备 · 大量魔力转化为四条念线'},
     {id:'anchor',name:'心念锚定',sub:'MENTAL ANCHOR',ap:1,secondaryCost:1,attackBuff:25,icon:'rune',style:'guard',desc:'消耗 1 条念线与 1 行动点，为每位存活队员指出一次攻击机会：其下一项主动伤害技能提高 25% 伤害。每人各触发一次，未使用的提醒两轮后消失；重复提醒只保留较强的一次。',hint:'固定一条 · 提醒每人下一次攻击'},
     {id:'network',name:'心智协同 · 跟上我的思路',sub:'COORDINATED MIND',ap:2,secondaryCost:4,attackBuff:60,cleanse:2,unlockKey:'haart_network',icon:'twin',style:'rune',desc:'消耗 4 条念线与 2 行动点，为全队清除 2 层共鸣。每位存活队员的下一项主动伤害技能提高 60% 伤害，每人各触发一次，未使用的增幅两轮后消失。满额投入换取更强的团队进攻窗口。',hint:'四条念线 · 全队各一次强力增幅'},
@@ -33,16 +33,16 @@ export const MANA_SKILLS={
   qianxing:[
     {id:'spike',name:'钉刺射击',sub:'METAL SPIKE',ap:1,cost:3,secondaryGain:1,kind:'physical',damage:12,hits:1,stagger:4,icon:'crosshair',style:'shot',desc:'消耗 3 魔力与 1 行动点，为战甲装填 1 格充能，同时射出钉刺，造成 12 物理伤害，削韧 4。钉刺的基础火力较弱，需要通过后续的充能技能兑现准备收益。',hint:'弱攻击 · 逐格装填充能'},
     {id:'beam',name:'聚焦光束',sub:'FOCUSED BEAM',ap:2,secondaryCost:2,kind:'magic',damage:140,hits:1,stagger:40,pierce:true,icon:'scope',style:'burst',desc:'消耗 2 格充能与 2 行动点，造成 140 魔法伤害，削韧 40，并无视魔法抗性。持有 3 格充能时自动改为全部使用，造成 210 魔法伤害、削韧 56，并使敌人两轮内受到的伤害增加 15%。',hint:'两格穿透 · 满载三格强化光束'},
-    {id:'armor',name:'钉刺护甲',sub:'SPIKED ARMOR',ap:1,secondaryCost:1,shield:36,selfShield:true,reflect:1,icon:'shield',style:'guard',desc:'消耗 1 格充能与 1 行动点，自身获得持续两轮的 36 点护盾和 1 次钉刺反击。受到物理攻击后回击 28 物理伤害，最多储存 2 次反击。展开护甲会触发反应炉回收，后续反击不会再次回魔。',hint:'单格防护 · 两轮自身护盾与反击'},
+    {id:'armor',name:'钉刺护甲',sub:'SPIKED ARMOR',ap:1,secondaryCost:1,shield:36,selfShield:true,protection:55,selfProtection:true,reflect:1,icon:'shield',style:'guard',desc:'消耗 1 格充能与 1 行动点，自身获得持续两轮的 36 点护盾和 1 次钉刺反击，本轮承伤降低 55%。受到物理攻击后回击 28 物理伤害，最多储存 2 次反击。展开护甲会触发反应炉回收，后续反击不会再次回魔。',hint:'单格防护 · 两轮自身护盾与反击'},
     {id:'repair',name:'反应炉灌注',sub:'REACTOR INFUSION',ap:2,cost:9,secondaryGain:3,icon:'wind',style:'guard',desc:'消耗 9 魔力与 2 行动点，一次为反应炉装满 3 格充能。需要充能槽为空，准备期间没有攻击、治疗或护盾；提前投入行动点，换取下一次满载射击的强力火力。',hint:'纯准备 · 大量魔力一次装满反应炉'},
-    {id:'pulse',name:'脉冲射线',sub:'DISRUPTING PULSE',ap:1,secondaryCost:1,kind:'magic',damage:50,hits:1,stagger:14,stripBuffs:1,icon:'scope',style:'shot',desc:'固定消耗 1 格充能与 1 行动点，造成 50 魔法伤害，削韧 14，并清除敌人 1 层可消除的强化。即使满载也只用 1 格，适合反复剥除强化、保留充能与维持被动回转。',hint:'固定一格 · 剥除敌方强化'},
-    {id:'nova',name:'灭绝耀光',sub:'ANNIHILATING LIGHT',ap:3,secondaryCost:3,kind:'magic',damage:86,hits:3,stagger:60,pierce:true,unlockKey:'qianxing_nova',icon:'scatter',style:'burst',desc:'消耗全部 3 格充能与 3 行动点，发射三束各 86 魔法伤害的银焱，削韧 60，并无视魔法抗性。三段命中可拆除多层按命中计数的防护；这次行动只触发一次反应炉回收。',hint:'三格充能 · 三段穿透火力'},
+    {id:'pulse',name:'脉冲射线',sub:'DISRUPTING PULSE',ap:1,secondaryCost:1,kind:'magic',damage:50,hits:1,stagger:14,stripBuffs:1,deviceInterrupt:true,icon:'scope',style:'shot',desc:'固定消耗 1 格充能与 1 行动点，造成 50 魔法伤害，削韧 14，并清除敌人 1 层可消除的强化。即使满载也只用 1 格，适合反复剥除强化、保留充能与维持被动回转。选中供能装置时还能直接打断其预告（服从抗控）。',hint:'固定一格 · 剥除敌方强化'},
+    {id:'nova',name:'灭绝耀光',sub:'ANNIHILATING LIGHT',ap:3,secondaryCost:3,kind:'magic',damage:43,hits:3,stagger:30,targeting:'all',pierce:true,unlockKey:'qianxing_nova',icon:'scatter',style:'burst',desc:'消耗全部 3 格充能与 3 行动点，向全部敌人各发射三束43魔法伤害的银焱，每敌削韧30，并无视魔法抗性。三段命中可拆除多层按命中计数的防护；这次行动只触发一次反应炉回收。',hint:'三格充能 · 三段穿透火力'},
     {id:'lock',name:'解除协议 · 钉锁',sub:'RELEASE PROTOCOL',ap:2,secondaryCost:2,hardControl:true,stripBuffs:3,cooldown:2,unlockKey:'qianxing_lock',icon:'bind',style:'rune',desc:'消耗 2 格充能与 2 行动点，清除敌人 3 层可消除的强化，并用战甲钉锁封锁其一次普通行动。没有直接伤害，冷却 2 轮；封锁服从抗控，不能影响核心或终幕。',hint:'两格充能 · 强控与驱散'}
   ],
   patch:[
     {id:'keyblade',name:'钥刃 · 观测',sub:'OBSERVATION',ap:1,cost:1,secondaryGain:1,kind:'physical',damage:12,hits:1,stagger:4,patchStance:'observe',icon:'blade',style:'slash',desc:'消耗 1 魔力与 1 行动点，写下 1 条记录，造成 12 物理伤害，削韧 4，并切换到观测姿态。观测中的兑现侧重进攻；这次弱攻击主要用于切换姿态和准备记录。',hint:'弱攻击 · 一条记录 · 切换观测'},
     {id:'bookward',name:'书阵 · 收录',sub:'ARCHIVE',ap:1,cost:4,secondaryGain:3,shield:8,selfShield:true,patchStance:'record',icon:'book',style:'guard',desc:'消耗 4 魔力与 1 行动点，写下 3 条记录，自身获得持续两轮的 8 点护盾，并切换到收录姿态。书阵的保护较弱，主要用于成批准备记录；收录中的兑现侧重干扰与驱散。',hint:'薄层防护 · 三条记录 · 切换收录'},
-    {id:'chargedslash',name:'充能斩',sub:'CHARGED SLASH',ap:1,secondaryCost:1,kind:'physical',damage:46,hits:1,stagger:14,icon:'blade',style:'slash',desc:'固定消耗 1 条记录与 1 行动点。观测姿态造成 46 物理伤害，削韧 14；收录姿态造成 38 魔法伤害，削韧 10，并让敌人下一次行动的伤害降低 20%。无论存了多少记录，都保留逐条兑现的高效回转路线。',hint:'固定一条 · 观测进攻 / 收录压制'},
+    {id:'chargedslash',name:'充能斩',sub:'CHARGED SLASH',ap:1,secondaryCost:1,kind:'physical',damage:46,hits:1,stagger:14,icon:'blade',style:'slash',desc:'固定消耗 1 条记录与 1 行动点。观测姿态造成 46 物理伤害，削韧 14；收录姿态造成 38 魔法伤害，削韧 10，记录当前预告，使该招本轮最后出手、伤害降低25%，取消回复、召唤与资源抽取等附加效果。无论存了多少记录，都保留逐条兑现的高效回转路线。',hint:'固定一条 · 观测进攻 / 收录压制'},
     {id:'fragments',name:'时光碎屑',sub:'TIME FRAGMENTS',ap:2,secondaryCost:3,kind:'magic',damage:40,hits:3,stagger:30,icon:'twin',style:'rune',desc:'消耗 3 条记录与 2 行动点，造成三段各 40 魔法伤害，削韧 30。观测姿态使敌人两轮内受到的伤害增加 15%；收录姿态清除敌人 2 层可消除的强化。多段效果仍只触发一次书记官回魔。',hint:'三条记录 · 观测易伤 / 收录驱散'},
     {id:'collate',name:'批量抄录',sub:'BATCH TRANSCRIPTION',ap:2,cost:8,secondaryGain:6,icon:'wind',style:'guard',desc:'消耗 8 魔力与 2 行动点，一次抄录 6 条记录，保持当前姿态。需要至少 6 格空余容量，准备期间没有伤害、标记或净化效果；适合提前积累时之扉需要的大笔记录。',hint:'纯准备 · 一次写下六条记录'},
     {id:'revelation',name:'时之扉 · 启示',sub:'REVELATION',ap:3,secondaryCost:6,kind:'magic',damage:30,hits:6,stagger:24,pierce:true,unlockKey:'patch_revelation',icon:'crystal',style:'burst',desc:'消耗 3 行动点与全部记录，至少需要 6 条，最多使用 10 条。每条记录产生一段攻击：观测中每段 30 魔法伤害并穿透魔抗，每条削韧 4；收录中每段 22 魔法伤害、每条削韧 3，驱散 2 层强化，使用至少 8 条时还封锁一次普通行动。',hint:'六至十条全额兑现 · 库存越多段数越多'},
@@ -56,7 +56,7 @@ function equippedBases(state,h){
   return Array.isArray(ids)?MANA_SKILLS[h.id].filter(s=>ids.includes(s.id)):MANA_SKILLS[h.id].filter(s=>!s.unlockKey);
 }
 function dropEffects(t){
-  for(const key of ['kind','damage','hits','stagger','weaken','vulnerable','attackBuff','hardControl','stripBuffs','mark','cleanse','allCleanse','heal','allHeal','shield','allShield','selfShield','reflect','pierce','patchStance','cooldown','once','gain','self','empowerReason'])delete t[key];
+  for(const key of ['kind','damage','hits','stagger','weaken','vulnerable','attackBuff','hardControl','stripBuffs','mark','cleanse','allCleanse','heal','allHeal','shield','allShield','selfShield','reflect','pierce','patchStance','cooldown','once','gain','self','empowerReason','protection','selfProtection','personalProtection','selfGuard','confuse','recordIntent','deviceInterrupt','targeting','interrupt'])delete t[key];
 }
 function recoveryVariant(t,h,produce){
   dropEffects(t);
@@ -84,9 +84,9 @@ function resolveTactical(state,h,base){
   delete t.gain;delete t.manaReturn;delete t.manaRefund;
   const n=stock(h),form=formOf(h),notes=[];
   if(h.id==='haart'){
-    if(owned(state,'haart_echo')&&base.id==='page'&&(state.boss?.weakened||state.boss?.vulnerable||state.boss?.vulnerableTurns)){Object.assign(t,{damage:6,hits:2,stagger:6});notes.push('护念回响：敌人心智松动，书页变为两段各 6 魔法伤害，削韧 6；仍以准备念线为主。');}
+    if(owned(state,'haart_echo')&&base.id==='page'&&(state.boss?.confusion||state.boss?.weakened||state.boss?.vulnerable||state.boss?.vulnerableTurns)){Object.assign(t,{damage:6,hits:2,stagger:6});notes.push('护念回响：敌人心智松动，书页变为两段各 6 魔法伤害，削韧 6；仍以准备念线为主。');}
     if(owned(state,'haart_triage')&&base.id==='soothe'&&otherActed(state,h,base.id)){t.stripBuffs=1;notes.push('通路接续：本轮已完成前置行动，额外驱散 1 层强化。');}
-    if(owned(state,'haart_insight')&&base.id==='relay'&&state.boss?.weakened){t.mark=true;notes.push('破绽提醒：回响击中已经被压制的敌人，留下本轮标记，使全队后续伤害提高 15%。');}
+    if(owned(state,'haart_insight')&&base.id==='relay'&&(state.boss?.weakened||state.boss?.confusion)){t.mark=true;notes.push('破绽提醒：回响击中已经被压制的敌人，留下本轮标记，使全队后续伤害提高 15%。');}
   }
   if(h.id==='qianxing'){
     if(base.id==='beam'&&n>=3){Object.assign(t,{name:'聚焦光束 · 超临界',secondaryCost:3,damage:210,stagger:56,vulnerable:true,variant:'qianxing_critical'});notes.push('满载射击：消耗 3 格充能，伤害 210、削韧 56，并造成两轮易伤。');}
@@ -96,8 +96,8 @@ function resolveTactical(state,h,base){
   }
   if(h.id==='patch'){
     if(base.id==='chargedslash'&&form==='record'){
-      Object.assign(t,{name:'充能斩 · 镜反',kind:'magic',damage:38,stagger:10,weaken:true,style:'rune',variant:'patch_mirror'});
-      notes.push('收录变招：仍只消耗 1 条记录，改为 38 魔法伤害、削韧 10，并压制敌人下一次进攻。');
+      Object.assign(t,{name:'充能斩 · 镜反',kind:'magic',damage:38,stagger:10,recordIntent:true,style:'rune',variant:'patch_mirror'});
+      notes.push('收录变招：仍只消耗 1 条记录，改为 38 魔法伤害、削韧 10，记录敌人当前预告，使该招本轮最后出手、伤害降低25%，并取消治疗、召唤与资源抽取等附加效果。');
     }
     if(base.id==='fragments'||base.id==='injunction'){if(form==='record')t.stripBuffs=2;else t.vulnerable=true;notes.push(form==='record'?'收录兑现：驱散敌方 2 层强化。':'观测兑现：让敌人在两轮内受到的伤害增加 15%。');}
     if(base.id==='revelation'&&n>=6){

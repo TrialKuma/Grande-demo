@@ -37,10 +37,8 @@ test('AP UI: cancelled enemy action shows the next budget, not the current enlar
   }
 });
 
-test('AP UI: tactical preparation log explains reservation cost and capped transfer',()=>{
-  const state=createBattle('story','duelist',{mode:'solo',partyIds:['knibbs']});
-  assert.equal(prepareResponse(state,'parry',heroOf(state,'knibbs').id).ok,true);
-  assert.match(state.log[0].text,/已付的 1 AP 不退还/);
-  assert.match(state.log[0].text,/基础 5 AP/);
-  assert.match(state.log[0].text,/最多 2 点未使用 AP/);
+test('AP UI: removed universal response is unavailable and cannot reserve or refund AP',()=>{
+ const state=createBattle('story','duelist',{mode:'solo',partyIds:['knibbs']}),before=structuredClone(state);
+ assert.equal(prepareResponse(state,'parry','knibbs').ok,false);assert.deepEqual(state,before);assert.deepEqual(responseOptions(state),[]);
+ assert.doesNotMatch(render(state),/data-response=|data-action="guard"/);
 });

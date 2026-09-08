@@ -7,13 +7,13 @@ import {unlockAllHeroes,normalizeProfile} from '../src/player-profile.js';
 
 test('challenge roster: normalization and swapping preserve three distinct available heroes',()=>{
   const available=HEROES.map(h=>h.id);
-  assert.deepEqual(normalizeChallengeParty(['haart','haart','unknown']),['knibbs','apeilia','ric']);
+  assert.deepEqual(normalizeChallengeParty(['haart','haart','unknown']),['knibbs']);
   const original=['haart','youmu','patch'];
   assert.deepEqual(normalizeChallengeParty(original,available),original);
   assert.deepEqual(swapChallengeParty(original,0,'patch',available),['patch','youmu','haart']);
   assert.deepEqual(swapChallengeParty(original,1,'qianxing',available),['haart','qianxing','patch']);
   assert.deepEqual(swapChallengeParty(original,5,'qianxing',available),original);
-  assert.deepEqual(swapChallengeParty(['knibbs','apeilia','ric'],0,'haart'),['knibbs','apeilia','ric']);
+  assert.deepEqual(swapChallengeParty(['knibbs','apeilia','ric'],0,'haart'),['knibbs']);
   assert.deepEqual(original,['haart','youmu','patch']);
 });
 
@@ -22,7 +22,7 @@ test('GM reset: clears only Grande progress and restores starters while keeping 
   const prefs={muted:true,music:false,voice:false,volume:.27,speed:2,partyIds:['patch','haart','qianxing'],soloHero:'patch'};
   const before=structuredClone(prefs);
   const result=resetGameProgress({removeItem:key=>values.delete(key)},prefs);
-  assert.deepEqual(result.profile,normalizeProfile(null));assert.deepEqual(result.prefs.partyIds,['knibbs','apeilia','ric']);assert.equal(result.prefs.soloHero,'knibbs');
+  assert.deepEqual(result.profile,normalizeProfile(null));assert.deepEqual(result.prefs.partyIds,['knibbs']);assert.equal(result.prefs.soloHero,'knibbs');
   for(const key of ['muted','music','voice','volume','speed'])assert.equal(result.prefs[key],prefs[key]);
   assert.deepEqual(prefs,before);assert.equal(values.size,2);assert.equal(values.get('other-game-save'),'keep me');assert.equal(values.get('grande-crystal-prefs-v1'),'audio preferences');
 });

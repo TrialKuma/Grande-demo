@@ -11,6 +11,7 @@ export function dispatchImpacts(action,elapsed){
 // Zero boss HP can mean an upcoming core/terminal transition. Only the visual
 // victory event ends its standing pose; heroes still fall at their actual zero.
 export function actorStanding(actor,mode){
+  if(actor.isEnemy||actor.defeated!==undefined)return !actor.defeated&&mode!=='victory';
   return actor.id==='boss'?mode!=='victory':actor.hp>0;
 }
 
@@ -28,7 +29,7 @@ export function impactSchedule(event={}){
       const shield=Math.floor(absorbed*(index+1)/hits)-Math.floor(absorbed*index/hits);
       const loss=Math.min(hpRemaining,positive(hitDamageFor(event,id,index)));hpRemaining-=loss;
       beats.push({id,index,at:timing.impactAt+index*timing.interval,hpLoss:loss,absorbed:shield,
-        reaction:loss>0,kind:loss>0?'hurt':shield>0?'shield':'contact',theme,material:materialFor(id,event.bossId),
+        reaction:loss>0,kind:loss>0?'hurt':shield>0?'shield':'contact',theme,material:materialFor(id,event.bossId,event.enemyModels),
         strength:clamp(.62+Math.sqrt(loss)/10,.62,1.5)});
     }
   }

@@ -1,11 +1,17 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import {branchEnemy,branchEnvironment,formationFor} from './scene-expansion.js';
+import {branchEnemy,branchEnvironment,formationFor,trainingEnemy} from './scene-expansion.js';
 import {impactTiming,damagingEvent,attackTheme} from './battle-feedback.js';
 import {impactSchedule,reactionPose,dispatchImpacts,actorStanding,IMPACT_COLORS} from './scene-feedback.js';
 import {SceneAtmosphere} from './scene-atmosphere.js';
 import {contactEffect} from './scene-impact.js';
+import {loadSceneDetails,detailEnvironment,detailEnemy,beginModelStudio,endModelStudio} from './scene-details.js';
+import {loadSceneWorlds,applySceneWorld} from './scene-worlds.js';
+import {loadBossModels,applyBossModel,playBossAnimation,reactBossToImpact,resetBossAnimation,updateBossAnimation,disposeBossModels} from './scene-boss-models.js';
+import {SceneExploration} from './scene-exploration.js';
+import {SceneBackdrop} from './scene-backdrop.js';
+import {syncSceneEnemies,syncEnemyVisibility,pickedEnemy} from './scene-enemies.js';
 
 // Original local geometry, plus one reference-guided Blender character sample.
 const TAU = Math.PI * 2;
@@ -14,6 +20,14 @@ const ease = t => 1 - (1 - t) ** 3;
 const clamp = THREE.MathUtils.clamp;
 const lerp = THREE.MathUtils.lerp;
 const QIANXING_MODEL_URL = '/models/qianxing.glb';
+const WORLD_PREVIEW_SPAN={ruins:19,storm:21,sanctum:20,floodworks:20.5,observatory:20};
+const ENVIRONMENT_LIGHTING={
+  ruins:{background:'#132021',fog:'#263635',density:.012,sky:'#ece9df',ground:'#4b504b',key:'#fff0d5',rim:'#76b7b0',warm:'#ffd9a7',cyan:'#94d1c4',violet:'#b3b1c1'},
+  storm:{background:'#152530',fog:'#344652',density:.011,sky:'#d6e0e6',ground:'#454d53',key:'#e2eaf0',rim:'#81c3d6',warm:'#c2dfeb',cyan:'#74d5e1',violet:'#acc1d9'},
+  sanctum:{background:'#221e26',fog:'#403540',density:.011,sky:'#e8ddd0',ground:'#504441',key:'#ffe4bb',rim:'#b19ac9',warm:'#ffd296',cyan:'#c0bacd',violet:'#b398c5'},
+  floodworks:{background:'#152628',fog:'#344749',density:.011,sky:'#e0e3df',ground:'#454f4d',key:'#f3e8d1',rim:'#8ebec1',warm:'#efce9f',cyan:'#90c9c5',violet:'#b3c0bf'},
+  observatory:{background:'#101828',fog:'#273247',density:.009,sky:'#e1e3ef',ground:'#424454',key:'#f0eeff',rim:'#b1acd7',warm:'#ddd6c4',cyan:'#b3c7e1',violet:'#c4b4e1'},
+};
 
 function material(color, options = {}) {
   return new THREE.MeshStandardMaterial({ color, roughness: .72, flatShading: true, ...options });
@@ -145,6 +159,7 @@ function person(id) {
   const bones = {};
   // Boots, knees and shaped trouser legs, with a slight asymmetric stance.
   for (const side of [-1, 1]) {
+    const legStart=body.children.length;
     const z = side * .045;
     rod(body, palette.dark, [side * .155, .25, z], [side * .14, .85, z], .12, .15, 7);
     orb(body, id === 'apeilia' ? palette.white : palette.coat, [.13, .14, .12], [side * .155, .48, z + .045], 0);
@@ -156,6 +171,9 @@ function person(id) {
       box(body, palette.trim, [.055, .22, .025], [side * .155, .66, z + .13]);
       box(body, palette.cyan, [.022, .17, .025], [side * .17, .21, z + .12]);
     }
+    const parts=body.children.slice(legStart),leg=new THREE.Group();leg.position.set(side*.15,.98,0);body.add(leg);body.updateMatrixWorld(true);
+    for(const part of parts)leg.attach(part);
+    bones[side===1?'rightLeg':'leftLeg']=leg;
   }
   mesh(body, new THREE.CylinderGeometry(.24, .29, .35, 7), palette.dark, 0, .96, 0);
   mesh(body, new THREE.CylinderGeometry(.33, .25, .57, 7), palette.coat, 0, 1.39, 0);
@@ -874,8 +892,9 @@ function finalCore() {
 const PARTY_IDS = ['knibbs', 'apeilia', 'ric', 'haart', 'qianxing', 'youmu', 'patch'];
 const geometryKit={material,mesh,box,orb,rod,plate,ring,finishEnemy};
 const ENEMY_FACTORIES = { golem, duelist, cantor, warden, weaver, final: finalCore,
+  ...Object.fromEntries(['scout','bulwark','conduit'].map(id=>[id,()=>trainingEnemy(id,geometryKit)])),
   ...Object.fromEntries(['tide','furnace','orrery','arbiter'].map(id=>[id,()=>branchEnemy(id,geometryKit)]))};
-const PARTY_PLACEMENTS = [[-4.2, .48, 2.4], [4.2, .48, 2.4], [0, .48, -4.8]];
+const PARTY_PLACEMENTS = [[-3.8, .48, 2.4], [3.8, .48, 2.4], [0, .48, 4.2]];
 const BOSS_POSITION = [0, .48, 0];
 const facingCenter = position => Math.atan2(-position.x, -position.z);
 
@@ -908,7 +927,7 @@ export class BattleScene {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.24;
+    this.renderer.toneMappingExposure = 1.12;
     this.renderer.domElement.className = 'battle-canvas';
     this.renderer.domElement.setAttribute('aria-label', '格朗德三维战场，可拖动旋转视角，滚轮缩放');
     this.renderer.domElement.style.cssText = 'width:100%;height:100%;display:block;touch-action:none;';
@@ -933,6 +952,7 @@ export class BattleScene {
     this.createEnvironment();
     this.rememberEnvironment('ruins');
     this.environmentId = 'ruins';
+    this.setEnvironmentLighting('ruins');
     this.actors = new Map();
     this.heroCache = new Map();
     this.activePartyIds = ['knibbs', 'apeilia', 'ric'];
@@ -964,6 +984,17 @@ export class BattleScene {
     this.createActorMarker(boss);
     this.actors.set('boss', boss);
     this.bossCache.set('golem', boss);
+    boss.isEnemy=true;boss.root.userData.enemyUnitId='boss';
+    this.backdrop=new SceneBackdrop(this);this.backdrop.setWorld(this.environmentId);
+    this.installScenePointers();
+    loadSceneDetails(this).then(()=>{
+      if(this.disposed)return;
+      // Whichever optional library finishes last, complete worlds own the
+      // visible scenery and late legacy decorations stay in the fallback.
+      for(const [id,entry] of this.environmentCache)applySceneWorld(this,id,entry);
+    });
+    loadSceneWorlds(this);
+    loadBossModels(this);
     this.setAtmosphere('golem');
     this.resetCamera();
     this.resize = this.resize.bind(this);
@@ -1076,6 +1107,7 @@ export class BattleScene {
 
     const makeColumn = (x, z, h, broken = false) => {
       const p = new THREE.Group();
+      p.userData.detailReplacement='ruins-masonry';
       p.position.set(x, .48, z);
       env.add(p);
       mesh(p, new THREE.CylinderGeometry(.65, .78, .22, 6), dark, 0, .04, 0);
@@ -1106,6 +1138,7 @@ export class BattleScene {
       const p = archStart.clone().lerp(archEnd, t);
       p.y += Math.sin(t * Math.PI) * .84;
       const stoneBlock = box(env, i % 2 ? rim : stone, [.59, .46, .70], p.toArray());
+      stoneBlock.userData.detailReplacement='ruins-masonry';
       stoneBlock.rotation.y = .4;
       stoneBlock.rotation.z = -.25 + t * .4;
     }
@@ -1197,6 +1230,8 @@ export class BattleScene {
       flames: this.flames, dust: this.dust, fogSprites: this.fogSprites,
       animated: this.environmentAnimated || [],
     });
+    detailEnvironment(this,id,this.environmentCache.get(id));
+    applySceneWorld(this,id,this.environmentCache.get(id));
   }
 
   switchEnvironment(id) {
@@ -1215,21 +1250,24 @@ export class BattleScene {
     this.flames = entry.flames; this.dust = entry.dust; this.fogSprites = entry.fogSprites;
     this.environmentAnimated = entry.animated;
     this.environmentId = id;
-    const palette = id === 'floodworks'
-      ? {background:'#0c252b',fog:'#16363c',density:.019,sky:'#a4c9cd',ground:'#1e3c43',key:'#d7e8d7',rim:'#52bdbe',warm:'#e2bd83',cyan:'#64d3ca',violet:'#8ac5c9'}
-      : id === 'observatory'
-      ? {background:'#0b1026',fog:'#161d38',density:.011,sky:'#b4c3e5',ground:'#212341',key:'#d1dbff',rim:'#8c8ddb',warm:'#d4ba8b',cyan:'#8ba8fc',violet:'#b997ef'}
-      : id === 'storm'
-      ? { background: '#152938', fog: '#1b3342', density: .016, sky: '#b7d3ea', ground: '#283f53', key: '#c9e4ff', rim: '#6d9cd5', warm: '#a9d4ff', cyan: '#65bafa', violet: '#84b4ff' }
-      : id === 'sanctum'
-        ? { background: '#151321', fog: '#251c32', density: .023, sky: '#b9abbf', ground: '#372134', key: '#edcfad', rim: '#a178da', warm: '#ffb587', cyan: '#9179cf', violet: '#c877b3' }
-        : { background: '#0a1320', fog: '#0b1523', density: .026, sky: '#adcfe4', ground: '#24213e', key: '#ceddfa', rim: '#7777ff', warm: '#ffc16a', cyan: '#32ccd9', violet: '#b15eff' };
-    this.scene.background.set(palette.background);
+    this.setEnvironmentLighting(id);
+    this.backdrop?.setWorld(id);
+  }
+
+  setEnvironmentLighting(id) {
+    const palette=ENVIRONMENT_LIGHTING[id]||ENVIRONMENT_LIGHTING.ruins;
+    // A loaded panorama is a Texture; reset to the palette while the next
+    // world's image loads, then SceneBackdrop replaces it when ready.
+    if(this.scene.background?.isColor)this.scene.background.set(palette.background);
+    else this.scene.background=new THREE.Color(palette.background);
     this.scene.fog.color.set(palette.fog); this.scene.fog.density = palette.density;
     if (this.stageLights) {
       this.stageLights.ambient.color.set(palette.sky);
       this.stageLights.ambient.groundColor.set(palette.ground);
       for (const name of ['key', 'rim', 'warm', 'cyan', 'violet']) this.stageLights[name].color.set(palette[name]);
+      // Warm stone and ivory retain their albedo; colored rim lights accent
+      // silhouettes instead of washing every environment in saturated blue.
+      for(const [name,intensity] of Object.entries({ambient:1.65,key:3.0,rim:1.15,warm:15,cyan:10,violet:8}))this.stageLights[name].intensity=intensity;
     }
   }
 
@@ -1399,14 +1437,14 @@ export class BattleScene {
     ground.position.copy(actor.basePosition);
     ground.position.y = .48;
     this.scene.add(ground);
-    const isBoss = actor.id === 'boss';
+    const isBoss = actor.id === 'boss',isEnemy=isBoss||actor.isEnemy;
     actor.marker = ring(ground, isBoss ? 1.34 : .6, isBoss ? .025 : .020, isBoss ? '#9d6edf' : '#79b2bd', .005, isBoss ? .4 : .35);
     actor.selection = ring(ground, isBoss ? 1.5 : .73, .028, '#e4c990', .016, 0, Math.PI * 1.65);
     actor.markerRoot = ground;
     actor.shield = mesh(actor.root, new THREE.SphereGeometry(isBoss ? 2.4 : 1.01, 18, 12), new THREE.MeshBasicMaterial({ color: '#6edee5', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, wireframe: true }), 0, isBoss ? 2.4 : 1.2, 0, [1, 1.28, 1]);
     actor.shield.castShadow = false;
     actor.shield.visible = false;
-    if (!isBoss) {
+    if (!isEnemy) {
       const marker = mesh(actor.root, new THREE.ConeGeometry(.10, .17, 4), new THREE.MeshBasicMaterial({ color: '#f2d498' }), 0, actor.height + .29, 0);
       marker.rotation.z = Math.PI;
       actor.arrow = marker;
@@ -1429,7 +1467,8 @@ export class BattleScene {
     const aspect = width / height;
     // The canvas occupies the actual space between the HUD and command board.
     // Fit the combatants in that viewport, preserving the entire party on phones.
-    const view = this.modelReview ? Math.max(3.25, 4.3 / aspect) : Math.max(8.9, 13.4 / aspect);
+    const boss=this.actors.get('boss'),bounds=boss?.modelBounds;
+    const view = this.modelReview ? Math.max(3.25, 4.3 / aspect) : this.exploration ? Math.max(10.6,13.5/aspect) : this.bossPreviewFocus ? Math.max((bounds?.y||boss?.height||4.8)+1.7,(Math.max(bounds?.x||4,bounds?.z||3)+2)/aspect) : this.artPreview ? Math.max(WORLD_PREVIEW_SPAN[this.environmentId]||20,26/aspect) : Math.max(12.5, 15.0 / aspect);
     this.camera.left = -view * aspect / 2;
     this.camera.right = view * aspect / 2;
     this.camera.top = view / 2;
@@ -1439,15 +1478,29 @@ export class BattleScene {
   }
 
   resetCamera() {
+    if(this.exploration){
+      this.camera.position.set(9.5,12.5,17);this.camera.zoom=1;this.controls.target.set(0,1.3,0);this.controls.update();this.camera.updateProjectionMatrix();return;
+    }
     if(this.modelReview){
       this.camera.position.set(3.5, 2.9, 6.5);
       this.camera.zoom=1;this.controls.target.set(0,1.66,0);
       this.camera.lookAt(this.controls.target);this.controls.update();this.camera.updateProjectionMatrix();return;
     }
+    if(this.bossPreviewFocus){
+      const boss=this.actors.get('boss'),focus=boss.basePosition.clone().add(V(0,boss.height*.46,0));
+      const angle=boss.baseRotation+.47;
+      this.camera.position.copy(focus).add(V(Math.sin(angle)*13.5,4.0,Math.cos(angle)*13.5));this.camera.zoom=1;
+      this.controls.target.copy(focus);this.camera.lookAt(focus);this.controls.update();this.camera.updateProjectionMatrix();return;
+    }
+    if(this.artPreview){
+      const focus=V(0,3.2,-1.5);
+      this.camera.position.copy(focus).add(V(12.5,15.0,22));this.camera.zoom=1;
+      this.controls.target.copy(focus);this.camera.lookAt(focus);this.controls.update();this.camera.updateProjectionMatrix();return;
+    }
     this.camera.position.set(10.8, 12.4, 18.2);
     this.camera.zoom = 1;
     const focus=V();let count=0;for(const actor of this.actors.values()){focus.add(actor.basePosition);count++;}
-    if(count)focus.divideScalar(count);focus.y=1.65;
+    if(count)focus.divideScalar(count);focus.y=3.5;
     this.controls.target.copy(focus);
     this.camera.lookAt(this.controls.target);
     this.controls.update();
@@ -1457,9 +1510,56 @@ export class BattleScene {
   setSpeed(speed) { this.speed = clamp(Number(speed) || 1, .25, 4); }
   setPaused(paused) { this.paused = Boolean(paused); }
 
+  previewBossAnimation(kind='attack') {
+    if(this.disposed||this.modelReview||this.state.mode==='playing')return false;
+    return playBossAnimation(this.actors.get('boss'),kind);
+  }
+
+  setBossPreviewFocus(enabled) {
+    if(this.disposed||this.modelReview)return false;
+    this.bossPreviewFocus=!!enabled;this.syncArtPreviewVisibility();this.resize();this.resetCamera();return true;
+  }
+
+  setArtPreview(enabled) {
+    if(this.disposed||this.modelReview)return false;
+    this.artPreview=!!enabled;if(!enabled)this.bossPreviewFocus=false;
+    this.syncArtPreviewVisibility();this.resize();this.resetCamera();return true;
+  }
+
+  syncArtPreviewVisibility() {
+    if(this.modelReview){syncEnemyVisibility(this);return;}
+    if(this.artPreview&&this.bossPreviewFocus){
+      this.artPreviewHeroVisibility??=new Map();
+      for(const actor of this.actors.values()){
+        if(actor.id==='boss')continue;
+        if(!this.artPreviewHeroVisibility.has(actor))this.artPreviewHeroVisibility.set(actor,{root:actor.root.visible,marker:actor.markerRoot.visible,shield:actor.shield.visible});
+        actor.root.visible=actor.markerRoot.visible=actor.shield.visible=false;
+      }
+    }else if(this.artPreviewHeroVisibility){
+      for(const [actor,visible] of this.artPreviewHeroVisibility){
+        if(this.actors.get(actor.id)!==actor)continue;
+        actor.root.visible=visible.root;actor.markerRoot.visible=visible.marker;actor.shield.visible=visible.shield;
+      }
+      this.artPreviewHeroVisibility=null;
+    }
+    syncEnemyVisibility(this);
+  }
+
+  getAssetStatus() {
+    const boss=this.actors.get('boss');
+    return {
+      worlds:typeof this.worldStatus==='object'?{...this.worldStatus}:{status:this.worldStatus||'loading',worlds:this.worldLibrary?.size||0},
+      bosses:{...(this.bossModelStatus||{status:'loading',bosses:0,clips:0})},
+      currentBoss:{id:boss?.modelId,source:boss?.modelSource||'procedural',animations:boss?.bossAnimation?[...boss.bossAnimation.actions.keys()]:[]},
+      backdrop:{world:this.environmentId,status:this.backdrop?.entries.get(this.environmentId)?.status||'idle'},
+      enemies:[...this.actors.values()].filter(actor=>actor.isEnemy).map(actor=>({id:actor.id,modelId:actor.modelId,defeated:!!actor.defeated})),
+    };
+  }
+
   setAtmosphere(bossId) {
     this.atmosphere?.dispose();
     this.atmosphere=new SceneAtmosphere(this.scene,this.glowTexture,bossId,this.reducedMotion);
+    this.atmosphere.root.visible=!this.modelReview;
     // The themed fixed-buffer layer replaces the old drifting dust cloud.
     for(const entry of this.environmentCache.values())if(entry.dust)entry.dust.visible=false;
     if(this.environmentId==='floodworks'&&this.stageLights){
@@ -1479,10 +1579,11 @@ export class BattleScene {
   applyReaction(actor,dt) {
     const reaction=actor.reaction;if(!reaction)return;
     reaction.age+=dt;
-    const pose=reactionPose(reaction.age,{...reaction,reducedMotion:this.reducedMotion,boss:actor.id==='boss'});
+    const pose=reactionPose(reaction.age,{...reaction,reducedMotion:this.reducedMotion,boss:actor.isEnemy||actor.id==='boss'});
     if(pose.done){actor.reaction=null;return;}
     const add=(object,delta)=>{if(!object)return;actor.reactionOverlay.push({object,...delta});object.position.x+=delta.x||0;object.position.y+=delta.y||0;object.position.z+=delta.z||0;object.rotation.x+=delta.rx||0;object.rotation.y+=delta.ry||0;object.rotation.z+=delta.rz||0;};
     add(actor.root,{x:reaction.worldDirection.x*pose.step,z:reaction.worldDirection.z*pose.step});
+    if(actor.bossAnimation)return;
     add(actor.body,{y:pose.crouch,rx:pose.pitch,rz:pose.roll});
     add(actor.bones?.head,{rx:pose.headPitch,rz:pose.headRoll});
     add(actor.bones?.leftArm,{rx:pose.leftArm,rz:pose.armSpread});
@@ -1502,7 +1603,7 @@ export class BattleScene {
     hero.modelPromise = new Promise(resolve => {
       new GLTFLoader().load(QIANXING_MODEL_URL, gltf => {
         const body = gltf.scene;
-        if (this.disposed) { this.removeEffect(body); resolve({ status: 'disposed' }); return; }
+        if (this.disposed||hero.sceneReleased) { this.removeEffect(body); resolve({ status: 'disposed' }); return; }
         const bones = Object.fromEntries(['head', 'rightArm', 'leftArm'].map(name => [name, body.getObjectByName(name)]));
         if (Object.values(bones).some(bone => !bone)) {
           this.removeEffect(body);
@@ -1539,7 +1640,9 @@ export class BattleScene {
 
   async enterModelReview() {
     if (this.disposed) return { status: 'disposed' };
+    this.exitExploration();
     if (this.modelReview) return this.loadDetailedHero(this.heroCache.get('qianxing'));
+    this.setArtPreview(false);
     this.clearCombatEffects();
     let hero = this.heroCache.get('qianxing');
     if (!hero) {
@@ -1576,6 +1679,7 @@ export class BattleScene {
     hero.hp = 1;
     hero.root.visible = true;
     hero.arrow.visible = false;
+    beginModelStudio(this);
     this.resize();
     this.resetCamera();
     return this.loadDetailedHero(hero);
@@ -1584,6 +1688,7 @@ export class BattleScene {
   exitModelReview() {
     const saved = this.modelReview;
     if (!saved || this.disposed) return;
+    endModelStudio(this);
     const hero = this.heroCache.get('qianxing');
     hero.root.position.copy(saved.position);
     hero.basePosition.copy(saved.basePosition);
@@ -1631,7 +1736,11 @@ export class BattleScene {
       this.scene.add(next.root);
       this.createActorMarker(next);
       this.bossCache.set(modelId, next);
+      detailEnemy(this,next);
     }
+    applyBossModel(this,next);
+    next.isEnemy=true;next.root.userData.enemyUnitId='boss';
+    resetBossAnimation(next);
     next.root.visible = true;
     next.markerRoot.visible = true;
     next.root.position.copy(next.basePosition);
@@ -1658,7 +1767,7 @@ export class BattleScene {
   }
 
   clearCombatEffects() {
-    for(const actor of this.actors.values()){this.clearReactionOverlay(actor);actor.reaction=null;actor.flash=0;}
+    for(const actor of this.actors.values()){this.clearReactionOverlay(actor);actor.reaction=null;actor.flash=0;resetBossAnimation(actor);}
     for (const action of this.actions) action.finish();
     this.actions.length = 0;
     for (const effect of this.effects) this.removeEffect(effect.object);
@@ -1710,6 +1819,7 @@ export class BattleScene {
     if (this.disposed) return;
     if(this.modelReview)return;
     this.state = { ...this.state, ...state };
+    if(this.exploration)return;
     if (state.heroes) this.switchParty(state.heroes);
     for (const data of state.heroes || []) {
       const hero = this.actors.get(data.id);
@@ -1730,24 +1840,31 @@ export class BattleScene {
         hero.forms.shield.rotation.y=recording?-.22:.12;
       }
     }
-    const boss = state.boss ? this.switchBoss(state.boss.id) : this.actors.get('boss');
+    const boss = state.boss ? this.switchBoss(state.boss.modelId||state.boss.id) : this.actors.get('boss');
     this.applyFormation(state.boss?.id||boss.modelId);
     if (state.boss) {
       boss.hp = state.boss.hp ?? boss.hp;
+      boss.defeated=!!state.boss.defeated;
       boss.stage = state.boss.stage || 0;
       boss.coreOpen = boss.modelId === 'golem' && !!state.boss.core;
       boss.finaleOpen = boss.modelId === 'final' && !!state.boss.finale;
+      boss.sealCount = boss.modelId === 'final' ? Math.max(0,state.boss.seals||0) : 0;
+      if(boss.modelId==='final')boss.shield.visible=boss.sealCount>0||boss.finaleOpen;
       boss.broken = !!state.boss.broken;
       boss.fog = state.boss.fog || 0;
       const target=this.actors.get(state.boss.intentTarget)||this.actors.get(this.activePartyIds[0]);
       if(target)boss.baseRotation=Math.atan2(target.basePosition.x-boss.basePosition.x,target.basePosition.z-boss.basePosition.z);
     }
+    syncSceneEnemies(this,state.enemyTargets||[],id=>(ENEMY_FACTORIES[id]||ENEMY_FACTORIES.scout)());
+    this.syncArtPreviewVisibility();
+    if(this.bossPreviewFocus||this.artPreview){this.resize();this.resetCamera();}
   }
 
   applyFormation(bossId){
     const key=(`${bossId}:${this.activePartyIds.join(',')}`);
     if(this.formationKey===key)return;
     this.formationKey=key;
+    this.enemyFormationKey='';
     const layout=formationFor(bossId,this.activePartyIds.length),boss=this.actors.get('boss');
     this.formationName=layout.name;
     boss.basePosition.set(...layout.boss);boss.root.position.copy(boss.basePosition);boss.markerRoot.position.copy(boss.basePosition);
@@ -1759,8 +1876,55 @@ export class BattleScene {
     });
     // A common focus keeps a frontal line and a split flank equally visible.
     const focus=boss.basePosition.clone();for(const id of this.activePartyIds)focus.add(this.actors.get(id).basePosition);
-    focus.divideScalar(this.activePartyIds.length+1);focus.y=1.6;
+    focus.divideScalar(this.activePartyIds.length+1);focus.y=3.5;
     const delta=focus.clone().sub(this.controls.target);this.camera.position.add(delta);this.controls.target.copy(focus);this.controls.update();
+  }
+
+  installScenePointers(){
+    const canvas=this.renderer.domElement;
+    this.onScenePointerDown=event=>{if(event.button===0)this.scenePointerStart={x:event.clientX,y:event.clientY,time:performance.now()};};
+    this.onScenePointerUp=event=>{
+      const start=this.scenePointerStart;this.scenePointerStart=null;
+      if(!start||Math.hypot(event.clientX-start.x,event.clientY-start.y)>6||performance.now()-start.time>600)return;
+      if(this.exploration&&!this.exploration.paused){
+        const rect=canvas.getBoundingClientRect(),ray=new THREE.Raycaster();
+        ray.setFromCamera(new THREE.Vector2((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1),this.camera);
+        const roots=[...this.exploration.items.values()].map(item=>item.root);
+        for(const hit of ray.intersectObjects(roots,true)){let node=hit.object;while(node&&!node.userData.interactionId)node=node.parent;if(node){this.moveToInteraction(node.userData.interactionId);return;}}
+        this.moveToGroundFromPointer(event);
+      }else if(this.state.mode==='playing'&&!this.modelReview){const id=pickedEnemy(this,event);if(id)this.onTargetSelect?.(id);}
+    };
+    canvas.addEventListener('pointerdown',this.onScenePointerDown);canvas.addEventListener('pointerup',this.onScenePointerUp);
+  }
+
+  enterExploration(config){
+    if(this.disposed)return {status:'disposed'};
+    if(this.modelReview)this.exitModelReview();
+    if(this.exploration?.id===config.id){
+      const heroId=config.heroId||this.activePartyIds[0]||'knibbs';
+      if(this.exploration.hero.id===heroId){this.exploration.updateConfig(config);return {status:'ready',...this.exploration.snapshot()};}
+      // GM/progression changes can remove the controlled character. Rebuild
+      // their independent exploration model without losing walking position.
+      config={...config,position:this.exploration.position};
+    }
+    this.exitExploration();this.clearCombatEffects();this.setArtPreview(false);
+    this.exploration=new SceneExploration(this,config,person);this.resize();
+    return {status:'ready',...this.exploration.snapshot()};
+  }
+  exitExploration(){
+    if(!this.exploration)return false;
+    const exploration=this.exploration;this.exploration=null;exploration.dispose();this.resize();this.formationKey='';return true;
+  }
+  setMoveInput(input){this.exploration?.setInput(input);}
+  setExplorationPaused(paused){if(this.exploration){this.exploration.paused=!!paused;if(paused){this.exploration.setInput({x:0,z:0});this.exploration.path=[];}}}
+  getExplorationState(){return this.exploration?.snapshot()||null;}
+  moveToInteraction(id){return this.exploration?.moveToInteraction(id)||false;}
+  moveToGroundFromPointer(event){
+    if(!this.exploration||this.exploration.paused)return false;
+    const rect=this.renderer.domElement.getBoundingClientRect(),ray=new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1),this.camera);
+    const point=ray.ray.intersectPlane(new THREE.Plane(V(0,1,0),-.48),V());
+    return !!point&&this.exploration.moveTo([point.x,point.z]);
   }
 
   positionOf(id, y = 1.2) {
@@ -1914,9 +2078,14 @@ export class BattleScene {
     }
     const partyLead = this.activePartyIds[0];
     const actor = this.actors.get(event.actor) || this.actors.get(type === 'boss' ? 'boss' : partyLead);
-    const targets = (Array.isArray(event.targets) && event.targets.length ? event.targets : [actor.id === 'boss' ? partyLead : 'boss']).map(id => typeof id === 'string' ? id : id.id).filter(id => this.actors.has(id));
+    const targets = (Array.isArray(event.targets) && event.targets.length ? event.targets : [actor.isEnemy ? partyLead : this.state?.selectedEnemyId||'boss']).map(id => typeof id === 'string' ? id : id.id).filter(id => this.actors.has(id));
     const primary = this.actors.get(targets[0]) || this.actors.get('boss');
-    const style = event.style || (actor.id === 'knibbs' ? 'shot' : ['apeilia', 'qianxing'].includes(actor.id) ? 'slash' : actor.id === 'boss' ? 'quake' : 'rune');
+    if(type==='enemy-defeat'){
+      primary.defeated=true;primary.enemyNameplate&&(primary.enemyNameplate.visible=false);
+      this.burst(this.positionOf(primary.id,primary.height*.5),primary.accent,25,.85,0,true);this.floatingText(this.positionOf(primary.id,primary.height),'击破','#e7c68f');
+      onImpact?.(0);return Promise.resolve();
+    }
+    const style = event.style || (actor.id === 'knibbs' ? 'shot' : ['apeilia', 'qianxing'].includes(actor.id) ? 'slash' : actor.isEnemy ? 'quake' : 'rune');
     event={...event,type,style,actor:actor.id,targets,bossId:event.bossId||this.actors.get('boss')?.modelId};
     const timing=impactTiming(event),hitCount=timing.hits,interval=timing.interval;
     const isHealing = type === 'heal';
@@ -1927,10 +2096,10 @@ export class BattleScene {
     const impactAt = timing.impactAt;
     actor.action = true;
     const origin = actor.root.position.clone();
-    const targetPosition = this.positionOf(primary.id, primary.id === 'boss' ? 2.9 : 1.3);
-    const from = this.positionOf(actor.id, actor.id === 'boss' ? 2.85 : 1.42);
+    const targetPosition = this.positionOf(primary.id, primary.isEnemy ? primary.height*.55 : 1.3);
+    const from = this.positionOf(actor.id, actor.isEnemy ? actor.height*.55 : 1.42);
     const direction = primary.root.position.clone().sub(origin).setY(0).normalize();
-    if (direction.lengthSq() < .001) direction.copy(this.actors.get(actor.id === 'boss' ? partyLead : 'boss').root.position).sub(origin).setY(0).normalize();
+    if (direction.lengthSq() < .001) direction.copy(this.actors.get(actor.isEnemy ? partyLead : this.state?.selectedEnemyId||'boss').root.position).sub(origin).setY(0).normalize();
     if (direction.lengthSq() > .001) actor.root.rotation.y = Math.atan2(direction.x, direction.z);
     const dashDistance = Math.max(0, origin.distanceTo(primary.root.position) - (primary.id === 'boss' ? 1.95 : 1.1));
     let movement = 'cast';
@@ -1948,8 +2117,8 @@ export class BattleScene {
         for (const id of targets) this.flashAt(this.positionOf(id, 1.1), '#d481a2', 1.8, .1);
       }
     } else if (type === 'core' || type === 'break' || type === 'phase') {
-      const p = this.positionOf('boss', 3.0);
-      this.runeCircle(this.positionOf('boss', .05), type === 'break' ? '#ffe0a0' : color, 0, 1, 2.1);
+      const p = this.positionOf(primary.id,primary.height*.65);
+      this.runeCircle(this.positionOf(primary.id, .05), type === 'break' ? '#ffe0a0' : color, 0, 1,primary.id==='boss'?2.1:.85);
       this.flashAt(p, type === 'break' ? '#fff0ba' : '#d191ff', 4.8, .18);
       this.burst(p, color, 45, 1.3, .20, true);
       this.shockwave(V(p.x, .54, p.z), color, 4.4, .22);
@@ -2031,15 +2200,19 @@ export class BattleScene {
       for (let h = 0; h < hitCount; h++) {
         const delay = impactAt-.16+h*interval;
         const muzzle = from.clone().add(direction.clone().multiplyScalar(.75));
-        const impact = targetPosition.clone().add(V((Math.random() - .5) * .3, (Math.random() - .5) * .35, 0));
         this.flashAt(muzzle, color, 1.3, delay);
-        this.bolt(muzzle, impact, color, delay, .035, .16);
+        for(const id of targets){
+          const recipient=this.actors.get(id),impact=this.positionOf(id,recipient.isEnemy?recipient.height*.55:1.3).add(V((Math.random()-.5)*.3,(Math.random()-.5)*.35,0));
+          this.bolt(muzzle,impact,color,delay,.035,.16);
+        }
       }
     } else if (style === 'slash') {
       movement = 'dash';
       for (let h = 0; h < hitCount; h++) {
-        const p = targetPosition.clone().add(V(0, (h % 2) * .32 - .1, 0));
-        this.slash(p, color, impactAt-.05+h*interval, 1.25+(h%2)*.2);
+        for(const id of targets){
+          const recipient=this.actors.get(id),p=this.positionOf(id,recipient.isEnemy?recipient.height*.55:1.3).add(V(0,(h%2)*.32-.1,0));
+          this.slash(p,color,impactAt-.05+h*interval,1.25+(h%2)*.2);
+        }
       }
     } else if (style === 'quake') {
       movement = 'slam';
@@ -2086,11 +2259,19 @@ export class BattleScene {
 
     const beats=impactSchedule(event);
     duration=Math.max(duration,timing.duration);
+    if(actor.id==='boss'&&damagingEvent(event))playBossAnimation(actor,'attack',{duration});
     return new Promise(resolve => {
       this.actions.push({
         actor, elapsed: 0, duration, impactAt, interval, hitCount, nextHit:0,
         update: (t, age) => {
           const attackPulse = Math.sin(Math.min(1, t * 1.5) * Math.PI);
+          if(actor.bossAnimation){
+            if(movement==='dash'){
+              const travel=t<.27?ease(t/.27):t>.66?1-ease((t-.66)/.34):1;
+              actor.root.position.copy(origin).addScaledVector(direction,dashDistance*travel*(this.reducedMotion?.15:1));
+            }
+            return;
+          }
           if (movement === 'evade') {
             const travel = t < .30 ? ease(t / .30) : t > .58 ? 1 - ease((t - .58) / .42) : 1;
             actor.root.position.copy(origin).addScaledVector(V(direction.z, 0, -direction.x), travel * (this.reducedMotion?.25:1));
@@ -2124,11 +2305,12 @@ export class BattleScene {
           onImpact?.(index);
           for(const beat of beats.filter(beat=>beat.index===index)){
             const target=this.actors.get(beat.id);if(!target)continue;
-            const point=this.positionOf(beat.id,beat.id==='boss'?2.8:1.38).add(V((index%2?.08:-.08),index%2*.12,0));
+            const point=this.positionOf(beat.id,target.isEnemy?target.height*.55:1.38).add(V((index%2?.08:-.08),index%2*.12,0));
             const away=target.basePosition.clone().sub(origin).setY(0).normalize();
             if(away.lengthSq()<.001)away.copy(direction);
             contactEffect(this,beat,point,away);
             if(beat.reaction){
+              reactBossToImpact(target,beat);
               const local=away.clone().applyAxisAngle(V(0,1,0),-target.root.rotation.y);
               target.reaction={age:0,strength:beat.strength,index,worldDirection:away,direction:[local.x,local.z]};
               target.flash=this.reducedMotion?.055:.14;target.flashColor=color;
@@ -2145,6 +2327,7 @@ export class BattleScene {
           actor.action = false;
           actor.root.position.copy(actor.basePosition);
           actor.root.rotation.y = actor.baseRotation;
+          if(actor.bossAnimation?.current==='attack')resetBossAnimation(actor);
           actor.body.position.set(0, 0, 0);
           actor.body.rotation.set(0, 0, 0);
           if (actor.bones) {
@@ -2165,14 +2348,15 @@ export class BattleScene {
     this.time += dt;
     const t = this.time;
     this.controls.update();
+    syncEnemyVisibility(this);
     for (const actor of this.actors.values()) {
       this.clearReactionOverlay(actor);
       const alive = actorStanding(actor,this.state.mode);
-      const fallen = actor.id === 'boss' ? .25 : 1;
+      const fallen = actor.isEnemy ? .25 : 1;
       const visualScale = actor.visualScale || V(1, 1, 1);
       actor.root.scale.lerp(V(visualScale.x, visualScale.y * (alive ? 1 : fallen), visualScale.z), Math.min(1, dt * 4));
       actor.marker.material.opacity = alive ? actor.id === 'boss' ? .35 : .28 : .07;
-      const selected = this.state.mode === 'playing' && this.state.selected === actor.id && alive;
+      const selected = this.state.mode === 'playing' && (actor.isEnemy?actor.enemySelected||this.state.selectedEnemyId===actor.id:this.state.selected===actor.id) && alive;
       actor.selection.material.opacity = selected ? .7 + Math.sin(t * 3) * .18 : 0;
       actor.selection.rotation.z = t * .35;
       if (actor.arrow) {
@@ -2180,20 +2364,27 @@ export class BattleScene {
         actor.arrow.position.y = actor.height + .3 + Math.sin(t * 3) * .06;
       }
       actor.shield.material.opacity = .065 + Math.sin(t * 2) * .025;
+      if(actor.modelId==='final'){
+        actor.shield.material.color.set(actor.finaleOpen?'#ffcfdf':'#b4b1ed');
+        actor.shield.material.opacity=actor.finaleOpen?.14+Math.sin(t*5)*.045:.045+Math.min(4,actor.sealCount||0)*.028;
+      }
       actor.shield.rotation.y = t * .13;
       if (!actor.action) {
         const turn = Math.atan2(Math.sin(actor.baseRotation - actor.root.rotation.y), Math.cos(actor.baseRotation - actor.root.rotation.y));
         actor.root.rotation.y += turn * Math.min(1, dt * 7);
+        if(!actor.bossAnimation){
         actor.body.position.y = alive ? Math.sin(t * 1.65 + actor.seed) * (actor.modelId === 'cantor' ? .12 : actor.id === 'boss' ? .055 : .023) : 0;
         actor.body.rotation.x = alive ? Math.sin(t * .9 + actor.seed) * .008 : actor.id === 'boss' ? .06 : -.12;
-        if (actor.id !== 'boss') actor.body.rotation.z = lerp(actor.body.rotation.z, alive ? 0 : -1.38, Math.min(1, dt * 5));
+        if (actor.id !== 'boss') actor.body.rotation.z = lerp(actor.body.rotation.z, alive ? 0 : actor.isEnemy?-.3:-1.38, Math.min(1, dt * 5));
         if (actor.bones) {
           actor.bones.rightArm.rotation.x = Math.sin(t * 1.35 + actor.seed) * .035;
           actor.bones.leftArm.rotation.x = Math.sin(t * 1.1 + actor.seed + 1) * .035;
           actor.bones.head.rotation.y = Math.sin(t * .7 + actor.seed) * .035;
         }
+        }
       }
-      for (const entry of actor.animated) {
+      updateBossAnimation(actor,dt,{alive});
+      for (const entry of actor.bossAnimation?[]:actor.animated) {
         if (entry.type === 'clockHand') entry.object.rotation.z = -t * entry.speed;
         if (entry.type === 'hair') entry.object.rotation.z = Math.sin(t * 1.6 + entry.side) * .055;
         if (entry.type === 'drone') {
@@ -2252,17 +2443,18 @@ export class BattleScene {
       }
       actor.flash = Math.max(0, actor.flash - dt);
       for (const mat of actor.mats) {
+        const intensity=mat.userData.originalIntensity+(mat.userData.mechanismIntensity||0);
         if (actor.flash > 0) {
           mat.emissive.set(actor.flashColor||'#f6dbb5');
-          mat.emissiveIntensity = Math.min(2.5,mat.userData.originalIntensity+actor.flash*5);
+          mat.emissiveIntensity = Math.max(intensity,Math.min(2.5,intensity+actor.flash*5));
         } else {
           mat.emissive.copy(mat.userData.originalEmissive);
-          mat.emissiveIntensity = mat.userData.originalIntensity;
+          mat.emissiveIntensity = intensity;
         }
       }
     }
     const boss = this.actors.get('boss');
-    if (boss.modelId === 'golem') {
+    if (boss.modelId === 'golem'&&!boss.bossAnimation) {
     boss.coreProgress = lerp(boss.coreProgress, boss.coreOpen ? 1 : 0, Math.min(1, dt * 3.7));
     const cp = boss.coreProgress;
     boss.core.position.y = 3.04 + cp * .12 + Math.sin(t * 2) * .04;
@@ -2282,7 +2474,7 @@ export class BattleScene {
       if (cp > .01) part.rotation.y += dt * cp * .1 * Math.sin(seed);
     }
     }
-    if (boss.broken && boss.hp > 0) boss.body.rotation.z = Math.sin(t * 14) * .012;
+    if (boss.broken && boss.hp > 0&&!boss.bossAnimation) boss.body.rotation.z = Math.sin(t * 14) * .012;
     this.arenaPulse.material.opacity = .12 + boss.stage * .065 + Math.sin(t) * .045;
     for (const entry of this.flames) {
       entry.flame.scale.y = .32 + Math.sin(t * 8 + entry.flame.position.x) * .055;
@@ -2292,6 +2484,8 @@ export class BattleScene {
     this.dust.position.y = Math.sin(t * .25) * .2;
     this.atmosphere.root.visible=!this.modelReview;
     this.atmosphere.update(this.modelReview?0:dt);
+    this.exploration?.update(this.paused?0:rawDt);
+    this.backdrop?.sync();
     for (const fog of this.fogSprites) {
       fog.object.position.x = fog.x + Math.sin(t * .14 + fog.phase) * 1.7;
       fog.object.material.opacity = (fog.opacity || .027) + Math.sin(t * .3 + fog.phase) * .01 + (boss.fog ? .018 : 0);
@@ -2359,21 +2553,28 @@ export class BattleScene {
 
   dispose() {
     if (this.disposed) return;
+    this.exitExploration();
     this.disposed = true;
     cancelAnimationFrame(this.raf);
     this.resizeObserver.disconnect();
     window.removeEventListener('resize', this.resize);
     this.motionPreference?.removeEventListener?.('change',this.onMotionPreference);
     this.controls.dispose();
+    this.renderer.domElement.removeEventListener('pointerdown',this.onScenePointerDown);this.renderer.domElement.removeEventListener('pointerup',this.onScenePointerUp);
     for (const action of this.actions) action.finish();
     this.actions.length = 0;
     this.atmosphere.dispose();
+    this.backdrop?.dispose();
+    disposeBossModels(this);
     this.removeEffect(this.scene);
     this.scene.clear();
     this.actors.clear();
     this.heroCache.clear();
     this.bossCache.clear();
+    this.minionCache?.clear();
     this.environmentCache.clear();
+    this.worldLibrary?.clear();this.worldPrototypeRoot=null;this.worldStatus='disposed';
+    this.detailLibrary?.clear();
     this.glowTexture.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();

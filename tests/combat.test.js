@@ -80,14 +80,14 @@ test('bind cooldown blocks exactly two subsequent player rounds',()=>{
 
 test('magic resistance, piercing and mark affect damage without overflow',()=>{
   let s=createBattle();assert.equal(act(s,'apeilia','purify').events.find(e=>e.type==='attack').amount,44);
-  s=createBattle();heroOf(s,'apeilia').resource=6;assert.equal(act(s,'apeilia','sentinel').events.find(e=>e.type==='attack').amount,104);
+  s=createBattle();heroOf(s,'apeilia').resource=6;assert.equal(act(s,'apeilia','sentinel').events.find(e=>e.type==='attack').amount,62);
   s=createBattle();act(s,'knibbs','focus');assert.equal(act(s,'knibbs','shot').events.find(e=>e.type==='attack').amount,31);
 });
 
 test('each physical or magic hit counts separately and counters cap at three',()=>{
   const s=freshCore();next(s);act(s,'knibbs','scatter');assert.equal(s.boss.corePhysical,3);assert.equal(s.boss.coreMagic,0);assert.equal(s.mode,'playing');
   act(s,'apeilia','purify');assert.equal(s.boss.coreMagic,2);assert.equal(s.boss.fog,3);
-  const result=act(s,'ric','bind');assert.equal(s.boss.coreMagic,3);assert.equal(s.mode,'victory');assert.ok(result.events.some(e=>e.type==='victory'));
+  const result=act(s,'ric','bind');assert.equal(s.boss.defeated,true);assert.equal(s.mode,'victory');assert.ok(result.events.some(e=>e.type==='victory'));
 });
 
 test('a lethal multi-hit skill has no automatic core hits from overflow',()=>{
@@ -129,7 +129,7 @@ test('crossing a phase on the last AP announces rupture for the next complete pl
 });
 
 test('guard reduces damage before shields absorb it, and expires next round',()=>{
-  const s=createBattle();s.boss.intentTarget='ric';act(s,'ric','shelter');assert.equal(heroOf(s,'ric').shield,30);assert.equal(guard(s,'ric').ok,true);rejected(s,()=>guard(s,'ric'));
+  const s=createBattle();s.boss.intentTarget='ric';act(s,'ric','shelter');assert.equal(heroOf(s,'ric').shield,30);assert.equal(heroOf(s,'ric').protection,55);rejected(s,()=>guard(s,'ric'));
   next(s);assert.equal(heroOf(s,'ric').hp,152);assert.equal(heroOf(s,'ric').shield,0);assert.equal(heroOf(s,'ric').guard,false);
 });
 
@@ -174,13 +174,13 @@ test('healing events expose exact per-target HP gains including capped overheal'
 });
 
 test('damage events expose exact per-target losses after guard, shields and lethal HP cap',()=>{
-  const s=createBattle();s.boss.charging=true;heroOf(s,'knibbs').shield=60;assert.equal(guard(s,'apeilia').ok,true);heroOf(s,'ric').hp=4;
-  const before=s.heroes.map(h=>h.hp);const event=next(s).events.find(e=>e.label==='地裂');assert.deepEqual(event.amounts,{knibbs:10,apeilia:32,ric:4});
+  const s=createBattle();s.boss.charging=true;heroOf(s,'knibbs').shield=60;act(s,'apeilia','reboot');heroOf(s,'ric').hp=4;
+  const before=s.heroes.map(h=>h.hp);const event=next(s).events.find(e=>e.label==='地裂');assert.deepEqual(event.amounts,{knibbs:10,apeilia:0,ric:4});
   s.heroes.forEach((h,i)=>assert.equal(event.amounts[h.id],before[i]-h.hp));assert.equal(heroOf(s,'ric').hp,0);valid(s);
 });
 
 test('JSON save round-trip preserves resources, cooldowns, guard and subsequent deterministic actions',()=>{
-  const s=createBattle('challenge');act(s,'ric','bind');act(s,'apeilia','blade');assert.equal(guard(s,'knibbs').ok,true);
+  const s=createBattle('challenge');act(s,'ric','bind');act(s,'apeilia','blade');act(s,'knibbs','cover');
   const resumed=JSON.parse(JSON.stringify(s));assert.deepEqual(resumed,s);assert.deepEqual(endRound(resumed),endRound(s));assert.deepEqual(resumed,s);
   assert.deepEqual(useSkill(resumed,'knibbs','focus'),useSkill(s,'knibbs','focus'));assert.deepEqual(resumed,s);valid(resumed);
   const core=freshCore();act(core,'apeilia','purify');next(core);const resumedCore=JSON.parse(JSON.stringify(core));

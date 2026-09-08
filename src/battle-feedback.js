@@ -24,13 +24,14 @@ export function hitDamageFor(event={},id,index=0){
   return Math.floor(amount*(index+1)/count)-Math.floor(amount*index/count);
 }
 
-export function materialFor(id,bossId='golem'){
-  if(id!=='boss')return ['apeilia','qianxing'].includes(id)?'metal':'organic';
-  return ({golem:'stone',duelist:'metal',cantor:'organic',warden:'metal',weaver:'paper',tide:'metal',furnace:'metal',orrery:'crystal',arbiter:'cloth',final:'crystal'})[bossId]||'stone';
+export function materialFor(id,bossId='golem',enemyModels={}){
+  const enemyModel=enemyModels[id];if(enemyModel)bossId=enemyModel;
+  if(id!=='boss'&&!enemyModel&&!id?.startsWith('enemy-'))return ['apeilia','qianxing'].includes(id)?'metal':'organic';
+  return ({scout:'metal',bulwark:'stone',conduit:'metal',golem:'stone',duelist:'metal',cantor:'organic',warden:'metal',weaver:'paper',tide:'metal',furnace:'metal',orrery:'crystal',arbiter:'cloth',final:'crystal'})[bossId]||'stone';
 }
 
 export function attackTheme(event={}){
-  if(event.actor==='boss')return ({golem:'crystal',duelist:'blade',cantor:'spore',warden:'lightning',weaver:'clockwork',tide:'water',furnace:'furnace',orrery:'crystal',arbiter:'edict',final:'arcane'})[event.bossId]||'crystal';
+  if(event.actor==='boss'||event.enemyModels?.[event.actor]||event.actor?.startsWith('enemy-'))return ({scout:'ballistic',bulwark:'crystal',conduit:'lightning',golem:'crystal',duelist:'blade',cantor:'spore',warden:'lightning',weaver:'clockwork',tide:'water',furnace:'furnace',orrery:'crystal',arbiter:'edict',final:'arcane'})[event.enemyModels?.[event.actor]||event.bossId]||'crystal';
   if(event.actor==='haart')return 'mind';
   if(event.actor==='qianxing')return event.kind==='magic'?'silverfire':'ballistic';
   if(event.actor==='patch')return 'clockwork';
@@ -54,7 +55,8 @@ export function impactTiming(event={}){
 export function createFeedbackState(before,after){
   const view=structuredClone(after);
   view.mode=before.mode;
-  for(const key of ['hp','stage','core','finale'])view.boss[key]=before.boss[key];
+  for(const enemy of view.enemies||[view.boss]){const old=(before.enemies||[before.boss]).find(e=>(e.unitId||'boss')===(enemy.unitId||'boss'));if(old)for(const key of ['hp','stage','core','finale','defeated'])enemy[key]=old[key];else enemy.pendingSpawn=true;}
+  if(view.enemies)view.boss=view.enemies[0];
   for(const hero of view.heroes){const old=before.heroes.find(h=>h.id===hero.id);if(old){hero.hp=old.hp;hero.shield=old.shield;}}
   return view;
 }
@@ -62,24 +64,27 @@ export function createFeedbackState(before,after){
 export function applyFeedbackImpact(view,event,index=0){
   if(index===0){
     if(['phase','core'].includes(event.type)){
-      for(const key of ['stage','core','finale'])if(Object.hasOwn(event.phaseAfter||{},key))view.boss[key]=event.phaseAfter[key];
-      if(Number.isFinite(event.hpAfter))view.boss.hp=bounded(event.hpAfter,0,view.boss.maxHp);
+      const enemy=(view.enemies||[view.boss]).find(e=>(e.unitId||'boss')===event.actor);
+      if(enemy){for(const key of ['stage','core','finale'])if(Object.hasOwn(event.phaseAfter||{},key))enemy[key]=event.phaseAfter[key];
+      if(Number.isFinite(event.hpAfter))enemy.hp=bounded(event.hpAfter,0,enemy.maxHp);}
     }
+    if(event.type==='enemy-defeat'){const enemy=view.enemies?.find(e=>e.unitId===event.actor);if(enemy){enemy.hp=0;enemy.defeated=true;}}
+    if(event.type==='spawn')for(const enemy of view.enemies||[])if(event.targets?.includes(enemy.unitId))enemy.pendingSpawn=false;
     if(event.type==='victory'||event.type==='defeat')view.mode=event.type;
   }
   const ids=event.targets||[];
   for(const id of ids){
-    const target=id==='boss'?view.boss:view.heroes.find(h=>h.id===id);if(!target)continue;
+    const enemy=(view.enemies||[view.boss]).find(e=>(e.unitId||'boss')===id),target=enemy||view.heroes.find(h=>h.id===id);if(!target)continue;
     if(damagingEvent(event)){
       target.hp=Math.max(0,target.hp-hitDamageFor(event,id,index));
       const count=impactTiming(event).hits,total=nonnegative(event.absorbedAmounts?.[id]);
       const absorbed=Math.floor(total*(index+1)/count)-Math.floor(total*index/count);
-      if(id!=='boss')target.shield=Math.max(0,target.shield-absorbed);
+      if(!enemy)target.shield=Math.max(0,target.shield-absorbed);
     }else if(index===0){
       const amount=nonnegative(event.amounts?.[id]??event.amount);
       if(event.type==='heal')target.hp=Math.min(target.maxHp,target.hp+amount);
-      if(event.type==='shield'&&id!=='boss')target.shield=Math.min(60,target.shield+amount);
-      if(event.type==='shield-expire'&&id!=='boss')target.shield=Math.max(0,target.shield-amount);
+      if(event.type==='shield'&&!enemy)target.shield=Math.min(60,target.shield+amount);
+      if(event.type==='shield-expire'&&!enemy)target.shield=Math.max(0,target.shield-amount);
     }
   }
   return view;

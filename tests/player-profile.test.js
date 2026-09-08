@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {normalizeProfile,rememberCompanions,unlockAllHeroes,disableAllHeroes,isDialogueAdvanceGesture,STARTING_HEROES} from '../src/player-profile.js';
+import {LEGACY_STARTING_HEROES} from '../src/roster-unlocks.js';
 import {HEROES} from '../src/combat.js';
 
 test('profile: recruited companions remain available after starting another expedition',()=>{
@@ -17,14 +18,14 @@ test('profile: GM unlock is explicit, pure, and survives remembering a fresh exp
   assert.deepEqual(unlockAllHeroes(unlocked),unlocked);
   assert.deepEqual(normalizeProfile(JSON.parse(JSON.stringify(unlocked))),unlocked);
   assert.deepEqual(rememberCompanions(unlocked,{unlockedHeroes:['knibbs','apeilia','ric']}),unlocked);
-  assert.deepEqual(unlocked.naturalHeroes,[...STARTING_HEROES,'youmu']);
+  assert.deepEqual(unlocked.naturalHeroes,[...LEGACY_STARTING_HEROES,'youmu']);
   assert.deepEqual(rememberCompanions(null,{gmAllHeroes:true,unlockedHeroes:all}).unlockedHeroes,STARTING_HEROES,'run access cannot turn GM on or award artificial recruitment');
 });
 
 test('profile: ordinary and invalid GM flags do not bypass the normal starting roster',()=>{
-  const ordinary={version:3,naturalHeroes:[...STARTING_HEROES],unlockedHeroes:[...STARTING_HEROES],defeatedBosses:[],unlockedBosses:[]};
+  const ordinary={version:4,naturalHeroes:[...STARTING_HEROES],unlockedHeroes:[...STARTING_HEROES],defeatedBosses:[],unlockedBosses:[]};
   assert.deepEqual(normalizeProfile(null),ordinary);
-  for(const flag of [false,'true',1,{},[]])assert.deepEqual(normalizeProfile({gmAllHeroes:flag,unlockedHeroes:['unknown']}),ordinary);
+  for(const flag of [false,'true',1,{},[]])assert.deepEqual(normalizeProfile({version:4,gmAllHeroes:flag,unlockedHeroes:['unknown']}),ordinary);
   assert.deepEqual(rememberCompanions(null,{unlockedHeroes:[]}),ordinary);
 });
 
@@ -34,7 +35,7 @@ test('profile: disabling GM preserves earned recruits, including recruits earned
   const run={gmAllHeroes:true,unlockedHeroes:HEROES.map(h=>h.id),history:[{bossId:'duelist'},{bossId:'cantor'}]};
   const closed=disableAllHeroes(gm,run);
   assert.deepEqual(gm,before);assert.equal(closed.gmAllHeroes,undefined);
-  assert.deepEqual(closed.unlockedHeroes,[...STARTING_HEROES,'patch','youmu','haart']);
+  assert.deepEqual(closed.unlockedHeroes,[...LEGACY_STARTING_HEROES,'patch','youmu','haart']);
   assert.deepEqual(rememberCompanions(closed,run),closed,'saving a still-GM expedition must not re-enable access');
   assert.deepEqual(disableAllHeroes(unlockAllHeroes(closed),null),closed);
 });
@@ -43,9 +44,9 @@ test('profile: legacy GM saves recover recruits from story history without keepi
   const old={version:1,gmAllHeroes:true,unlockedHeroes:HEROES.map(h=>h.id)};
   const migrated=rememberCompanions(old,{history:[{bossId:'duelist'}],unlockedHeroes:HEROES.map(h=>h.id)});
   assert.equal(migrated.gmLegacyRecovery,true);
-  assert.deepEqual(migrated.naturalHeroes,[...STARTING_HEROES,'youmu']);
-  assert.deepEqual(disableAllHeroes(migrated,null).unlockedHeroes,[...STARTING_HEROES,'youmu']);
-  assert.deepEqual(disableAllHeroes(old,null).unlockedHeroes,STARTING_HEROES);
+  assert.deepEqual(migrated.naturalHeroes,[...LEGACY_STARTING_HEROES,'youmu']);
+  assert.deepEqual(disableAllHeroes(migrated,null).unlockedHeroes,[...LEGACY_STARTING_HEROES,'youmu']);
+  assert.deepEqual(disableAllHeroes(old,null).unlockedHeroes,LEGACY_STARTING_HEROES);
   assert.deepEqual(normalizeProfile(JSON.parse(JSON.stringify(migrated))),migrated);
 });
 

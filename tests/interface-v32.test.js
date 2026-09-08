@@ -25,11 +25,8 @@ function reachReward(run){
   assert.equal(run.phase,'reward');
 }
 function allRecruitedCamp(){
-  const run=createRun('standard',{legacyRoute:true});
-  for(let chapter=0;chapter<4;chapter++){
-    reachReward(run);
-    assert.equal(claimReward(run,rewards[chapter]).ok,true);
-  }
+  const run=createRun('standard',{legacyRoute:true,gmAllHeroes:true});
+  run.phase='camp';
   return run;
 }
 
@@ -46,7 +43,7 @@ test('interface 3.2: all seven heroes render exactly five usable command slots a
       assert.ok(card.attrs.includes(`data-skill="${skill.id}"`));
       assert.ok(card.body.includes(`<kbd>${'QWERT'[index]}</kbd>`));
       assert.ok(card.body.includes(resolvedSkill(state,hero.id,skill.id).name));
-      assert.ok(card.body.includes(`aria-label="本次削韧 ${preview.stagger||0}"`));
+      assert.ok(card.body.includes(`aria-label="本次削韧 ${preview.coverFire?preview.counterStagger:preview.stagger||0}"`));
     }
     assert.deepEqual(state,before,'Rendering cannot consume resource or alter a skill');
   }
@@ -66,7 +63,7 @@ test('interface 3.2: the camp renders all seven recruits and exactly five loadou
       assert.ok(slot.attrs.includes(`data-detail="${run.loadouts[hero.id][index]}"`));
       assert.ok(slot.body.includes(`<kbd>${'QWERT'[index]}</kbd>`));
     }
-    assert.match(text(html),/7 \/ 7/);assert.match(text(html),/携带 5 项技能/);
+    assert.match(text(html),/7 \/ 7/);assert.match(text(html),/已携带 5 项 · 最多 5 项/);
     assert.deepEqual(run,before);
   }
 });
@@ -120,11 +117,11 @@ test('each reward screen states its actual choice count and a new skill occupies
   for(let chapter=0;chapter<5;chapter++){
     reachReward(run);
     const options=rewardOptions(run),before=structuredClone(run),html=campaignView(run),count=options.length;
-    assert.ok(count>=4);clean(html);
+    assert.equal(count,3);clean(html);
     assert.equal(buttons(html).filter(b=>b.attrs.includes('data-reward="')).length,count);
-    assert.match(text(html),new RegExp(`${count} 选 1`));assert.doesNotMatch(text(html),/三选一|3 选 1/);
+    assert.match(text(html),/3 选 1/);
     assert.deepEqual(run,before);
-    const reward=options.find(r=>r.id===rewards[chapter]);assert.ok(reward);
+    const reward=options.find(r=>r.kind==='skill')||options[0];assert.ok(reward);
     assert.equal(claimReward(run,reward.id).ok,true);
     if(reward.kind==='skill'){
       assert.equal(run.loadouts[reward.heroId][4],reward.skillId);

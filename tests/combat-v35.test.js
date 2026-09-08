@@ -27,7 +27,7 @@ test('v3.5 shields: cancelled enemy actions still age protection; harmony create
 
 test('v3.5 saves: old shields get two rounds once; current layer duration cannot be forged',()=>{
   const old=solo('patch');old.version=6;old.heroes[0].shield=31;old.heroes[0].records=4;delete old.heroes[0].shieldLayers;delete old.heroes[0].secondary;
-  const migrated=normalizeSave(old);assert.ok(migrated);assert.equal(migrated.version,8);assert.equal(migrated.heroes[0].secondary,4);assert.deepEqual(migrated.heroes[0].shieldLayers,[{amount:31,turns:2}]);
+  const migrated=normalizeSave(old);assert.ok(migrated);assert.equal(migrated.version,10);assert.equal(migrated.heroes[0].secondary,4);assert.deepEqual(migrated.heroes[0].shieldLayers,[{amount:31,turns:2}]);
   ageShields(migrated.heroes[0]);const saved=normalizeSave(migrated);assert.deepEqual(saved.heroes[0].shieldLayers,[{amount:31,turns:1}]);
   for(const mutate of [s=>s.heroes[0].shieldLayers[0].turns=3,s=>s.heroes[0].shieldLayers[0].amount=30,s=>{s.heroes[0].secondary=11;s.heroes[0].records=11;},s=>s.boss.hardControl=1.5,s=>s.heroes[0].regenAmount=50]){const bad=structuredClone(saved);mutate(bad);assert.equal(normalizeSave(bad),null);}
 });
@@ -80,11 +80,11 @@ test('v3.5 mind buffs: each ally consumes its own charge once; a recovery action
 });
 
 test('v3.5 mana evasion never bypasses secondary spending by returning free mana',()=>{
-  for(const id of ['haart','qianxing','patch']){const s=solo(id);const h=s.heroes[0];const build=id==='haart'?'page':id==='qianxing'?'spike':'keyblade';cast(s,id,build);prepareResponse(s,'evade');const before=h.resource,secondary=h.secondary;endRound(s);assert.equal(h.resource,before);assert.equal(h.secondary,secondary);assert.equal(h.attackBuff,15);assert.equal(h.attackBuffTurns,2);assert.ok(normalizeSave(s));}
+  for(const id of ['haart','qianxing','patch']){const s=solo(id);const h=s.heroes[0];const build=id==='haart'?'page':id==='qianxing'?'spike':'keyblade';cast(s,id,build);prepareResponse(s,'evade');const before=h.resource,secondary=h.secondary;endRound(s);assert.equal(h.resource,before);assert.equal(h.secondary,secondary);assert.equal(h.attackBuff,0);assert.equal(h.attackBuffTurns,0);assert.ok(normalizeSave(s));}
 });
 
 test('v3.5 all fourteen new upgrades change a concrete mechanic or unlock an independently selectable skill',()=>{
-  const cases=[['knibbs','breathe','knibbs_steadyhands',(s,h)=>h.intuition=2,'selfAttackBuff'],['knibbs','cover','knibbs_crossfire',s=>s.boss.marked=true,'stripBuffs'],['apeilia','reboot','apeilia_brace',(s,h)=>h.lastKind='magic','selfGuard'],['apeilia','sentinel','apeilia_puncture',s=>s.boss.exposed=true,'gain'],['ric','mend','ric_erosion',()=>{},'healSuppression'],['ric','bind','ric_discipline',(s,h)=>h.resource=-4,'stripBuffs'],['youmu','surgery','youmu_pathology',(s,h)=>h.surgicalReady=true,'dotDamage'],['youmu','firstaid','youmu_aftercare',()=>{},'aftercare']];
+  const cases=[['knibbs','breathe','knibbs_steadyhands',(s,h)=>h.intuition=2,'selfAttackBuff'],['knibbs','cover','knibbs_crossfire',s=>s.boss.marked=true,'stripBuffs'],['apeilia','reboot','apeilia_brace',(s,h)=>h.lastKind='magic','heal'],['apeilia','sentinel','apeilia_puncture',s=>s.boss.exposed=true,'gain'],['ric','mend','ric_erosion',()=>{},'healSuppression'],['ric','bind','ric_discipline',(s,h)=>h.resource=-4,'stripBuffs'],['youmu','surgery','youmu_pathology',(s,h)=>h.surgicalReady=true,'dotDamage'],['youmu','firstaid','youmu_aftercare',()=>{},'aftercare']];
   for(const [id,skill,key,setup,field]of cases){const s=solo(id);setup(s,s.heroes[0]);const before=resolvedSkill(s,id,skill);s.upgrades.push(key);assert.notEqual(resolvedSkill(s,id,skill)[field],before[field],key);}
   for(const id of ['knibbs','apeilia','ric','haart','qianxing','youmu','patch'])assert.equal(Object.values(REWARDS).filter(r=>r.heroId===id).length,5,id);
   for(const reward of Object.values(REWARDS).filter(r=>r.kind==='skill'))assert.equal(SKILLS[reward.heroId].find(k=>k.id===reward.skillId)?.unlockKey,reward.id);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {HEROES,activeSkills} from '../src/combat.js';
-import {createRun,unlockRunHeroes,disableRunHeroes,normalizeRun,advanceDialogue,battleForRun,completeEncounter,rewardOptions,claimReward,replacePartyMember,equipSkill,startNextChapter,regroup,chooseRoute,chooseEvent} from '../src/campaign.js';
+import {createRun as createCurrentRun,unlockRunHeroes,disableRunHeroes,normalizeRun,advanceDialogue,battleForRun,completeEncounter,rewardOptions,claimReward,replacePartyMember,equipSkill,startNextChapter,regroup,chooseRoute,chooseEvent} from '../src/campaign.js';
 
 const all=HEROES.map(hero=>hero.id);
 function restore(run){
@@ -17,7 +17,7 @@ function toFirstReward(run){
   return run;
 }
 function toFirstCamp(run){
-  toFirstReward(run);assert.equal(claimReward(run,'knibbs_ricochet').ok,true);
+  toFirstReward(run);assert.equal(claimReward(run,rewardOptions(run)[0].id).ok,true);
   return run;
 }
 
@@ -77,8 +77,8 @@ test('GM roster: recruitment overrides do not bypass chapter, reward, party, or 
     for(const flag of [false,'true',1,{},[]])assert.equal(normalizeRun({...plain,gmAllHeroes:flag,partyIds:['patch','haart','qianxing']}),null);
     for(const change of [{chapter:1},{partyIds:['patch','patch','ric']},{partyIds:['unknown','haart','ric']},{upgrades:['patch_archive']},{history:[{bossId:'duelist',round:1}]}])assert.equal(normalizeRun({...gm,...change}),null);
     toFirstReward(gm);toFirstReward(plain);
-    assert.deepEqual(rewardOptions(gm),rewardOptions(plain),'GM does not add unrelated reward offers');
-    assert.equal(claimReward(gm,'knibbs_ricochet').ok,true);const camp=gm;
+    assert.equal(rewardOptions(gm).length,3);assert.equal(rewardOptions(plain).length,3);
+    assert.equal(claimReward(gm,rewardOptions(gm)[0].id).ok,true);const camp=gm;
     const invalid=structuredClone(camp);invalid.upgrades=['patch_archive'];assert.equal(normalizeRun(invalid),null);
   }
 });
@@ -134,14 +134,20 @@ test('GM roster: a closed-GM battle with missing or mismatched saved actors safe
 });
 
 test('GM rewards: early companion upgrades restore and survive closing GM without unlocking the companion',()=>{
-  for(const legacyRoute of [false,true]){
-    const run=toFirstCamp(createRun('standard',{legacyRoute,gmAllHeroes:true}));
-    startNextChapter(run);advanceDialogue(run,true);run.battle=battleForRun(run);
-    completeEncounter(run,{...run.battle,mode:'victory'});advanceDialogue(run,true);
-    assert.ok(rewardOptions(run).some(r=>r.id==='qianxing_grounding'));
-    assert.equal(claimReward(run,'qianxing_grounding').ok,true);assert.deepEqual(run.gmRewardKeys,['qianxing_grounding']);restore(run);
-    disableRunHeroes(run);assert.ok(run.upgrades.includes('qianxing_grounding'));assert.ok(!run.unlockedHeroes.includes('qianxing'));restore(run);
-    const invalid=structuredClone(run);delete invalid.gmRewardKeys;assert.equal(normalizeRun(invalid),null);
-    const oldGm={...invalid,gmAllHeroes:true,unlockedHeroes:all};assert.deepEqual(normalizeRun(oldGm).gmRewardKeys,['qianxing_grounding'],'older GM rewards acquire provenance during migration');
+ for(const legacyRoute of [false,true]){
+  let run,reward;
+  for(let seed=0;seed<50&&!reward;seed++){
+   run=toFirstCamp(createRun('standard',{legacyRoute,gmAllHeroes:true,seed}));
+   startNextChapter(run);advanceDialogue(run,true);run.battle=battleForRun(run);
+   completeEncounter(run,{...run.battle,mode:'victory'});advanceDialogue(run,true);
+   reward=rewardOptions(run).find(r=>r.heroId==='qianxing');
   }
+  assert.ok(reward,'a reproducible early GM offer contains Qianxing growth');
+  assert.equal(claimReward(run,reward.id).ok,true);assert.deepEqual(run.gmRewardKeys,[reward.id]);restore(run);
+  disableRunHeroes(run);assert.ok(run.upgrades.includes(reward.id));assert.ok(!run.unlockedHeroes.includes('qianxing'));restore(run);
+  const invalid=structuredClone(run);delete invalid.gmRewardKeys;assert.equal(normalizeRun(invalid),null);
+  const oldGm={...invalid,gmAllHeroes:true,unlockedHeroes:all};assert.deepEqual(normalizeRun(oldGm).gmRewardKeys,[reward.id]);
+ }
 });
+
+const createRun=(difficulty='standard',options={})=>{const run=createCurrentRun(difficulty,{...options,skipTutorial:true});run.id='legacy-fixture-'+(options.seed||0);return run;};

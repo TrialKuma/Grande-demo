@@ -34,7 +34,7 @@ test('save: timed-out reformed boss and a selected fallen teammate are valid',()
 
 test('save: invalid top-level shapes, unsupported version, finished modes and unknown difficulty fail closed',()=>{
   for(const value of [null,undefined,[],{},'bad',7])assert.equal(normalizeSave(value),null);
-  invalid(s=>s.version=9);invalid(s=>s.mode='victory');invalid(s=>s.mode='defeat');invalid(s=>s.difficulty='missing');invalid(s=>s.difficulty='toString');invalid(s=>s.difficulty=['standard']);
+  invalid(s=>s.version=11);invalid(s=>s.mode='victory');invalid(s=>s.mode='defeat');invalid(s=>s.difficulty='missing');invalid(s=>s.difficulty='toString');invalid(s=>s.difficulty=['standard']);
 });
 
 test('save: invalid hero membership, selected IDs or incomplete hero records are rejected',()=>{
@@ -111,7 +111,7 @@ function legacyV1() {
 test('save v2: a real v1 shape migrates to golem with new passives and no prepared response',()=>{
   const old=legacyV1(),before=clone(old),restored=normalizeSave(old);
   assert.ok(restored);assert.deepEqual(old,before);
-  assert.equal(restored.version,8);assert.equal(restored.boss.id,'golem');
+  assert.equal(restored.version,10);assert.equal(restored.boss.id,'golem');
   assert.equal(restored.response,null);assert.equal(restored.boss.hp,900);
   assert.equal(heroOf(restored,'knibbs').intuition,0);
   assert.equal(heroOf(restored,'apeilia').lastKind,null);
@@ -151,13 +151,13 @@ test('save v4: current saves cannot add a seventh AP and bosses cannot inherit f
   }
 });
 
-test('save v3: a captured v2 duelist response migrates without losing resources or prepared tactics',()=>{
+test('save v3: a captured v2 duelist response migrates without losing resources and refunds the obsolete response',()=>{
   const value=legacyV1();value.version=2;value.ap=5;value.response={id:'evade',actor:'apeilia'};
   value.heroes.forEach(hero=>Object.assign(hero,{intuition:0,lastKind:null,balanceBursts:0}));
   value.heroes[0].intuition=2;value.heroes[1].resource=4;value.heroes[1].lastKind='magic';
   Object.assign(value.boss,{id:'duelist',hp:1080,maxHp:1080,intent:'rend',phasePending:false,mirror:2,spores:0,controlImmune:0});
-  const restored=normalizeSave(value);assert.ok(restored);assert.equal(restored.version,8);
-  assert.deepEqual(restored.response,value.response);assert.deepEqual(restored.upgrades,[]);
+  const restored=normalizeSave(value);assert.ok(restored);assert.equal(restored.version,10);
+  assert.equal(restored.response,null);assert.equal(restored.ap,6);assert.deepEqual(restored.upgrades,[]);
   assert.equal(heroOf(restored,'knibbs').intuition,2);assert.equal(heroOf(restored,'apeilia').lastKind,'magic');
   assert.equal(endRound(restored).ok,true);assert.ok(normalizeSave(restored));
 });

@@ -9,7 +9,7 @@ const cast=(state,id,skill)=>{const result=useSkill(state,id,skill);assert.equal
 test('canon: seven heroes keep four primary resource types, five base slots and five rewards each',()=>{
   assert.deepEqual(HEROES.map(h=>h.id),['knibbs','apeilia','ric','haart','qianxing','youmu','patch']);
   assert.deepEqual([...new Set(HEROES.map(h=>h.resourceName))].sort(),['平衡','气息','连击','魔力'].sort());
-  const state=battle();assert.equal(state.version,8);assert.equal(Object.keys(REWARDS).length,35);
+  const state=battle();assert.equal(state.version,10);assert.equal(Object.keys(REWARDS).length,35);
   for(const id of roster)assert.equal(heroOf(state,id).resource,10);
   for(const id of ['haart','qianxing']){assert.equal(SKILLS[id].length,7);assert.equal(activeSkills(state,id).length,5);assert.equal(Object.values(REWARDS).filter(r=>r.heroId===id).length,5);assert.equal(heroOf(state,id).secondary,0);}
   assert.equal(createBattle().heroes.find(h=>h.id==='apeilia').resource,0);assert.equal(createBattle().heroes.find(h=>h.id==='ric').resource,0);
@@ -29,7 +29,7 @@ for(const [id,convert,cash,rest,cost,refund] of [['haart','page','soothe','rest'
     const state=battle(),h=heroOf(state,id);h.resource=0;
     const p=skillPreview(state,id,convert);assert.equal(p.damage,0);assert.equal(p.refund,0);cast(state,id,convert);assert.equal(h.secondary,1);assert.equal(h.resource,0);
     cast(state,id,cash);assert.equal(h.secondary,0);assert.equal(h.resource,refund);endRound(state);assert.equal(h.resource,refund);
-    assert.equal(skillPreview(state,id,convert).variant,null);cast(state,id,convert);assert.equal(h.resource,refund-cost);assert.equal(h.secondary,1);cast(state,id,cash);const mana=h.resource;assert.equal(guard(state,id).ok,true);endRound(state);assert.equal(h.resource,mana);
+    assert.equal(skillPreview(state,id,convert).variant,null);cast(state,id,convert);assert.equal(h.resource,refund-cost);assert.equal(h.secondary,1);cast(state,id,cash);const mana=h.resource;assert.equal(guard(state,id).ok,false);endRound(state);assert.equal(h.resource,mana);
     const prepared=battle(),q=heroOf(prepared,id),hp=prepared.heroes.map(x=>x.hp);cast(prepared,id,rest);assert.equal(q.resource,id==='haart'?2:1);assert.equal(q.secondary,q.maxSecondary);assert.deepEqual(prepared.heroes.map(x=>x.hp),hp);assert.ok(prepared.heroes.every(x=>x.shield===0));
     const before=structuredClone(prepared);assert.equal(useSkill(prepared,id,rest).ok,false);assert.deepEqual(prepared,before);
   });
@@ -38,7 +38,7 @@ test('canon: Haart teamwork reward strips buffs and protects through debuffs wit
   const state=battle(['haart_triage']);cast(state,'haart','page');assert.equal(skillPreview(state,'haart','soothe').empowered,false);cast(state,'knibbs','shot');state.boss.fog=2;
   for(const h of state.heroes)h.hp-=20;
   const hp=state.heroes.map(h=>h.hp),p=skillPreview(state,'haart','soothe');assert.equal(p.empowered,true);assert.equal(p.heal,0);assert.equal(p.allHeal,0);assert.equal(resolvedSkill(state,'haart','soothe').stripBuffs,1);
-  cast(state,'haart','soothe');assert.equal(state.boss.fog,1);assert.equal(state.boss.weakened,1);assert.deepEqual(state.heroes.map(h=>h.hp),hp);endRound(state);assert.equal(skillPreview(state,'haart','soothe').empowered,false);
+  cast(state,'haart','soothe');assert.equal(state.boss.fog,1);assert.equal(state.boss.confusion?.actor,'haart');assert.deepEqual(state.heroes.map(h=>h.hp),hp);endRound(state);assert.equal(skillPreview(state,'haart','soothe').empowered,false);
   const unowned=battle();cast(unowned,'haart','page');cast(unowned,'knibbs','shot');assert.equal(skillPreview(unowned,'haart','soothe').empowered,false);
 });
 test('canon: Haart weakness and Qianxing shield conditions require reward and live state',()=>{

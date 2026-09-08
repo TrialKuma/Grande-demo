@@ -1,3 +1,4 @@
+import {attackSpec} from '../src/combat.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {BOSSES,BOSS_INTENTS,HEROES,DIFFICULTIES,SOLO_RULES,createBattle,heroOf,canUse,useSkill,skillPreview,resolvedSkill,prepareResponse,responseOptions,endRound,guard,intentInfo,victoryRequirements} from '../src/combat.js';
@@ -26,31 +27,29 @@ test('3.3: six-combo finishers require full payment and an alternating cycle fun
   assert.equal(sentinel.heroes[0].resource,1);assert.equal(sentinel.ap,1);
 });
 
-test('3.3: each added boss has four moves, a scene, and live telegraphs matching actual response damage',()=>{
-  assert.equal(Object.keys(BOSSES).length,10);
-  for(const mode of ['party','solo'])for(const difficulty of Object.keys(DIFFICULTIES))for(const boss of added)for(const intent of BOSS_INTENTS[boss])for(const tactic of ['parry','evade','counter']){
+test('3.3: each added boss has four moves, a scene, and live telegraphs matching actual role-defense damage',()=>{
+  assert.equal(Object.values(BOSSES).filter(b=>!b.isTutorial&&!b.isSkirmish&&!b.isMinion).length,10);
+  for(const mode of ['party','solo'])for(const difficulty of Object.keys(DIFFICULTIES))for(const boss of added)for(const intent of BOSS_INTENTS[boss])for(const tactic of ['none','armor']){
     const s=createBattle(difficulty,boss,{mode,partyIds:mode==='solo'?['qianxing']:['qianxing','haart','knibbs']});
     s.boss.intent=intent;s.boss.stage=1;
     if(boss==='tide')s.boss.waterLevel=4;
     if(boss==='furnace')s.boss.heat=6;
     if(boss==='orrery')s.boss.prediction=3;
     if(boss==='arbiter')s.boss.violations=3;
-    const info=intentInfo(s),option=responseOptions(s).find(r=>r.id===tactic),before=s.heroes[0].hp;
+    const info=intentInfo(s),before=s.heroes[0].hp;const spec=attackSpec(s);if(tactic==='armor'){s.heroes[0].secondary=1;cast(s,'qianxing','armor');}const expected=Math.max(0,Math.round(spec.damage*DIFFICULTIES[difficulty].damage*(mode==='solo'?SOLO_RULES.bossDamage:1)*(tactic==='armor'?45:100)/100)*(spec.hits||1)-(tactic==='armor'?36:0));
     assert.ok(info.name&&info.desc&&info.icon,`${boss}/${intent}`);
     assert.match(info.desc,/(物理|魔法)伤害/);
-    assert.ok(option.description.includes(`预计承伤 ${option.damage}`));
-    assert.equal(prepareResponse(s,tactic,'qianxing').ok,true);
-    assert.equal(mainDamage(endRound(s),'qianxing'),Math.min(before,option.damage),`${mode}/${difficulty}/${intent}/${tactic}`);
+    assert.equal(mainDamage(endRound(s),'qianxing'),Math.min(before,expected),`${mode}/${difficulty}/${intent}/${tactic}`);
   }
   for(const id of added){assert.equal(BOSS_INTENTS[id].length,4);assert.ok(BOSSES[id].scene);}
 });
 
-test('3.3: tide counts hit segments across skills and turns, and filling/parrying has ordered effects',()=>{
+test('3.3: tide counts hit segments across skills and turns, and filling retains its ordered effects without generic parry',()=>{
   const s=createBattle('standard','tide');
   cast(s,'knibbs','shot');cast(s,'knibbs','shot');assert.equal(s.boss.valveHits,2);assert.equal(s.boss.waterLevel,2);
   prepareResponse(s,'evade','knibbs');endRound(s);assert.equal(s.boss.valveHits,2);
   cast(s,'apeilia','purify');assert.equal(s.boss.waterLevel,1);assert.equal(s.boss.valveHits,1);
-  s.boss.intent='tide_fill';prepareResponse(s,'parry','knibbs');endRound(s);assert.equal(s.boss.waterLevel,1);
+  s.boss.intent='tide_fill';cast(s,'knibbs','cover');endRound(s);assert.equal(s.boss.waterLevel,3);
   s.boss.intent='tide_breaker';prepareResponse(s,'evade','knibbs');endRound(s);assert.equal(s.boss.waterLevel,0);
 });
 
@@ -71,7 +70,7 @@ test('3.3: orrery records whole attack skills once, supports and counterattacks 
   prepareResponse(s,'counter','knibbs');endRound(s);assert.equal(s.boss.forecastSkill,'knibbs/scatter');assert.equal(s.boss.prediction,1);
   cast(s,'apeilia','purify');assert.equal(s.boss.prediction,0);assert.equal(s.boss.forecastSkill,'apeilia/purify');
   s.boss.intent='orbit_calibrate';s.boss.prediction=3;const before=s.boss.hp;
-  prepareResponse(s,'parry','knibbs');endRound(s);assert.equal(s.boss.hp,before);assert.equal(s.boss.prediction,1);
+  endRound(s);assert.equal(s.boss.hp,Math.min(s.boss.maxHp,before+55));assert.equal(s.boss.prediction,3);
 });
 
 test('3.3: arbiter checks actual empowered AP once per attack and clears judgement even after a break',()=>{
@@ -93,7 +92,7 @@ test('3.3: solo owns one hero, separate boss numbers, and five base AP plus capp
   assert.deepEqual(victoryRequirements(s),{solo:true,coreHits:4,corePhysical:0,coreMagic:0,finaleHits:2,finalePhysical:0,finaleMagic:0});
 });
 
-test('3.3: single-attribute solo attacks legally complete the core and terminal still needs live response',()=>{
+test('3.3: single-attribute solo attacks legally complete the core and terminal still needs character defense',()=>{
   for(const hero of ['knibbs','haart']){
     const s=solo(hero);s.boss.hp=1;cast(s,hero,hero==='knibbs'?'shot':'page');assert.equal(s.boss.coreHits,0);
     if(hero==='knibbs')cast(s,hero,'scatter');else{cast(s,hero,'page');assert.equal(s.boss.coreHits,1);assert.ok(normalizeSave(s));cast(s,hero,'relay');}
@@ -102,7 +101,7 @@ test('3.3: single-attribute solo attacks legally complete the core and terminal 
   const s=solo('haart','final');s.boss.hp=1;cast(s,'haart','page');assert.equal(s.boss.finaleHits,0);
   cast(s,'haart','page');cast(s,'haart','page');assert.equal(s.boss.finaleHits,2);assert.equal(s.boss.finalePhysical,0);assert.ok(normalizeSave(s));
   const unprotected=structuredClone(s);endRound(unprotected);assert.equal(unprotected.mode,'playing','the hit condition alone cannot win');
-  prepareResponse(s,'evade');endRound(s);assert.equal(s.mode,'victory');assert.ok(s.heroes[0].hp>0);
+  cast(s,'haart','soothe');endRound(s);assert.equal(s.mode,'victory');assert.ok(s.heroes[0].hp>0);
   const dead=solo('haart','final');Object.assign(dead.boss,{hp:0,finale:true,finaleHits:2,finaleMagic:1,seals:0});dead.heroes[0].hp=1;prepareResponse(dead,'evade');endRound(dead);assert.equal(dead.mode,'defeat');
 });
 
@@ -122,7 +121,7 @@ test('3.3: current state and existing v5 saves roundtrip without changing damage
   }
   const old=createBattle('standard','final');old.version=5;delete old.challengeMode;
   for(const key of ['coreHits','finaleHits','waterLevel','valveHits','heat','furnaceOpen','prediction','forecastSkill','decree','violations'])delete old.boss[key];
-  const restored=normalizeSave(old);assert.ok(restored);assert.equal(restored.version,8);assert.equal(restored.challengeMode,'party');assert.equal(restored.maxAp,6);assert.equal(restored.boss.maxHp,old.boss.maxHp);
+  const restored=normalizeSave(old);assert.ok(restored);assert.equal(restored.version,10);assert.equal(restored.challengeMode,'party');assert.equal(restored.maxAp,6);assert.equal(restored.boss.maxHp,old.boss.maxHp);
 });
 
 test('3.3: save validation rejects mode swaps, foreign mechanics and impossible new counters',()=>{
@@ -135,9 +134,9 @@ test('3.3: save validation rejects mode swaps, foreign mechanics and impossible 
 
 test('3.3: switching dossiers preserves solo numbers and removes party-only core/terminal gates',()=>{
   const s=solo('haart','tide');
-  for(const id of Object.keys(BOSSES)){
-    const markup=bossCodexView(s,id);assert.ok(markup.includes(`最大韧性 ${SOLO_RULES.stagger}`));assert.ok(markup.includes('基础 5 AP'));assert.ok(markup.includes('最多 2 点未使用 AP'));
-    assert.ok(markup.includes(`>${Math.round(900*BOSSES[id].hpMultiplier*SOLO_RULES.bossHp)}</b>`));
+  for(const id of Object.keys(BOSSES).filter(id=>!BOSSES[id].isMinion&&!BOSSES[id].isSkirmish)){
+    const markup=bossCodexView(s,id);assert.ok(markup.includes(`最大韧性 ${createBattle(s.difficulty,id,{mode:'solo',partyIds:['haart']}).boss.maxStagger}`));assert.ok(markup.includes('基础 5 AP'));assert.match(markup,/最多.*2.*(未使用|保留)/);
+    assert.ok(markup.includes(`>${createBattle(s.difficulty,id,{mode:'solo',partyIds:['haart']}).boss.maxHp}</b>`));
     assert.ok(!markup.includes('物理与魔法各 3 次'),id);assert.ok(!markup.includes('先完成物理与魔法各 1 次'),id);assert.ok(!markup.includes('undefined'),id);
   }
   assert.match(bossCodexView(s,'golem'),/任意属性.*4/);assert.match(bossCodexView(s,'final'),/任意属性.*2/);
@@ -145,13 +144,13 @@ test('3.3: switching dossiers preserves solo numbers and removes party-only core
 
 test('3.3: solo search takes an available lethal hit without padding recovery statistics',()=>{
   const s=solo('knibbs','tide');s.boss.hp=1;s.heroes[0].hp=50;
-  const plan=chooseSoloTurn(s).plan;assert.deepEqual(plan,[['skill','shot']]);
+  const plan=chooseSoloTurn(s).plan;assert.deepEqual(plan,[['skill','shot','boss']]);
 });
 
 for(const h of HEROES)test(`3.3: ${h.id} clears all ten standard solo encounters using only public actions`,()=>{
-  for(const boss of Object.keys(BOSSES)){
+  for(const boss of Object.keys(BOSSES).filter(id=>!BOSSES[id].isTutorial&&!BOSSES[id].isSkirmish&&!BOSSES[id].isMinion)){
     const r=runSolo(h.id,boss);assert.equal(r.result,'victory',`${h.id}/${boss}: ${r.result}`);assert.ok(r.hp>0);assert.equal(r.reforms,0);assert.ok(r.actions.length>0);
-    if(boss==='final')assert.ok(r.responseAp>0);
+    if(boss==='final'){assert.ok(r.defenseAp>0);assert.equal(r.responseAp,0);};
   }
 });
 

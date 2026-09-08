@@ -1,0 +1,27 @@
+{
+  "triangles": 278522,
+  "bytes": 7715808,
+  "mesh_batches": 54,
+  "worlds": {
+    "floodworks": {
+      "triangles": 48054,
+      "mesh_batches": 14
+    },
+    "observatory": {
+      "triangles": 80094,
+      "mesh_batches": 8
+    },
+    "ruins": {
+      "triangles": 37576,
+      "mesh_batches": 10
+    },
+    "sanctum": {
+      "triangles": 72730,
+      "mesh_batches": 15
+    },
+    "storm": {
+      "triangles": 40068,
+      "mesh_batches": 7
+    }
+  }
+}

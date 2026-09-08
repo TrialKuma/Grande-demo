@@ -2,7 +2,7 @@ import {HEROES,BOSSES} from './combat.js';
 import {icon} from './icons.js';
 import {normalizeProfile,STARTING_HEROES} from './player-profile.js';
 
-const starters=['knibbs','apeilia','ric'];
+const starters=STARTING_HEROES;
 const hero=id=>HEROES.find(h=>h.id===id);
 const portrait=id=>`<span class="portrait ${id}" role="img" aria-label="${hero(id).name}"></span>`;
 export const GAME_PROGRESS_KEYS=['grande-expedition-v1','grande-roster-v1','grande-crystal-save-v1','grande-crystal-records-v1'];
@@ -20,7 +20,7 @@ export function normalizeChallengeParty(ids,unlocked=[]){
 
 export function swapChallengeParty(ids,slot,id,unlocked=[]){
   const party=normalizeChallengeParty(ids,unlocked);
-  if(!Number.isInteger(slot)||slot<0||slot>=3||!hero(id)||![...starters,...unlocked].includes(id))return party;
+  if(!Number.isInteger(slot)||slot<0||slot>=party.length||!hero(id)||![...starters,...unlocked].includes(id))return party;
   const other=party.indexOf(id),previous=party[slot];
   party[slot]=id;if(other>=0&&other!==slot)party[other]=previous;
   return party;
@@ -36,13 +36,13 @@ export function gmToolsView(profile){
     <div class="gm-description"><p>开启后，角色图鉴、独狼选择和三人组队全部开放。当前远征与之后新开的远征，也可以在战后整备时选择全部角色。</p><p>关闭后，保留你通过剧情实际招募的角色。正在进行的战斗可以打完；后续组队与远征整备按正常招募进度开放。剧情、成长奖励和战绩不会被清除。</p>${profile.gmLegacyRecovery?'<p class="gm-migration-note">检测到旧版全开存档：旧版没有单独记录自然招募名单，本次会按当前远征的胜利记录恢复；至少保留三名初始角色。</p>':''}</div>
     <button class="primary" data-action="${enabled?'gm-disable':'gm-unlock'}">${icon(enabled?'close':'spark')}${enabled?'关闭全角色测试':'一键全开角色'}</button>
     <p class="gm-status" role="status">${enabled?'全角色测试已开启。':'全角色测试已关闭。'}剧情已解锁 ${profile.naturalHeroes.length} / ${HEROES.length} 名角色。设置保存在本机。</p>
-    <section class="gm-boss-tools" aria-label="BOSS 自由挑战开关"><h3 class="gm-section-heading">BOSS 自由挑战</h3><p>正常流程中，只有实际击败过的 BOSS 才会出现在主界面的自由挑战列表。此开关可以临时开放全部敌人，不影响角色解锁和远征路线。</p><button class="primary" data-action="${bossEnabled?'gm-boss-disable':'gm-boss-unlock'}">${icon(bossEnabled?'close':'spark')}${bossEnabled?'关闭 BOSS 全开':'一键开放全部 BOSS'}</button><p class="gm-status" role="status">${bossEnabled?'BOSS 全开已开启。':'BOSS 全开已关闭。'}实际击败 ${profile.defeatedBosses.length} / ${Object.keys(BOSSES).length} 名。</p><small>仅开启开关不会计入胜利。GM 开放期间实际获胜仍会永久解锁该 BOSS；关闭后，正在进行的战斗可以打完，重开须符合解锁条件。</small></section>
+    <section class="gm-boss-tools" aria-label="BOSS 自由挑战开关"><h3 class="gm-section-heading">BOSS 自由挑战</h3><p>正常流程中，只有实际击败过的 BOSS 才会出现在主界面的自由挑战列表。此开关可以临时开放全部敌人，不影响角色解锁和远征路线。</p><button class="primary" data-action="${bossEnabled?'gm-boss-disable':'gm-boss-unlock'}">${icon(bossEnabled?'close':'spark')}${bossEnabled?'关闭 BOSS 全开':'一键开放全部 BOSS'}</button><p class="gm-status" role="status">${bossEnabled?'BOSS 全开已开启。':'BOSS 全开已关闭。'}实际击败 ${profile.defeatedBosses.length} / ${Object.values(BOSSES).filter(b=>!b.isTutorial&&!b.isSkirmish&&!b.isMinion).length} 名。</p><small>仅开启开关不会计入胜利。GM 开放期间实际获胜仍会永久解锁该 BOSS；关闭后，正在进行的战斗可以打完，重开须符合解锁条件。</small></section>
     <div class="gm-reset-block"><span><strong>重新开始</strong><small>清空本游戏进度、角色解锁、成长与战绩，保留声音设置。</small></span><button data-action="progress-reset">重置游戏进度</button></div>
     <div class="modal-secondary"><button data-action="hero-journal">查看角色图鉴 ${icon('book')}</button><button data-action="close-modal">返回 ${icon('arrow')}</button></div>`;
 }
 
 export function progressResetView(){
-  return `<div class="modal-eyebrow">重置确认</div><h2>从头开始这次旅程？</h2><p class="modal-lead">确认后，以下内容会从这台设备清除，无法在游戏内撤销。</p><ul class="gm-reset-list"><li>当前自由挑战和远征存档，包括路线选择与剧情进度。</li><li>已招募角色、成长奖励和技能配置。恢复尼布斯、艾佩莉雅、雷克三名初始角色。</li><li>已击败的 BOSS 与通关战绩，并关闭角色、BOSS 两个 GM 开关。自由挑战列表恢复为空，需要通过远征重新解锁。</li></ul><p class="gm-status">音量、音乐开关、配音开关等偏好设置会保留。其他网站与游戏的数据不受影响。</p><div class="gm-reset-actions"><button class="primary" data-action="gm">取消，保留进度</button><button class="gm-danger" data-action="progress-reset-confirm">确认清空游戏进度</button></div>`;
+  return `<div class="modal-eyebrow">重置确认</div><h2>从头开始这次旅程？</h2><p class="modal-lead">确认后，以下内容会从这台设备清除，无法在游戏内撤销。</p><ul class="gm-reset-list"><li>当前自由挑战和远征存档，包括路线选择与剧情进度。</li><li>已招募角色、成长奖励和技能配置。恢复仅有尼布斯的入门流程，由你重新选择同伴的加入顺序。</li><li>已击败的 BOSS 与通关战绩，并关闭角色、BOSS 两个 GM 开关。自由挑战列表恢复为空，需要通过远征重新解锁。</li></ul><p class="gm-status">音量、音乐开关、配音开关等偏好设置会保留。其他网站与游戏的数据不受影响。</p><div class="gm-reset-actions"><button class="primary" data-action="gm">取消，保留进度</button><button class="gm-danger" data-action="progress-reset-confirm">确认清空游戏进度</button></div>`;
 }
 
 export function challengePartyView(ids,unlocked,slot=0){
@@ -50,6 +50,6 @@ export function challengePartyView(ids,unlocked,slot=0){
   return `<div class="modal-eyebrow">自由挑战</div><h2>调整出战队伍</h2><p class="modal-lead">先选择要替换的位置，再点击角色。选择已在队伍中的角色会交换位置。</p>
     <div class="challenge-party-slots" role="group" aria-label="出战位置">${party.map((id,i)=>`<button data-challenge-slot="${i}" class="${slot===i?'selected':''}" aria-pressed="${slot===i}"><small>位置 ${i+1}</small>${portrait(id)}<strong>${hero(id).short}</strong></button>`).join('')}</div>
     <div class="challenge-roster" role="group" aria-label="可出战角色">${HEROES.map(h=>`<button data-challenge-hero="${h.id}" ${available.has(h.id)?'':'disabled'} class="${party.includes(h.id)?'in-party':''}">${portrait(h.id)}<span><strong>${h.name}</strong><small>${available.has(h.id)?`${h.resourceName} · ${h.role}`:'尚未解锁'}</small></span><b>${party.includes(h.id)?'位置 '+(party.indexOf(h.id)+1):available.has(h.id)?'换入':'待解锁'}</b></button>`).join('')}</div>
-    <p class="gm-status">自由挑战使用每人的初始五项技能，全队每轮获得基础 6 AP，剩余点数最多保留 2 点到下一轮。队伍会自动保存。</p>
+    <p class="gm-status">自由挑战使用每人的初始五项技能，${party.length} 人队伍每轮获得基础 ${{1:3,2:4,3:6}[party.length]} AP，剩余点数最多保留 2 点到下一轮。队伍会自动保存。</p>
     <button class="primary" data-action="close-modal">队伍准备好了 ${icon('check')}</button>`;
 }

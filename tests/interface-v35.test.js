@@ -19,7 +19,7 @@ test('all seven five-slot rows show the actual attack type; restorative and cont
  for(const hero of HEROES){
   const s=make(hero.id),before=structuredClone(s),visible=cards(s,hero.id);assert.equal(visible.length,5);
   for(const entry of visible){
-   const id=entry.attrs.match(/data-skill="([^"]+)"/)[1],skill=resolvedSkill(s,hero.id,id),type=skill.damage>0?skill.kind:'support';
+   const id=entry.attrs.match(/data-skill="([^"]+)"/)[1],skill=resolvedSkill(s,hero.id,id),type=skill.damage>0||skill.coverFire?skill.kind:'support';
    assert.match(entry.body,new RegExp(`data-skill-type="${type}"`));assert.equal((entry.body.match(/data-skill-type=/g)||[]).length,1);
    const tip=words(tooltipView(s,'skill',hero.id,id));assert.match(tip,new RegExp(type==='support'?'辅助技能':type==='physical'?'物理攻击':'魔法攻击'));valid(tip);
   }
@@ -100,12 +100,13 @@ test('full stock exposes a powerful but less efficient cashout while fixed small
 
 test('auxiliary cashouts lead with their tactical effect while passive recovery stays in the detailed preview',()=>{
  const h=make('haart');assert.equal(useSkill(h,'haart','page').ok,true);
- assert.match(words(card(h,'haart','soothe').body),/辅助 敌伤 −20%/);assert.doesNotMatch(words(card(h,'haart','soothe').body),/回魔/);
+ assert.match(words(card(h,'haart','soothe').body),/改写杀意 · 转向或削弱55%/);assert.doesNotMatch(words(card(h,'haart','soothe').body),/回魔/);
+ assert.match(words(tooltipView(h,'skill','haart','soothe')),/下一次单体攻击转向另一名敌人/);
  assert.match(words(card(h,'haart','anchor').body),/辅助 每人下次攻击 \+25%/);
  const p=make('patch');assert.match(words(card(p,'patch','collate').body),/辅助 记录 \+6/);
  const q=createBattle('standard','warden',{partyIds:['qianxing','knibbs','ric'],upgrades:['qianxing_lock'],loadouts:{qianxing:['spike','beam','armor','repair','lock']}});
  assert.equal(useSkill(q,'qianxing','spike').ok,true);assert.equal(useSkill(q,'qianxing','spike').ok,true);
- assert.match(words(card(q,'qianxing','lock').body),/辅助 封锁行动 · 驱散 3 层/);assert.doesNotMatch(words(card(q,'qianxing','lock').body),/回魔/);
+ assert.match(words(card(q,'qianxing','lock').body),/辅助 单体 封锁行动 · 驱散 3 层/);assert.doesNotMatch(words(card(q,'qianxing','lock').body),/回魔/);
  assert.match(words(tooltipView(q,'skill','qianxing','lock')),/被动回魔 \+5/);
 });
 
@@ -148,17 +149,17 @@ test('one-use attack buffs are visible on every recipient and their real consump
  assert.doesNotMatch(statusBadges(s,heroOf(s,'knibbs')),/data-detail="attackBuff"/);assert.match(statusBadges(s,heroOf(s,'haart')),/data-detail="attackBuff"/);
 });
 
-test('hard control visibly cancels ordinary response preparation without claiming a posture damage bonus',()=>{
+test('hard control explains the cancelled enemy action without showing retired response buttons',()=>{
  const s=createBattle('standard','warden',{partyIds:['qianxing','knibbs','ric'],upgrades:['qianxing_lock'],loadouts:{qianxing:['spike','beam','armor','repair','lock']}});
  assert.equal(useSkill(s,'qianxing','spike').ok,true);assert.equal(useSkill(s,'qianxing','spike').ok,true);assert.equal(useSkill(s,'qianxing','lock').ok,true);
- const responseButtons=buttons(render(s)).filter(b=>b.attrs.includes('data-response='));assert.equal(responseButtons.length,3);
- for(const b of responseButtons){assert.match(b.attrs,/disabled/);assert.match(b.body,/本轮没有敌方主招/);}
+ const responseButtons=buttons(render(s)).filter(b=>b.attrs.includes('data-response='));assert.equal(responseButtons.length,0);
+ assert.match(render(s),/敌方行动已取消/);assert.doesNotMatch(render(s),/data-action="guard"/);
  assert.match(words(tooltipView(s,'skill','qianxing','lock')),/辅助技能/);assert.match(words(tooltipView(s,'skill','qianxing','lock')),/不提供破韧增伤/);
 });
 
 test('all 35 growth rewards are listed automatically, including every skill unlock, in journal and camp',()=>{
  assert.equal(Object.keys(REWARDS).length,35);
- const run=createRun();run.phase='camp';run.unlockedHeroes=HEROES.map(h=>h.id);run.upgrades=Object.keys(REWARDS);
+ const run=createRun('standard',{legacyRoute:true,gmAllHeroes:true});run.phase='camp';run.upgrades=Object.keys(REWARDS);
  for(const h of HEROES){
   run.focusHero=h.id;const owned=Object.values(REWARDS).filter(r=>r.heroId===h.id),before=structuredClone(run),camp=campaignView(run),journal=heroJournalView({selectedHero:h.id,unlockedHeroes:[h.id],upgrades:run.upgrades});
   assert.equal(owned.length,5);assert.equal((journal.match(/data-growth-reward=/g)||[]).length,5);assert.match(words(journal),/已获得 5 \/ 5 项/);assert.match(words(camp),/成长奖励 5 \/ 5/);

@@ -8,6 +8,7 @@ lights use standard primitives. Rigid pivot groups provide game animation hooks.
 import argparse
 import json
 import math
+import random
 import os
 import sys
 from pathlib import Path
@@ -51,18 +52,18 @@ def mat(name, color, metal=0.0, rough=.5, emission=0.0):
 
 
 M = {
-    'skin': mat('01 / warm neutral synthetic skin', (.34, .235, .18), 0, .56),
+    'skin': mat('01 / warm neutral synthetic skin', (.29, .195, .146), 0, .61),
     'lip': mat('02 / muted lip', (.31, .15, .12), 0, .56),
     'socket': mat('03 / eyelid shadow', (.115, .065, .05), 0, .56),
-    'hair': mat('04 / blue-black hair', (.006, .008, .013), 0, .62),
-    'hairline': mat('05 / hair strand glints', (.009, .013, .019), 0, .64),
+    'hair': mat('04 / blue-black hair', (.0018, .0025, .004), 0, .88),
+    'hairline': mat('05 / hair strand glints', (.003, .004, .006), 0, .85),
     'white': mat('06 / eye whites', (.62, .65, .60), 0, .28),
     'iris': mat('07 / brown-grey iris', (.085, .072, .055), .05, .23),
     'pupil': mat('08 / pupil', (.004, .006, .007), 0, .22),
     'suit': mat('10 / flexible charcoal undersuit', (.026, .038, .048), .12, .67),
     'rubber': mat('11 / articulated joint seals', (.012, .017, .023), .05, .70),
-    'silver': mat('20 / satin alloy broad planes', (.48, .58, .64), .80, .31),
-    'light': mat('21 / brushed alloy trim', (.65, .73, .75), .84, .25),
+    'silver': mat('20 / satin alloy broad planes', (.23, .30, .34), .76, .38),
+    'light': mat('21 / brushed alloy trim', (.40, .47, .50), .82, .32),
     'darkmetal': mat('22 / recessed gunmetal', (.085, .13, .17), .75, .40),
     'edge': mat('23 / titanium bevel', (.27, .37, .42), .88, .25),
     'cyan': mat('30 / cyan light channels', (.10, .64, .84), .12, .22, 2.6),
@@ -154,13 +155,19 @@ def plate(name, outline, material, thickness=.018, parent=BODY, bevel=.009):
         outline = [(x, y + .035, z) for x, y, z in outline]
     n = len(outline)
     verts = list(outline) + [(x, y + thickness, z) for x, y, z in outline]
-    # Fan around a slightly protruding centroid gives the alloy its designed crown.
+    # Two inset perimeter loops form a rounded forged shell instead of the
+    # previous triangle fan. The front stays broad, with an actual rolled rim.
     center = tuple(sum(p[j] for p in outline) / n for j in range(3))
-    verts.append((center[0], center[1] - (.014 if thickness > 0 else -.014), center[2]))
-    faces = [(n * 2, i, (i + 1) % n) for i in range(n)]
+    crown = (.018 if thickness > 0 else -.018)
+    for ratio,depth in [(.88,crown),(.28,crown*1.25)]:
+        verts.extend([(center[0]+(x-center[0])*ratio,center[1]+(y-center[1])*ratio-depth,center[2]+(z-center[2])*ratio) for x,y,z in outline])
+    faces=[]
+    for outer,inner in [(0,n*2),(n*2,n*3)]:
+        faces.extend([(outer+i,outer+(i+1)%n,inner+(i+1)%n,inner+i) for i in range(n)])
+    faces.append(tuple(n*3+i for i in range(n)))
     faces += [tuple(n + i for i in reversed(range(n)))]
     faces += [(i, n + i, n + (i + 1) % n, (i + 1) % n) for i in range(n)]
-    return custom(name, verts, faces, material, parent, bevel=bevel)
+    return custom(name, verts, faces, material, parent, bevel=min(bevel,.006))
 
 
 def curve(name, points, radius, material, parent=BODY):
@@ -380,6 +387,11 @@ for side in [-1,1]:
         x=side*(.025+i*.025)
         hair_lock(f'Hair / rear swept lock {side}/{i}',[(x,.112,2.384),(x+side*.015,.176,2.341),(x+side*.018,.186,2.279),(x+side*.012,.166,2.206+(i%2)*.018)],.017)
 
+# Refine the reference study before export, preserving its named animation pivots.
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+from qianxing_refinement import refine
+refine(globals())
+
 # Ascending and descending lofts and mirrored plates share outward normals.
 for obj in MODEL:
     if obj.type != 'MESH':
@@ -441,11 +453,11 @@ def area(name, location, energy, color, size, target=(0,0,1.35)):
 
 area('Key / softbox',(-3,-4,5.5),620,(.80,.89,1),4)
 area('Fill / warm bounce',(3,-2,2.4),260,(1,.78,.58),3)
-area('Rim / cyan',(.9,2,3.6),780,(.46,.78,1),2.2)
+area('Rim / cyan',(.9,2,3.6),360,(.46,.78,1),2.2)
 area('Face / portrait strip',(0,-3,3.4),75,(1,.93,.83),1.1,target=(0,0,2.18))
 scene=bpy.context.scene
 scene.render.engine='CYCLES'
-scene.cycles.samples=40
+scene.cycles.samples=32
 scene.cycles.use_denoising=True
 scene.render.image_settings.file_format='PNG'
 scene.render.resolution_percentage=100
@@ -485,7 +497,8 @@ for screen in bpy.data.screens:
 scene['project_note']='Reference-guided scripted mesh modeling. Rigid editable pivots; guide armature is not a weighted runtime rig.'
 scene['reference_note']='The right portrait in packed recruits.png is Qianxing. Clothing and face are an original demo interpretation, not a canon reference expansion.'
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT/'qianxing-reference-study.blend'))
-bpy.ops.export_scene.gltf(filepath=str(GLB),export_format='GLB',use_selection=True,export_apply=True,export_animations=False,export_cameras=False,export_lights=False,export_extras=True)
+from export_batched import export_batched
+export_batched(GLB,MODEL)
 deps=bpy.context.evaluated_depsgraph_get()
 mesh_objects=[obj for obj in MODEL if obj.type=='MESH']
 evaluated_triangles=0

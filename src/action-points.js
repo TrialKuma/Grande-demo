@@ -2,7 +2,8 @@ export const ACTION_POINT_RULES = Object.freeze({party:6,solo:5,carryLimit:2});
 
 export function baseActionPoints(stateOrMode){
   const mode=typeof stateOrMode==='string'?stateOrMode:stateOrMode?.challengeMode;
-  return mode==='solo'?ACTION_POINT_RULES.solo:ACTION_POINT_RULES.party;
+  const size=stateOrMode?.heroes?.length||stateOrMode?.partySize||3;
+  return mode==='solo'?ACTION_POINT_RULES.solo:size===1?3:size===2?4:ACTION_POINT_RULES.party;
 }
 
 /** The existing AP meter owns both this round's budget and next round's preview. */
