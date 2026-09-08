@@ -1,5 +1,5 @@
 import {HEROES,SKILLS,DIFFICULTIES,createBattle,normalizeLoadouts} from './combat.js';
-import {REWARDS} from './rewards.js';
+import {REWARDS,reconcileRewardOffer} from './rewards.js';
 import {normalizeSave} from './save.js';
 import {CHAPTER_BY_BOSS,ROUTE_CHOICES,CAMP_EVENTS,ENDINGS} from './story.js';
 import {TUTORIAL_CHAPTERS} from './tutorial-story.js';
@@ -54,13 +54,15 @@ export function pickThree(options,key){
  const list=[...options];for(let i=list.length-1;i>0;i--){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const j=seed%(i+1);[list[i],list[j]]=[list[j],list[i]];}
  return list.slice(0,3);
 }
-function offerAt(run,bossId,owned=run.upgrades){
+function rewardPoolAt(run,bossId,owned=run.upgrades,legacyGM=false){
  const index=pathFor(run).indexOf(bossId);
- const unlocked=run.gmAllHeroes?heroIds:['knibbs',...run.recruits.filter(r=>pathFor(run).indexOf(r.after)<=index).map(r=>r.heroId)];
- const pool=Object.values(REWARDS).filter(r=>unlocked.includes(r.heroId)&&!owned.includes(r.id));
- return pickThree(pool,`${run.seed}/${bossId}/${owned.length}`);
+ const recruited=legacyGM?heroIds:['knibbs',...run.recruits.filter(r=>pathFor(run).indexOf(r.after)<=index).map(r=>r.heroId)];
+ return Object.values(REWARDS).filter(r=>recruited.includes(r.heroId)&&!owned.includes(r.id));
 }
-export const rewardOptions=run=>run.phase==='reward'?offerAt(run,currentChapter(run).bossId):[];
+function offerAt(run,bossId,owned=run.upgrades,legacyGM=false,cachedIds){
+ return reconcileRewardOffer(cachedIds,rewardPoolAt(run,bossId,owned,legacyGM),pool=>pickThree(pool,`${run.seed}/${bossId}/${owned.length}`));
+}
+export const rewardOptions=run=>run.phase==='reward'?offerAt(run,currentChapter(run).bossId,run.upgrades,false,run.rewardOfferIds):[];
 const RECRUIT_GROUPS=[['apeilia','ric'],['apeilia','ric'],['haart','youmu'],['haart','youmu'],['qianxing','patch'],['qianxing','patch']];
 export function recruitOptions(run){
  if(run.phase!=='recruit')return [];
@@ -71,7 +73,7 @@ export function recruitOptions(run){
  if(!ids.length)ids=[...new Set(RECRUIT_GROUPS.flat())].filter(id=>!owned.includes(id)).slice(0,2);
  return ids.map(id=>HEROES.find(h=>h.id===id));
 }
-function moveOn(run){run.chapter++;run.phase=pathFor(run)[run.chapter]?'camp':'route';run.dialogue='before';run.line=0;run.battle=null;delete run.interlude;delete run.skirmish;settle(run);}
+function moveOn(run){run.chapter++;run.phase=pathFor(run)[run.chapter]?'camp':'route';run.dialogue='before';run.line=0;run.battle=null;delete run.interlude;delete run.skirmish;delete run.rewardOfferIds;settle(run);}
 function afterDialogue(run){
  if(recruitAfter.includes(currentChapter(run).bossId)&&naturalHeroes(run).length<7){run.phase='recruit';return;}
  if(isTutorial(currentChapter(run).bossId)){moveOn(run);return;}
@@ -136,8 +138,9 @@ export function finishInterlude(run){
  return {ok:true};
 }
 export function claimReward(run,id){
- if(run.phase!=='reward'||!rewardOptions(run).some(r=>r.id===id))return {ok:false,error:'请从本次随机提供的三个奖励中选择一个。'};
- const reward=REWARDS[id];run.rewardHistory.push({bossId:currentChapter(run).bossId,id,gm:!!run.gmAllHeroes});run.upgrades.push(id);refreshLoadouts(run);
+ const offer=rewardOptions(run);
+ if(run.phase!=='reward'||!naturalHeroes(run).includes(REWARDS[id]?.heroId)||!offer.some(r=>r.id===id))return {ok:false,error:'请从本次同行角色的奖励选项中选择一个。'};
+ const reward=REWARDS[id];run.rewardHistory.push({bossId:currentChapter(run).bossId,id,gm:false,...(Array.isArray(run.rewardOfferIds)?{offerIds:offer.map(r=>r.id)}:{})});run.upgrades.push(id);refreshLoadouts(run);
  let replaced=null;if(reward.kind==='skill'){const slots=run.loadouts[reward.heroId];if(!slots.includes(reward.skillId)){const index=Math.min(4,slots.length);replaced=slots[index]||null;slots[index]=reward.skillId;}run.focusHero=reward.heroId;}
  run.lastReward={id,replaced};moveOn(run);return {ok:true,reward};
 }
@@ -193,7 +196,15 @@ export function normalizeLearningRun(value){
  if(!Array.isArray(run.upgrades)||new Set(run.upgrades).size!==run.upgrades.length||run.upgrades.some(id=>!REWARDS[id])||!Array.isArray(run.rewardHistory)||run.rewardHistory.length!==run.upgrades.length)return null;
  const rewardBosses=run.history.filter(h=>!isTutorial(h.bossId)&&h.bossId!=='final').map(h=>h.bossId),pending=['reward','event','recruit','explore'].includes(run.phase)||side||run.phase==='dialogue'&&['after','event'].includes(run.dialogue);
  if(run.upgrades.length!==rewardBosses.length-(pending&&!isTutorial(path[run.chapter])&&path[run.chapter]!=='final'?1:0))return null;
- for(const [i,entry]of run.rewardHistory.entries()){if(entry.bossId!==rewardBosses[i]||entry.id!==run.upgrades[i]||!offerAt({...run,gmAllHeroes:entry.gm===true},entry.bossId,run.upgrades.slice(0,i)).some(r=>r.id===entry.id))return null;}
+ for(const [i,entry]of run.rewardHistory.entries()){
+  if(entry.bossId!==rewardBosses[i]||entry.id!==run.upgrades[i])return null;
+  const owned=run.upgrades.slice(0,i);
+  // Previously claimed GM rewards remain valid history; GM never expands a new offer.
+  if(Object.hasOwn(entry,'offerIds')){
+   const pool=rewardPoolAt(run,entry.bossId,owned);
+   if(!Array.isArray(entry.offerIds)||entry.offerIds.length!==Math.min(3,pool.length)||new Set(entry.offerIds).size!==entry.offerIds.length||!entry.offerIds.includes(entry.id)||entry.offerIds.some(id=>!pool.some(r=>r.id===id)))return null;
+  }else if(!offerAt(run,entry.bossId,owned,entry.gm===true).some(r=>r.id===entry.id))return null;
+ }
  for(const [group,index]of [['crossing',6],['archive',9]]){if(run.chapter<index&&(run.routes[group]||run.events[group]))return null;if(run.chapter>index&&!run.routes[group])return null;if(run.chapter===index&&!run.routes[group]&&run.phase!=='route')return null;if(run.events[group]&&won<=index)return null;if(won>index&&!run.events[group]&&!(run.chapter===index&&(run.phase==='event'||run.phase==='explore'||run.phase==='dialogue'&&run.dialogue==='after')))return null;}
  if(run.phase==='route'&&(path[run.chapter]!==null||run.dialogue!=='before'))return null;if(run.phase==='event'&&(!eventGroup(run)||run.events[eventGroup(run)]))return null;
  if((run.phase==='complete'||run.dialogue==='ending')&&(run.chapter!==10||run.dialogue!=='ending'||!['dialogue','complete'].includes(run.phase)))return null;
@@ -214,5 +225,6 @@ export function normalizeLearningRun(value){
   else {run.phase='camp';run.battle=null;delete run.drill;run.dialogue=side?'skirmish':'before';settle(run);}
  }
  else run.battle=null;
+ if(Object.hasOwn(run,'rewardOfferIds')){if(run.phase==='reward')run.rewardOfferIds=rewardOptions(run).map(r=>r.id);else delete run.rewardOfferIds;}
  return run;
 }

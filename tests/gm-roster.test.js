@@ -133,20 +133,20 @@ test('GM roster: a closed-GM battle with missing or mismatched saved actors safe
   assert.equal(normalizeRun({...run,phase:'camp',battle:null}),null,'battle-only permission cannot unlock the camp');
 });
 
-test('GM rewards: early companion upgrades restore and survive closing GM without unlocking the companion',()=>{
+test('GM rewards: previously claimed early companion upgrades restore, but new early claims are rejected',()=>{
  for(const legacyRoute of [false,true]){
-  let run,reward;
-  for(let seed=0;seed<50&&!reward;seed++){
-   run=toFirstCamp(createRun('standard',{legacyRoute,gmAllHeroes:true,seed}));
-   startNextChapter(run);advanceDialogue(run,true);run.battle=battleForRun(run);
-   completeEncounter(run,{...run.battle,mode:'victory'});advanceDialogue(run,true);
-   reward=rewardOptions(run).find(r=>r.heroId==='qianxing');
-  }
-  assert.ok(reward,'a reproducible early GM offer contains Qianxing growth');
-  assert.equal(claimReward(run,reward.id).ok,true);assert.deepEqual(run.gmRewardKeys,[reward.id]);restore(run);
-  disableRunHeroes(run);assert.ok(run.upgrades.includes(reward.id));assert.ok(!run.unlockedHeroes.includes('qianxing'));restore(run);
+  const run=toFirstCamp(createRun('standard',{legacyRoute,gmAllHeroes:true,seed:0}));
+  startNextChapter(run);advanceDialogue(run,true);run.battle=battleForRun(run);
+  completeEncounter(run,{...run.battle,mode:'victory'});advanceDialogue(run,true);
+  assert.ok(rewardOptions(run).every(r=>r.heroId!=='qianxing'));
+  const before=structuredClone(run);assert.equal(claimReward(run,'qianxing_grounding').ok,false);assert.deepEqual(run,before);
+  // Recorded pre-fix GM save: this second-chapter reward used to be legal.
+  run.upgrades.push('qianxing_grounding');run.gmRewardKeys=['qianxing_grounding'];
+  run.lastReward={id:'qianxing_grounding',replaced:null};run.chapter++;run.phase='camp';run.dialogue='before';run.line=0;
+  restore(run);
+  disableRunHeroes(run);assert.ok(run.upgrades.includes('qianxing_grounding'));assert.ok(!run.unlockedHeroes.includes('qianxing'));restore(run);
   const invalid=structuredClone(run);delete invalid.gmRewardKeys;assert.equal(normalizeRun(invalid),null);
-  const oldGm={...invalid,gmAllHeroes:true,unlockedHeroes:all};assert.deepEqual(normalizeRun(oldGm).gmRewardKeys,[reward.id]);
+  const oldGm={...invalid,gmAllHeroes:true,unlockedHeroes:all};assert.deepEqual(normalizeRun(oldGm).gmRewardKeys,['qianxing_grounding']);
  }
 });
 

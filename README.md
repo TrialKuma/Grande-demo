@@ -10,7 +10,7 @@
 
 ## 开始游玩
 
-双击本目录的 **「开始游戏.html」**，使用支持 WebGL 2 的 Chrome 或 Edge 打开。从 GitHub 下载时，选择 **Code → Download ZIP**，解压后打开；仓库网页上的 HTML 源码预览不能运行游戏。
+双击本目录的 **「开始游戏.html」**，使用支持 WebGL 2 的 Chrome 或 Edge 打开。该文件包含完整 BGM，现通过 Git LFS 保存：安装 Git LFS 后克隆仓库会下载完整文件；若使用 **Code → Download ZIP** 后得到的 HTML 只有几行指针文本，请到 GitHub 的「开始游戏.html」文件页点击 **Download raw file** 下载实际文件。仓库网页上的 HTML 源码预览不能运行游戏。
 
 修改源码或资源后，要运行 `npm run offline` 重新生成独立文件。离线构建会把代码、美术、模型、概念图、环景和对白音频内嵌进 HTML；运行游戏不需要账号或联网 TTS。声音需要第一次点击后才能播放。浏览器对本地文件存档的支持取决于自身设置。
 

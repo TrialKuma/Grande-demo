@@ -29,7 +29,7 @@ test('AP UI: solo manual explains five base and at most seven total without call
 test('AP UI: cancelled enemy action shows the next budget, not the current enlarged cap',()=>{
   const state=createBattle('story','duelist');state.ap=2;endRound(state);
   state.ap=0;state.boss.broken=true;state.boss.stagger=0;
-  assert.match(words(render(state)),/现在结束，下轮 6 AP（保留 0 点）/);
+  assert.match(words(render(state)),/下轮 6 AP · 保留 0/);
   for(const response of responseOptions(state)){
     assert.match(response.description,/不退款/);
     assert.match(response.description,/基础 6 AP/);

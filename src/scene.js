@@ -2531,6 +2531,7 @@ export class BattleScene {
       this.shake *= Math.exp(-dt*19);
     }
     this.renderer.render(this.scene, this.camera);
+    this.onHudFrame?.();
     this.camera.position.copy(originalPosition);
     this.raf = requestAnimationFrame(this.frame);
   }

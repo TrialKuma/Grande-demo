@@ -332,3 +332,10 @@
 
 
 .response-mitigation{font-size:8px;color:#9eb8bd;margin-left:auto;font-weight:400;white-space:nowrap;letter-spacing:0}.response-option strong{gap:5px}.response-option kbd{font-size:7px}.round-tools{display:flex;gap:9px;margin-top:9px;pointer-events:auto}.round-tools button{padding:0;color:#91a6b6}.round-tools .icon{width:13px;height:13px}@media(max-width:900px){.response-mitigation{font-size:7px}.response-option kbd{display:none}}@media(max-width:700px){.response-option strong{flex-wrap:wrap}.response-mitigation{margin-left:0;width:100%;font-size:7px}.response-option{min-height:75px}.round-tools{margin-top:7px}.round-tools .icon{width:12px;height:12px}}
+
+/* BGM Jukebox */
+.bgm-badge{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:normal;margin-left:auto;white-space:nowrap}
+.bgm-badge.ready{background:#1e4334;color:#a2edc9;border:1px solid #377d5d}
+.bgm-badge.pending{background:#232b35;color:#8594a6;border:1px solid #3d4a5a}
+.bgm-card.is-disabled{opacity:0.6}
+.bgm-card-meta{font-size:11px;color:#8ba0b1;margin:6px 0 10px;display:flex;align-items:center;gap:8px}

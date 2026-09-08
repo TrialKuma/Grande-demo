@@ -1,5 +1,5 @@
 import {HEROES,SKILLS,SKILL_SLOTS,DIFFICULTIES,createBattle,normalizeLoadouts} from './combat.js';
-import {REWARDS} from './rewards.js';
+import {REWARDS,reconcileRewardOffer} from './rewards.js';
 import {normalizeSave} from './save.js';
 import {CHAPTERS,CHAPTER_BY_BOSS,ROUTE_CHOICES,CAMP_EVENTS,ENDINGS} from './story.js';
 import {migrateRoster} from './legacy-roster.js';
@@ -96,7 +96,7 @@ export function dialogueNextLabel(run){if(learning.isLearningRun(run))return lea
  if(currentChapter(run).bossId==='final')return '看看后来';
  return run.dialogue==='after'&&currentEvent(run)?'安排接下来的工作':'领取成长奖励';
 }
-export function rewardOptions(run){if(learning.isLearningRun(run))return learning.rewardOptions(run);return learning.pickThree(poolFor(currentChapter(run).bossId).map(id=>REWARDS[id]).filter(r=>r&&!run.upgrades.includes(r.id)&&run.unlockedHeroes.includes(r.heroId)),run.id+'/'+currentChapter(run).bossId);}
+export function rewardOptions(run){if(learning.isLearningRun(run))return learning.rewardOptions(run);return reconcileRewardOffer(run.rewardOfferIds,poolFor(currentChapter(run).bossId).map(id=>REWARDS[id]).filter(r=>r&&!run.upgrades.includes(r.id)&&earnedCompanions(run).includes(r.heroId)),pool=>learning.pickThree(pool,run.id+'/'+currentChapter(run).bossId));}
 export function consequenceNotes(run){if(learning.isLearningRun(run))return learning.consequenceNotes(run);
  const id=currentChapter(run).bossId,notes=[];
  if(run.legacyRoute)return notes;
@@ -163,10 +163,10 @@ export function completeEncounter(run,battle){if(learning.isLearningRun(run))ret
   return true;
 }
 export function claimReward(run,id){if(learning.isLearningRun(run))return learning.claimReward(run,id);
-  if(run.phase!=='reward'||!rewardOptions(run).some(r=>r.id===id))return {ok:false,error:'请选择本场提供的一项奖励。'};
+  if(run.phase!=='reward'||!earnedCompanions(run).includes(REWARDS[id]?.heroId)||!rewardOptions(run).some(r=>r.id===id))return {ok:false,error:'请选择本场提供的一项同行角色奖励。'};
   const reward=REWARDS[id];
   run.upgrades.push(id);run.loadouts=normalizeLoadouts(run.upgrades,run.loadouts);
-  if(run.gmAllHeroes&&!earnedCompanions(run).includes(reward.heroId))run.gmRewardKeys=[...new Set([...(run.gmRewardKeys||[]),id])];
+  delete run.rewardOfferIds;
   let replaced=null;
   if(reward.kind==='skill'){
     replaced=run.loadouts[reward.heroId][SKILL_SLOTS-1];
@@ -260,6 +260,7 @@ function normalizeLegacyRun(value){
     if(battle&&battle.boss.id===CHAPTERS[copy.chapter].bossId&&battle.difficulty===copy.difficulty&&battle.heroes.map(h=>h.id).join(',')===copy.partyIds.join(',')&&battle.upgrades?.join(',')===copy.upgrades.join(','))copy.battle=battle;
     else {copy.phase='camp';copy.battle=null;settleRunParty(copy);}
   }
+  if(Object.hasOwn(value,'rewardOfferIds')&&copy.phase==='reward')copy.rewardOfferIds=rewardOptions({...copy,legacyRoute:true,rewardOfferIds:value.rewardOfferIds}).map(r=>r.id);
   return copy;
 }
 
@@ -316,5 +317,6 @@ export function normalizeRun(value){if(learning.isLearningRun(value))return lear
   if(battle&&battle.boss.id===path[copy.chapter]&&battle.difficulty===copy.difficulty&&battle.heroes.map(h=>h.id).join(',')===copy.partyIds.join(',')&&battle.upgrades?.join(',')===copy.upgrades.join(','))copy.battle=battle;
   else {copy.phase='camp';copy.battle=null;copy.dialogue='before';copy.line=0;settleRunParty(copy);}
  }
+ if(Object.hasOwn(value,'rewardOfferIds')&&copy.phase==='reward')copy.rewardOfferIds=rewardOptions({...copy,rewardOfferIds:value.rewardOfferIds}).map(r=>r.id);
  return copy;
 }

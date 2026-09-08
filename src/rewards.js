@@ -36,3 +36,11 @@ export const REWARDS = {
   patch_injunction:{id:'patch_injunction',heroId:'patch',kind:'skill',skillId:'injunction',name:'新技 · 读秒禁令',description:'解锁读秒禁令：以 2 行动点销毁 4 条记录，封锁一次普通行动。观测中同时施加两轮易伤，收录中额外驱散 2 层；没有直接伤害，冷却 3 轮，服从抗控。'},
   patch_doubleentry:{id:'patch_doubleentry',heroId:'patch',kind:'upgrade',affects:['bookward'],name:'档案 · 交叉索引',description:'从观测姿态使用书阵切入收录时，该次转化费用从 4 魔力降低为 3。仍生成 3 条记录，不额外返还魔力；连续使用收录书阵不享受减费，已经只需 1 魔力的钥刃不受影响。'}
 };
+
+/** Keep eligible cached choices in place and fill gaps from a deterministic draw. */
+export function reconcileRewardOffer(cachedIds,eligible,draw){
+ const byId=new Map(eligible.map(reward=>[reward.id,reward]));
+ const kept=[...new Set(Array.isArray(cachedIds)?cachedIds:[])].filter(id=>byId.has(id)).slice(0,3);
+ const missing=draw(eligible.filter(reward=>!kept.includes(reward.id)));
+ return [...kept.map(id=>byId.get(id)),...missing].slice(0,3);
+}

@@ -1,4 +1,5 @@
-import {enemyTargetView,additionalThreatsView,skillTargetLabel} from './enemy-ui.js';
+import {enemyIntentModels,enemyIntentBadgeView,enemyTargetOfTargetView} from './enemy-intent-ui.js';
+import {enemyTargetView,skillTargetLabel} from './enemy-ui.js';
 import {statusBadges,heroResourceDescription,skillTypeBadge} from './status-details.js';
 import {HEROES, BOSSES, DIFFICULTIES, SOLO_RULES, canUse, heroOf, intentInfo, activeSkills, skillPreview, resolvedSkill, bossSummary, victoryRequirements,enemyTargets} from './combat.js';
 import {icon} from './icons.js';
@@ -56,7 +57,7 @@ export function titleView(prefs, saved, toolbar, records, journeyMarkup='', {unl
       </button>`).join('')}</div>
       ${chosen?`<div class="mission-brief" style="--encounter:${chosen.color}"><span class="tiny-label">${esc(chosen.region)}</span><p>${esc(chosen.brief)}</p><button class="primary free-start" data-action="start">${icon('play')}${solo?`${esc(soloHero.short)}独自挑战`:'小队挑战'} · ${chosen.name}</button><div class="mission-links"><button data-action="boss-codex">BOSS 全部招式 ${icon('book')}</button><button data-action="help">战斗手册 ${icon('arrow')}</button></div></div>`:`<div class="mission-empty"><h3>还没有解锁自由挑战</h3><p>在剧情远征中击败 BOSS 后，它就会出现在这里，之后可以反复挑战。想直接测试敌人，可以在 GM 里单独开放 BOSS。</p><button class="primary" data-action="journey-start">${icon('play')}开始新的剧情远征</button><button data-action="gm">打开 GM 试玩开关 ${icon('arrow')}</button></div>`}
     </section>
-    <footer class="title-footer"><span>GRANDE · EXPEDITION DEMO <b>03.9</b></span><button class="gm-entry" data-action="gm">GM · 试玩开关</button><button data-action="voice-cast">角色声音试听</button><button data-action="art-review">场景与 BOSS 展示</button><button data-action="model-review">模型样件 · 潜行</button><button data-action="credits">世界观与制作记录 ${icon('arrow')}</button><span>${records.length ? '已完成 '+records.length+' 次挑战' : '建议使用横屏 · 支持鼠标与键盘'}</span></footer>
+    <footer class="title-footer"><span>GRANDE · EXPEDITION DEMO <b>03.9</b></span><button class="gm-entry" data-action="gm">GM · 试玩开关</button><button data-action="voice-cast">角色声音试听</button><button data-action="bgm-jukebox">游戏原声试听</button><button data-action="art-review">场景与 BOSS 展示</button><button data-action="model-review">模型样件 · 潜行</button><button data-action="credits">世界观与制作记录 ${icon('arrow')}</button><span>${records.length ? '已完成 '+records.length+' 次挑战' : '建议使用横屏 · 支持鼠标与键盘'}</span></footer>
   </section>`;
 }
 
@@ -113,10 +114,10 @@ function heroRow(state, h, i, busy) {
   return `<div class="team-row ${h.id===state.selected?'selected':''} ${h.hp<=0?'down':''}" style="--hero:${h.color}">
     <button class="team-hero" data-hero="${h.id}" data-owner="${h.id}" data-tooltip="hero" aria-label="选择${h.name}" aria-pressed="${state.selected===h.id}" ${busy?'disabled':''}>
       ${portrait(h.id==='youmu'&&h.youmuForm==='captain'?'youmu_inner':h.id)}
-      <span class="hero-vitals"><span class="hero-name">${h.short}<kbd>${i+1}</kbd></span><span class="hero-health">${h.hp}<small> / ${h.maxHp}</small>${h.shield?`<b>${icon('shield')}${h.shield}</b>`:''}</span><span class="hp-track"><i style="width:${h.hp/h.maxHp*100}%"></i></span><span class="hero-effects">${h.hp<=0?'倒下 · 可用药剂救起':h.protection?`<span class="protected">本轮减伤 ${h.protection}%</span>`:h.resonance?'共鸣 '+h.resonance+' / 5':'生命'}</span></span>
+      <span class="hero-vitals"><span class="hero-name">${h.short}<kbd>${i+1}</kbd></span><span class="hero-health">${h.hp}<small> / ${h.maxHp}</small>${h.shield?`<b>${icon('shield')}${h.shield}</b>`:''}</span><span class="hp-track"><i style="width:${h.hp/h.maxHp*100}%"></i>${h.shield>0?`<span class="hp-shield" style="width:${Math.min(100,h.shield/h.maxHp*100)}%" aria-label="护盾 ${h.shield}"></span>`:""}</span><span class="hero-effects">${h.hp<=0?'倒下 · 可用药剂救起':h.protection?`<span class="protected">本轮减伤 ${h.protection}%</span>`:h.resonance?'共鸣 '+h.resonance+' / 5':'生命'}</span></span>
     </button>
-    <div class="hero-resource">${resourceMeter(h)}<div class="hero-statuses" aria-label="${h.short}的被动与状态">${statusBadges(state,h)}</div></div>
-    <div class="team-skills" style="--skill-count:${Math.max(1,skills.length)}" aria-label="${h.name}的技能">${skills.map((s,j)=>skillCard(state,h,s,j,busy)).join('')}</div>
+    <div class="hero-resource">${resourceMeter(h)}</div>
+    <div class="team-skills" style="--skill-count:${Math.max(1,skills.length)}" aria-label="${h.name}的技能">${skills.map((s,j)=>skillCard(state,h,s,j,busy)).join('')}</div><div class="hero-statuses" aria-label="${h.short}的被动与状态">${statusBadges(state,h)}</div>
   </div>`;
 }
 
@@ -133,34 +134,24 @@ function specialProgress(state){
     return `<div class="finale-counts ${r.solo?'solo-counts':''}">${attacks}<span class="${b.finaleProtected?'done':''}">角色防护 <b>${b.finaleProtected?'✓':'待施放'}</b></span><strong>剩余 ${b.finaleTurns} 回合。${r.solo?'完成命中':'完成物理与魔法命中'}并使用角色防护技能后，结束回合抵住最后一击。</strong></div>`;
   }
   if(b.core)return `<div class="core-counts">${r.solo?`<span>任意属性命中 <b>${b.coreHits||0} / ${r.coreHits}</b></span>`:`<span>物理 <b>${b.corePhysical} / ${r.corePhysical}</b></span><span>魔法 <b>${b.coreMagic} / ${r.coreMagic}</b></span>`}<strong>剩余 ${b.coreTurns} 回合</strong></div>`;
-  return `<div class="foe-health"><i style="width:${Math.max(0,b.hp/b.maxHp*100)}%"></i><span>${b.hp.toLocaleString()} / ${b.maxHp.toLocaleString()}</span></div><div class="foe-stagger"><span>${b.broken?'架势崩溃':b.exposed?'破绽 · 易伤50%':'韧性'}</span><div><i style="width:${b.stagger/b.maxStagger*100}%"></i></div><b>${b.stagger}</b></div>`;
+  return `<div class="foe-health"><i style="width:${Math.max(0,b.hp/b.maxHp*100)}%"></i><span>${b.hp.toLocaleString()} / ${b.maxHp.toLocaleString()} · ${Math.ceil(b.hp/b.maxHp*100)}%</span></div><div class="foe-stagger"><span>${b.broken?'架势崩溃':b.exposed?'破绽 · 易伤50%':'韧性'}</span><div><i style="width:${b.stagger/b.maxStagger*100}%"></i></div><b>${b.stagger}</b></div>`;
 }
 
 export function battleView(state, busy, toolbar, time, lastSkill) {
   const b=state.boss, meta=bossOf(state), h=heroOf(state,state.selected), intent=intentInfo(state);
-  const summary=bossSummary(state), ap=actionPointInfo(state), lesson=LESSONS[b.id], learning=!!state.skillAccess;
+  const summary=bossSummary(state), ap=actionPointInfo(state), lesson=LESSONS[b.id], learning=!!state.skillAccess, intents=enemyIntentModels(state);
   return `<section class="battle-screen battle-v2 battle-v3 ${state.challengeMode==='solo'?'is-solo':''} battle-layout ${state.heroes.length<3?'is-small-party':''} ${learning?'is-learning':''} ${enemyTargets(state,{includeDefeated:true}).length>1?'has-multiple-enemies':''}" style="--party-size:${state.heroes.length}">
     <header class="topbar"><button class="brand" data-action="pause">${icon('crystal')}<span>格朗德<small>G R A N D E</small></span></button><div class="top-location">${esc(meta.region)} <span>/</span> <b>${meta.isSkirmish?'沿途遭遇':meta.isTutorial?'教学实战':DIFFICULTIES[state.difficulty].name}</b></div><span class="battle-clock" id="elapsed">${time}</span>${toolbar}</header>
     <div class="fight-round"><span class="tiny-label">ROUND</span><strong>${String(state.round).padStart(2,'0')}</strong><span>${busy?'行动演出中':state.mode==='playing'?'我方行动':state.mode==='victory'?'挑战完成':'挑战结束'}</span><div class="round-tools"><button data-action="log" title="战斗记录">${icon('book')}</button><button data-action="camera" title="重置视角">${icon('camera')}</button></div></div>
     <section class="foe-hud" style="--encounter:${meta.color}" aria-label="敌人状态">
       <div class="foe-title"><span class="foe-symbol">${icon(meta.icon)}</span><div><small>${esc(meta.subtitle)}</small><h1>${b.finale?'归零终幕':b.core?'魔晶核心':esc(meta.name)}</h1></div><span class="foe-phase">${b.finale?'终幕':b.core?'核心暴露':meta.isTutorial?'教学':'阶段 '+(b.stage+1)}</span></div>
-      ${specialProgress(state)}
+      <div class="enemy-vitals-line"><div class="enemy-primary-vitals">${specialProgress(state)}</div>${enemyTargetOfTargetView(intents.find(item=>item.id==='boss'))}</div>
       <div class="foe-summary">${(b.finale?summary.filter(s=>s.label==='阶段'):summary).map(s=>`<span class="tone-${s.tone||'neutral'}">${esc(s.label)} <b>${esc(s.value)}</b></span>`).join('')}</div>
       ${enemyTargetView(state,busy)}
     </section>
-    <aside class="tactics-panel" aria-label="敌方预告与队伍防护">
-      <div class="telegraph ${intent.danger?'danger':''} ${intent.good?'good':''}">
-        <div class="telegraph-heading"><span class="tiny-label">下一步 · 敌方预告</span><button data-action="boss-codex">${icon('book')}全部招式 <kbd>B</kbd></button></div><h2>${icon(intent.icon)}${esc(intent.name)}</h2><p>${esc(intent.desc)}</p>
-      </div>
-      ${additionalThreatsView(state,busy)}
-      <section class="party-protection" aria-label="队伍防护"><h3>${icon('shield')}队伍状态</h3>
-        ${state.heroes.map(hero=>`<p><span>${esc(hero.short)}</span><strong>${hero.hp<=0?'已倒下':`${hero.protection?`减伤 ${hero.protection}%`:'正常'}${hero.shield?` · 护盾 ${hero.shield}`:''}${hero.youmuForm==='captain'?' · 船长承伤 −35%':''}`}</strong></p>`).join('')}
-        ${b.weakened?'<p class="enemy-weakened"><span>敌人进攻受扰</span><strong>伤害降低 20%</strong></p>':''}
-        <small>${b.finale?'本轮使用防护、护盾或削弱技能后，终幕的角色防护要求会亮起；仍需完成命中并存活。':b.core?'核心停止攻击，共鸣等持续状态仍会结算。先完成上方的命中要求。':b.broken||b.hardControl?`敌方行动已取消。现在结束，下轮 ${ap.nextTotal} AP（保留 ${ap.nextCarry} 点）。`:'角色技能提供减伤、护盾或敌方削弱。减伤持续到本次敌方回合结束；每批护盾各持续两次敌方回合。'}</small>
-      </section>
-      ${lesson?`<section class="battle-lesson"><h3>${esc(lesson.title)}</h3><p>${esc(lesson.text)}</p></section>`:''}
-      ${learning&&LEARNING_TIPS[h.id]?`<section class="battle-lesson hero-learning"><h3>${esc(h.short)} · 先练这一点</h3><p>${esc(LEARNING_TIPS[h.id])}</p></section>`:''}
-    </aside>
+    <div id="enemy-intents" class="enemy-intents" aria-label="敌方行动预告">${intents.map(enemyIntentBadgeView).join('')}</div>
+    <div class="battle-reference"><button data-action="boss-codex">${icon('book')}敌人招式 <kbd>B</kbd></button></div>
+    ${lesson?`<details class="battle-tutorial" open><summary>${esc(lesson.title)}</summary><p>${esc(lesson.text)}</p>${LEARNING_TIPS[h.id]?`<p>${esc(h.short)}：${esc(LEARNING_TIPS[h.id])}</p>`:''}</details>`:''}
     <div class="field-note">${icon('spark')}<span>${esc(state.log[0]?.text || '')}</span></div>
     <section class="team-board" aria-label="全队战斗技能">
       <div class="board-heading">

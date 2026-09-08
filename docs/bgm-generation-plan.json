@@ -1,0 +1,1913 @@
+[
+  {
+    "id": "01",
+    "filename": "01-灯还亮着.mp3",
+    "title": "灯还亮着",
+    "scene": "标题界面与开局电话",
+    "bpm": 78,
+    "timeSignature": "4/4",
+    "durationSec": 100,
+    "prompt": "为奇幻冒险 RPG 创作一首温暖而略有悬念的标题音乐，78 BPM，4/4 拍，D 小调里偶尔露出明亮和弦。短小的钢琴旋律像凌晨仍亮着灯的小酒馆，单簧管温和接答，拨弦大提琴维持缓慢脚步，弦乐在远处铺底。人物都很疲倦，却愿意为陌生人再出一次门。不要宏大史诗感，不要煽情高潮，不要酒馆喧闹声。纯器乐，无人声、合唱、歌词或环境音效。约 100 秒，结构清楚，结尾回到开头和声，避免渐弱，方便循环；另保留一段没有主旋律、适合对白的中段。",
+    "reason": "现有标题母题，保留成品并供开局、营地和结局参考。",
+    "usage": {
+      "screens": [
+        "title"
+      ]
+    },
+    "routingStatus": "已接标题。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": true,
+      "fileSizeAtAudit": 2497528,
+      "auditioned": false
+    },
+    "action": "reuse_existing",
+    "batch": "existing",
+    "priority": "keep",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 32,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 98.461538,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "01a",
+    "filename": "01a-灯还亮着-开局电话版.mp3",
+    "title": "灯还亮着（开局电话版）",
+    "scene": "序章scout.before：凌晨店内电话与接下委托",
+    "bpm": 78,
+    "timeSignature": "4/4",
+    "referenceTrackIds": [
+      "01"
+    ],
+    "reason": "开局以标题同主题减配建立首尾呼应，普通泛用对白不能完全代替。",
+    "usage": {
+      "screens": [
+        "dialogue"
+      ],
+      "bossIds": [
+        "scout"
+      ],
+      "runDialogue": [
+        "before"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "当前整段走03。建议整段scout.before使用01a，避免电话/外景两句之间频繁换曲。",
+    "replacesUsageOf": [
+      "03@scout.before"
+    ],
+    "prompt": "D小调。用01已验收的实际救援动机做电话对白版：毛毡钢琴两三个音轻轻回答，单簧管只在空隙出现，拨弦大提琴很轻，取消长主旋律独奏与鼓组。凌晨四点，刚端上的饭还没吃，学院来电报告七人被困；熟人间仍有温暖，危险刚进入房间。保留标题曲速度和和声，让中文电话对白占前景。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟78个四分音符，4/4拍，32个完整小节，循环主体约98.46秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": false,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "add_new",
+    "batch": "main",
+    "priority": "P0",
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 32,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 98.461538,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "durationSec": 98.461538,
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先选定参考曲并提供真实参考音频或从同一工程导出；只有文本输入时，独立结果不保证同旋律，需人工核对。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "02",
+    "filename": "02-顺着引路线.mp3",
+    "title": "顺着引路线",
+    "scene": "前段战后探索：回廊里的喘息、把风送进去、隔着一扇门",
+    "bpm": 86,
+    "timeSignature": "4/4",
+    "durationSec": 96,
+    "prompt": "奇幻与老式机械设施结合的探索音乐，86 BPM，4/4 拍。木琴稀疏重复一个轻巧动机，低音单簧管带一点好奇，短弓弦乐和柔软电子脉冲表现前行与观察。地点是有磨损金属、铜管、工作灯的维修走廊，不是恐怖片；危险可控，玩家正在学习并建立信心。音色清楚、低频不轰鸣，不用真实机器声或警报。纯器乐，无人声、合唱、歌词、对白、音效。约 96 秒，16 小节自然回环，没有结束式和长静音。",
+    "reason": "前段三段间章共用探索母曲。",
+    "usage": {
+      "screens": [
+        "explore"
+      ],
+      "afterBossIds": [
+        "duelist",
+        "cantor",
+        "golem"
+      ],
+      "layoutIds": [
+        "gate"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "目前全部explore都播02；今后缩窄为这三段。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": true,
+      "fileSizeAtAudit": 2246126,
+      "auditioned": false
+    },
+    "action": "reuse_existing",
+    "batch": "existing",
+    "priority": "keep",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 32,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 89.302326,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "02b",
+    "filename": "02b-拧紧最后一圈.mp3",
+    "title": "拧紧最后一圈",
+    "scene": "战后作业探索：桥的另一头、水位线以下、余温",
+    "bpm": 84,
+    "timeSignature": "4/4",
+    "reason": "三段泵房布局间章共用工程善后情绪，区别前段找路与后段查记录。",
+    "usage": {
+      "screens": [
+        "explore"
+      ],
+      "afterBossIds": [
+        "warden",
+        "tide",
+        "furnace"
+      ],
+      "layoutIds": [
+        "pump"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "当前三段用02，需要传入afterBossId或layout。",
+    "replacesUsageOf": [
+      "02@warden.explore",
+      "02@tide.explore",
+      "02@furnace.explore"
+    ],
+    "prompt": "D小调偶尔露出明亮和弦。木质打击轻敲、拨弦大提琴稳定前行，低音单簧管和克制颤音琴短答，低频留白。守卫已倒下，队伍还要放下担架栈桥、锁排水阀、关闭热回流管；危险减退而工作未结束。有耐心、讲顺序，温暖但仍有余压，不是战斗、海景或正式营地。设备与同伴对白触发时可直接压低本曲。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟84个四分音符，4/4拍，40个完整小节，循环主体约114.29秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": false,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "add_new",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 40,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 114.285714,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "durationSec": 114.285714,
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "03",
+    "filename": "03-你说我听着.mp3",
+    "title": "你说，我听着",
+    "scene": "联络与普通剧情对话通用",
+    "bpm": 64,
+    "timeSignature": "4/4",
+    "durationSec": 90,
+    "prompt": "稀疏、克制的 RPG 救援对话配乐，64 BPM，4/4 拍。毛毡钢琴每几小节落下两三个音，温柔中提琴用很短的乐句回应，低音提琴保持安稳。情绪关切、疲惫、有耐心，像通过联络器告诉被困的人“我们还在”。不要悲剧挽歌，不要催泪弦乐，不要密集高音，不要主旋律抢对白。纯器乐，无人声、合唱、歌词或环境音效。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟64个四分音符，4/4拍，24个完整小节，循环主体约90.00秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "reason": "覆盖普通战前联络、选择后的回应和剧情对白。",
+    "usage": {
+      "screens": [
+        "dialogue"
+      ],
+      "runDialogue": [
+        "before",
+        "after",
+        "route",
+        "event",
+        "skirmish"
+      ],
+      "excludes": [
+        "scout.before",
+        "final.before",
+        "ending"
+      ]
+    },
+    "routingStatus": "普通dialogue已映射；特殊对白需优先分流。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 24,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 90,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "04",
+    "filename": "04-先看它怎么动.mp3",
+    "title": "先看它怎么动",
+    "scene": "scout/bulwark/conduit三场教学与营地单人演练",
+    "bpm": 104,
+    "timeSignature": "4/4",
+    "durationSec": 110.769231,
+    "prompt": "为回合制 RPG 的第一组教学战斗创作配乐，104 BPM，4/4 拍。拨弦弦乐、低音提琴和轻小鼓维持清楚节奏，木质打击乐增加灵巧感，短号偶尔回应旋律。对手是笨拙的旧巡逻机械，情绪谨慎、好奇，逐渐有掌控感；不是滑稽闹剧，也不是生死决战。强弱稳定，留出技能音效空间，不做突然的大鼓爆击。纯器乐，无人声、合唱、歌词、枪声、机械音效。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟104个四分音符，4/4拍，48个完整小节，循环主体约110.77秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "reason": "共用一首建立低于正式BOSS的教学强度，不按角色分别出曲。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "scout",
+        "bulwark",
+        "conduit"
+      ],
+      "runFlags": [
+        "tutorial",
+        "drill"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "现实现只匹配tutorial开头ID或training，真实三种ID无法命中。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 48,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 110.769231,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "05",
+    "filename": "05-刀与倒影.mp3",
+    "title": "刀与倒影",
+    "scene": "折镜回廊／折镜刃卫：镜甲、拆镜与折返反击",
+    "bpm": 128,
+    "timeSignature": "6/8",
+    "durationSec": 112.5,
+    "prompt": "精准、敏捷的奇幻剑士 BOSS 战斗曲，128 BPM，6/8 拍。小提琴短弓与羽管键琴交错应答，低弦支撑推进，细薄玻璃质感的合成音在左右声场轻轻错位，少量金属敲击强调镜面感。旋律像不断折返的剑路，危险明亮而清冷，节奏有可识别的规律，避免无休止炫技。纯器乐，无人声、合唱、歌词、碎玻璃声或刀剑音效。 使用A小调。主曲覆盖普通阶段与镜刃过载；不要在固定秒数假装战斗已进入第二阶段。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟128个四分音符，6/8拍，80个完整小节，循环主体约112.50秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 80,
+      "quarterNotesPerBar": 3,
+      "targetStartSec": 0,
+      "targetEndSec": 112.5,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "reason": "正式BOSS保持独立音色与动机，普通阶段先复用主曲，不按每回合换曲。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "duelist"
+      ],
+      "phases": [
+        0,
+        1
+      ],
+      "excludes": [
+        "core",
+        "finale",
+        "victory",
+        "defeat"
+      ]
+    },
+    "routingStatus": "bossId映射已存在，文件未生成。",
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "06",
+    "filename": "06-风口之外.mp3",
+    "title": "风口之外",
+    "scene": "紫雾圣所／孢冠司祭与游走菌簇：孢压、召物、供养",
+    "bpm": 92,
+    "timeSignature": "5/4",
+    "durationSec": 104.347826,
+    "prompt": "幽暗植物与失控空气过滤站的 BOSS 音乐，92 BPM，5/4 拍。低音长笛、弓奏颤音琴、稀疏拨弦和细颗粒电子音色交织，低弦缓慢扩张再收紧，表现孢子聚拢与呼吸越来越费力。气氛危险但保持清晰，不做梦幻森林，不用宗教合唱，不要恐怖尖叫。每 8 小节让织体稍微疏开，再重新聚集，整体响度稳定。纯器乐，无歌词、人声、呼吸声或环境音效。 使用C小调。主低弦主题周围增加少量短拨弦应答，表现会攻击和供养的菌簇，但各声部不能拥挤。主批次用同曲覆盖菌冠升华。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟92个四分音符，5/4拍，32个完整小节，循环主体约104.35秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 32,
+      "quarterNotesPerBar": 5,
+      "targetStartSec": 0,
+      "targetEndSec": 104.347826,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "reason": "正式BOSS保持独立音色与动机，普通阶段先复用主曲，不按每回合换曲。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "cantor"
+      ],
+      "phases": [
+        0,
+        1
+      ],
+      "excludes": [
+        "core",
+        "finale",
+        "victory",
+        "defeat"
+      ]
+    },
+    "routingStatus": "bossId映射已存在，文件未生成。",
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "06a",
+    "filename": "06a-风口之外-菌冠升华.mp3",
+    "title": "风口之外（菌冠升华）",
+    "scene": "风口之外（菌冠升华）第二阶段",
+    "bpm": 92,
+    "timeSignature": "5/4",
+    "batch": "optional",
+    "priority": "P1",
+    "referenceTrackIds": [
+      "06"
+    ],
+    "reason": "这三场多敌BOSS半血后确有持续压力变化；主曲实装后仍缺辨识度才生成，其他BOSS先共用主曲所有常规阶段。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "cantor"
+      ],
+      "phases": [
+        1
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "当前数字阶段不改变曲目；按该boss.stage>=1切一次，小怪倒下或普通破韧不反复切换。",
+    "replacesUsageOf": [
+      "06@cantor.stage1"
+    ],
+    "prompt": "把06已验收实际主曲制作同速度、同调性、同和声长度的二阶段变奏。C小调。菌冠升华增加孢压，孢雨播种更密。维持低音长笛主题，增加短拨弦和低弦错位应答，表现主敌与菌簇持续供养的压力，不能制造模糊声墙。进入变奏不加片头、不重新建立无关旋律，胜利前不预演结局。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟92个四分音符，5/4拍，32个完整小节，循环主体约104.35秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": false,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "add_new",
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 32,
+      "quarterNotesPerBar": 5,
+      "targetStartSec": 0,
+      "targetEndSec": 104.347826,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "durationSec": 104.347826,
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先选定参考曲并提供真实参考音频或从同一工程导出；只有文本输入时，独立结果不保证同旋律，需人工核对。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "07",
+    "filename": "07-别踩那根线.mp3",
+    "title": "别踩那根线",
+    "scene": "风暴栈桥／雷脊守卫与雷能中继器：蓄电、拆装置与停机",
+    "bpm": 138,
+    "timeSignature": "4/4",
+    "durationSec": 111.304348,
+    "prompt": "为悬空栈桥上的失控重型机械创作战斗音乐，138 BPM，4/4 拍。干燥工业鼓和低音合成器保持整齐节拍，短促铜管与弦乐固定音型表现重步与充电，少量高频琶音像沿电缆爬行的亮光。力量厚重但结构有条理，有“看准窗口，修好这条路”的行动感。不要电子舞曲大掉拍，不要雷声、电火花声、警报或爆炸音效。纯器乐，无人声、合唱或歌词。 使用E小调。一条细短高音节奏与厚重主节拍相互供能，表现可破坏的雷能中继器；给断电停机提示留出空间。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟138个四分音符，4/4拍，64个完整小节，循环主体约111.30秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 64,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 111.304348,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "reason": "正式BOSS保持独立音色与动机，普通阶段先复用主曲，不按每回合换曲。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "warden"
+      ],
+      "phases": [
+        0,
+        1
+      ],
+      "excludes": [
+        "core",
+        "finale",
+        "victory",
+        "defeat"
+      ]
+    },
+    "routingStatus": "bossId映射已存在，文件未生成。",
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "07a",
+    "filename": "07a-别踩那根线-雷脊熔断.mp3",
+    "title": "别踩那根线（雷脊熔断）",
+    "scene": "别踩那根线（雷脊熔断）第二阶段",
+    "bpm": 138,
+    "timeSignature": "4/4",
+    "batch": "optional",
+    "priority": "P1",
+    "referenceTrackIds": [
+      "07"
+    ],
+    "reason": "这三场多敌BOSS半血后确有持续压力变化；主曲实装后仍缺辨识度才生成，其他BOSS先共用主曲所有常规阶段。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "warden"
+      ],
+      "phases": [
+        1
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "当前数字阶段不改变曲目；按该boss.stage>=1切一次，小怪倒下或普通破韧不反复切换。",
+    "replacesUsageOf": [
+      "07@warden.stage1"
+    ],
+    "prompt": "把07已验收实际主曲制作同速度、同调性、同和声长度的二阶段变奏。E小调。雷脊熔断补充蓄电、加强攻击，保持主曲工业节奏与低音动机，铜管更短、弦乐向上推进，张力增加但平均响度不提高。中继器仍可拆毁，不写必然的全面失控。进入变奏不加片头、不重新建立无关旋律，胜利前不预演结局。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟138个四分音符，4/4拍，32个完整小节，循环主体约55.65秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": false,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "add_new",
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 32,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 55.652174,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "durationSec": 55.652174,
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先选定参考曲并提供真实参考音频或从同一工程导出；只有文本输入时，独立结果不保证同旋律，需人工核对。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "08",
+    "filename": "08-水会退下去.mp3",
+    "title": "水会退下去",
+    "scene": "潮汐泵房／水闸监守：水位与三击排水",
+    "bpm": 108,
+    "timeSignature": "6/8",
+    "durationSec": 106.666667,
+    "prompt": "地下巨大泵房的回合制 BOSS 音乐，108 BPM，6/8 拍。低弦与低音管形成起伏但不失拍的两层节奏，框鼓像稳定的排水泵，深色颤音琴带少量潮湿空间感。情绪是迎着水压站稳、一步步打开闸门，有重量和耐心，不能像海盗舞曲，也不要悠闲海景。纯器乐，无人声、合唱、歌词、水声或机器音效。 使用D小调。不要用三个音乐重拍暗示玩家已经完成三次命中，音乐起伏不替代真实水位预告。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟108个四分音符，6/8拍，64个完整小节，循环主体约106.67秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 64,
+      "quarterNotesPerBar": 3,
+      "targetStartSec": 0,
+      "targetEndSec": 106.666667,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "reason": "正式BOSS保持独立音色与动机，普通阶段先复用主曲，不按每回合换曲。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "tide"
+      ],
+      "phases": [
+        0,
+        1
+      ],
+      "excludes": [
+        "core",
+        "finale",
+        "victory",
+        "defeat"
+      ]
+    },
+    "routingStatus": "bossId映射已存在，文件未生成。",
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "09",
+    "filename": "09-炉火未熄.mp3",
+    "title": "炉火未熄",
+    "scene": "余烬工房／熔炉搬运者：升温、排汽开炉与敞口",
+    "bpm": 120,
+    "timeSignature": "4/4",
+    "durationSec": 128,
+    "prompt": "炽热旧工房中的重型搬运机械战斗音乐，120 BPM，4/4 拍。低铜管演奏短而沉的动机，低鼓与拨弦贝斯形成稳重步伐，粗颗粒合成音铺出干燥热浪，节奏像送料、升压、短暂泄压再继续。危险来自越来越热的炉子，有工程感，不是火焰恶魔或金属摇滚演唱会。不要火焰声、敲铁声、警报或爆炸。纯器乐，无人声、合唱与歌词。 使用E小调。升温和敞口是玩家操作相关状态，不要在固定秒数写必然的开炉或击杀高潮。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟120个四分音符，4/4拍，64个完整小节，循环主体约128.00秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 64,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 128,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "reason": "正式BOSS保持独立音色与动机，普通阶段先复用主曲，不按每回合换曲。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "furnace"
+      ],
+      "phases": [
+        0,
+        1
+      ],
+      "excludes": [
+        "core",
+        "finale",
+        "victory",
+        "defeat"
+      ]
+    },
+    "routingStatus": "bossId映射已存在，文件未生成。",
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "10",
+    "filename": "10-一条缝.mp3",
+    "title": "一条缝",
+    "scene": "雾蚀地质层／魔晶巨人：岩铠与多次元素解体",
+    "bpm": 112,
+    "timeSignature": "4/4",
+    "durationSec": 120,
+    "prompt": "地下避难室门前的晶体魔像 BOSS 战斗音乐，112 BPM，4/4 拍。低弦、低鼓和短管风琴和弦表现厚重石壳，钢片琴演奏细小而快速的动机，暗示里面仍在活动的核心。乐曲中段让沉重声部暂时减少，突出晶体动机，然后自然回到整体织体；节拍始终连续。情绪是靠近获救者后的急切，不是世界末日。纯器乐，无人声、合唱、歌词、石块碎裂或脚步音效。 使用D小调。保留一段清楚的钢片琴短动机，作为10a暴露核心变奏的真实参考。数次元素解体继续使用本曲，不按每次解体换曲。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟112个四分音符，4/4拍，56个完整小节，循环主体约120.00秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 56,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 120,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "reason": "正式BOSS保持独立音色与动机，普通阶段先复用主曲，不按每回合换曲。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "golem"
+      ],
+      "phases": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "excludes": [
+        "core",
+        "finale",
+        "victory",
+        "defeat"
+      ]
+    },
+    "routingStatus": "bossId映射已存在，文件未生成。核心另需接10a。",
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "10a",
+    "filename": "10a-一条缝-核心暴露版.mp3",
+    "title": "一条缝（核心暴露版）",
+    "scene": "魔晶巨人core：双系命中窗口；超时重组",
+    "bpm": 112,
+    "timeSignature": "4/4",
+    "referenceTrackIds": [
+      "10"
+    ],
+    "reason": "核心是可失败并重组的玩法窗口，当前误用最终战主题，需同主题独立变奏。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "golem"
+      ],
+      "phases": [
+        "core"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "golem+core优先选10a；超时重组回10，成功转17。",
+    "replacesUsageOf": [
+      "14b@golem.core"
+    ],
+    "prompt": "D小调，与10同速度、同和声骨架，引用已验收的钢片琴短动机。外壳碎开后让低铜管和重鼓退后，钢片琴、短弓弦乐和干净低音脉冲露出敏捷内核，压力更集中但节拍连续。玩家在两个完整回合内分配物理和魔法命中；不要真实倒数，不假定秒数等于回合。开头无爆破、鼓爆击或胜利和弦；核心可能重组，能平稳回接10主战。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟112个四分音符，4/4拍，32个完整小节，循环主体约68.57秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": false,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "add_new",
+    "batch": "main",
+    "priority": "P0",
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 32,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 68.571429,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "durationSec": 68.571429,
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先选定参考曲并提供真实参考音频或从同一工程导出；只有文本输入时，独立结果不保证同旋律，需人工核对。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "11",
+    "filename": "11-签名不在场.mp3",
+    "title": "签名不在场",
+    "scene": "缄默书庭／缄页织者与缄页护卫：分担、封页与复写",
+    "bpm": 116,
+    "timeSignature": "7/8",
+    "durationSec": 115.862069,
+    "prompt": "奇幻档案书庭的 BOSS 音乐，116 BPM，7/8 拍。羽管键琴机械地重复短句，中提琴断奏和单簧管彼此追逐，轻鼓保持明确方向；每组乐句都像差一步就能对上，却总被另一层打断。气氛冷静、精密、有压迫感，体现只认过期手续的失控守卫。不要卡通搞笑，不要真实打字、翻书或盖章音效。纯器乐，无人声、合唱与歌词。 使用C小调。低声部守住主句，侧声部挡在前面，表现护卫分担与群体攻击绕行；主题精密清晰，不变成声墙。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟116个四分音符，7/8拍，64个完整小节，循环主体约115.86秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 64,
+      "quarterNotesPerBar": 3.5,
+      "targetStartSec": 0,
+      "targetEndSec": 115.862069,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "reason": "正式BOSS保持独立音色与动机，普通阶段先复用主曲，不按每回合换曲。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "weaver"
+      ],
+      "phases": [
+        0,
+        1
+      ],
+      "excludes": [
+        "core",
+        "finale",
+        "victory",
+        "defeat"
+      ]
+    },
+    "routingStatus": "bossId映射已存在，文件未生成。",
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "11a",
+    "filename": "11a-签名不在场-缄默复写.mp3",
+    "title": "签名不在场（缄默复写）",
+    "scene": "签名不在场（缄默复写）第二阶段",
+    "bpm": 116,
+    "timeSignature": "7/8",
+    "batch": "optional",
+    "priority": "P1",
+    "referenceTrackIds": [
+      "11"
+    ],
+    "reason": "这三场多敌BOSS半血后确有持续压力变化；主曲实装后仍缺辨识度才生成，其他BOSS先共用主曲所有常规阶段。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "weaver"
+      ],
+      "phases": [
+        1
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "当前数字阶段不改变曲目；按该boss.stage>=1切一次，小怪倒下或普通破韧不反复切换。",
+    "replacesUsageOf": [
+      "11@weaver.stage1"
+    ],
+    "prompt": "把11已验收实际主曲制作同速度、同调性、同和声长度的二阶段变奏。C小调。缄默复写重置封页、加强资源抽取，保持羽管键琴与单簧管主题，添加交错的中提琴声部，像过期名单又压回纸面；精密而有方向，不变滑稽乱拍。进入变奏不加片头、不重新建立无关旋律，胜利前不预演结局。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟116个四分音符，7/8拍，32个完整小节，循环主体约57.93秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": false,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "add_new",
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 32,
+      "quarterNotesPerBar": 3.5,
+      "targetStartSec": 0,
+      "targetEndSec": 57.931034,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "durationSec": 57.931034,
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先选定参考曲并提供真实参考音频或从同一工程导出；只有文本输入时，独立结果不保证同旋律，需人工核对。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "12",
+    "filename": "12-没被改过的时间.mp3",
+    "title": "没被改过的时间",
+    "scene": "星轨观测室／星轨测绘仪：重复锁定与换招解算",
+    "bpm": 124,
+    "timeSignature": "3/4",
+    "durationSec": 116.129032,
+    "prompt": "地下星轨观测仪的战斗配乐，124 BPM，3/4 拍。钟琴与弦乐循环表现不同速度的金属轨道，圆号保持长线条，深色合成音拉开空间。优美但危险，有独立计时器持续运转的秩序感，主题是保住真实记录、停下失控外环。不要普通圆舞曲的舞会感，不要太空电影式庞大合唱。纯器乐，无人声、歌词、钟表滴答或激光音效。 使用B小调。重复动机被另一条乐句轻轻改写，暗示换招打乱预测，不把音乐速度写成实际计时器。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟124个四分音符，3/4拍，80个完整小节，循环主体约116.13秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 80,
+      "quarterNotesPerBar": 3,
+      "targetStartSec": 0,
+      "targetEndSec": 116.129032,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "reason": "正式BOSS保持独立音色与动机，普通阶段先复用主曲，不按每回合换曲。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "orrery"
+      ],
+      "phases": [
+        0,
+        1
+      ],
+      "excludes": [
+        "core",
+        "finale",
+        "victory",
+        "defeat"
+      ]
+    },
+    "routingStatus": "bossId映射已存在，文件未生成。",
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "13",
+    "filename": "13-让后面的人通过.mp3",
+    "title": "让后面的人通过",
+    "scene": "执行厅／缄令执行官：轻重击令与判罚",
+    "bpm": 132,
+    "timeSignature": "4/4",
+    "durationSec": 116.363636,
+    "prompt": "冷峻而紧迫的奇幻执法机械 BOSS 战斗音乐，132 BPM，4/4 拍。低弦的短固定音型持续追逼，阻尼钢琴与短铜管形成严厉的问答，军鼓只在少数位置加强，不写凯旋进行曲。玩家正在切断对担架队的追击命令，情绪坚决、保护他人、有行动方向。无真实警报、脚步、枪声或广播音效。纯器乐，无人声、合唱或歌词。 使用D小调。轻重两种节奏问答可表现法令，但音乐强拍不能充当真实的法令切换提示。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟132个四分音符，4/4拍，64个完整小节，循环主体约116.36秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 64,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 116.363636,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "reason": "正式BOSS保持独立音色与动机，普通阶段先复用主曲，不按每回合换曲。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "arbiter"
+      ],
+      "phases": [
+        0,
+        1
+      ],
+      "excludes": [
+        "core",
+        "finale",
+        "victory",
+        "defeat"
+      ]
+    },
+    "routingStatus": "bossId映射已存在，文件未生成。",
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "14a",
+    "filename": "14a-还在这儿-危机对话版.mp3",
+    "title": "还在这儿 (危机对话版)",
+    "scene": "归零之核战前危机联络：总控即将停机，门后仍有人等候",
+    "bpm": 68,
+    "timeSignature": "4/4",
+    "durationSec": 84.705882,
+    "prompt": "地下救援即将失败的紧张对话配乐，68 BPM，4/4 拍。低弦保持很轻的脉冲，钢琴用简短上行乐句回应，圆号只在远处出现。灯灭了，通风停止，但联络器那头仍有人回答；情绪担忧、清醒、彼此信任，不绝望、不煽情。为人物对白保留宽裕空间，不做渐强高潮。纯器乐，无人声、合唱、歌词或音效。 使用D小调。选定实际两小节上行主题供14b与14c引用。剧情发生在总控战前，不要求另造一段不存在的断电动画。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟68个四分音符，4/4拍，24个完整小节，循环主体约84.71秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "reason": "终战前对白要比普通闲谈更集中，连接最终战的半速母题。",
+    "usage": {
+      "screens": [
+        "dialogue"
+      ],
+      "bossIds": [
+        "final"
+      ],
+      "runDialogue": [
+        "before"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "crisis分支存在，但非battle的phase在main和GameAudio中清零，实际不可达。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 24,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 84.705882,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "14b",
+    "filename": "14b-还在这儿-最终战版.mp3",
+    "title": "还在这儿 (最终战版)",
+    "scene": "最终核心决战",
+    "bpm": 136,
+    "timeSignature": "4/4",
+    "durationSec": 141.176471,
+    "prompt": "奇幻 RPG 最终救援战斗音乐，136 BPM，4/4 拍。延续危机对话版的简短上行动机，弦乐、圆号、深鼓和克制合成低音共同推进。不是征服世界，是一群疲惫的人撑住最后一次放电，让门后的学生回家。前段坚定而有压力，中段提高旋律密度，但鼓组不过分拥挤；后段返回可持续的战斗织体。力量来自协作，不做圣歌式庄严，不做胜利结尾。纯器乐，无人声、合唱、歌词、爆炸、警报或闪电音效。 使用D小调，采用14a已选定的真实两小节主题做双倍速度变奏。此曲覆盖归零屏障与归零重启阶段，终幕另用14c。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟136个四分音符，4/4拍，80个完整小节，循环主体约141.18秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "referenceTrackIds": [
+      "14a"
+    ],
+    "reason": "归零之核保持最终战身份，不给巨人普通核心借用。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "final"
+      ],
+      "phases": [
+        0,
+        1
+      ],
+      "excludes": [
+        "finale",
+        "victory",
+        "defeat"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "目前任何core/finale也转此曲；需缩窄到final普通阶段。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 80,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 141.176471,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先选定参考曲并提供真实参考音频或从同一工程导出；只有文本输入时，独立结果不保证同旋律，需人工核对。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "14c",
+    "filename": "14c-还在这儿-守住最后放电.mp3",
+    "title": "还在这儿（守住最后放电）",
+    "scene": "归零之核finale：双系接入、角色防护与存活",
+    "bpm": 136,
+    "timeSignature": "4/4",
+    "referenceTrackIds": [
+      "14b"
+    ],
+    "reason": "终幕要求从抢输出转向双系接入与保护，音色收束给操作让空间。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "final"
+      ],
+      "phases": [
+        "finale"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "目前finale仍播14b；终幕超时恢复战斗回14b，真正胜利后再转结果/结局。",
+    "replacesUsageOf": [
+      "14b@final.finale"
+    ],
+    "prompt": "D小调。使用14b已验收的同一旋律、速度和和声，把密集弦乐收成短而确定的脉冲，圆号保留两小节上行主题，低鼓稀疏、低音稳住，让角色保护动作和最后放电音效穿出。不是击杀高潮，而是全队收住抢攻、完成双系接入并守住放电，坚定、集中、互相信任。不要渐快、滴答、预录倒数或提前转大调庆祝；超时可重启战斗，能回到14b。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟136个四分音符，4/4拍，32个完整小节，循环主体约56.47秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": false,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "add_new",
+    "batch": "main",
+    "priority": "P0",
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 32,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 56.470588,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "durationSec": 56.470588,
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先选定参考曲并提供真实参考音频或从同一工程导出；只有文本输入时，独立结果不保证同旋律，需人工核对。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "15",
+    "filename": "15-热汤留了一份.mp3",
+    "title": "热汤留了一份",
+    "scene": "整备营地与战后闲谈",
+    "bpm": 76,
+    "timeSignature": "4/4",
+    "durationSec": 126.315789,
+    "prompt": "小队暂歇与整理装备的 RPG 营地配乐，76 BPM，4/4 拍。尼龙弦吉他轻轻分解和弦，钢琴弹出容易记住的短旋律，大提琴温和托底，刷鼓很轻。感觉是湿外套挂起来、热汤留了一份，熟人终于有空互相说两句。温暖但有疲惫，不甜腻、不卖萌，不用旅馆民谣套曲式的热闹旋律。纯器乐，无人声、合唱、歌词或生活音效。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟76个四分音符，4/4拍，40个完整小节，循环主体约126.32秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "referenceTrackIds": [
+      "01"
+    ],
+    "reason": "整备、奖励、招募与工作安排是同一休整节奏，切页不断曲。",
+    "usage": {
+      "screens": [
+        "camp",
+        "reward",
+        "recruit",
+        "route",
+        "event"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "当前只有camp映射；其余四类screen走程序合成兜底。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 40,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 126.315789,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先选定参考曲并提供真实参考音频或从同一工程导出；只有文本输入时，独立结果不保证同旋律，需人工核对。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "16",
+    "filename": "16-七个名字.mp3",
+    "title": "七个名字 (母曲)",
+    "scene": "最终战后开门间章、共同结局母曲、旧档与缺失变体兜底",
+    "bpm": 72,
+    "timeSignature": "4/4",
+    "durationSec": 106.666667,
+    "prompt": "奇幻救援故事的克制结局音乐，72 BPM，4/4 拍。钢琴与单簧管缓慢接答，弦乐从小调平稳走向明亮和声，保留一点疲惫感。七名考察队员平安回来，有人还要住院，有人开始查维护记录，有人准备修好下一次的出口。不是婚礼、不隆重凯旋、不哀悼；要让人觉得终于可以好好呼吸。纯器乐，无人声、合唱、歌词或环境音效。 采用D小调走向D大调的和声，后日谈由玩家自行推进，主交付是循环版，不淡出、不写终止式。参考01实际救援主题作为回答。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟72个四分音符，4/4拍，32个完整小节，循环主体约106.67秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "referenceTrackIds": [
+      "01"
+    ],
+    "reason": "最终获救与每场普通胜利分开，母曲串起最终开门和后日谈。",
+    "usage": {
+      "screens": [
+        "explore",
+        "dialogue",
+        "complete"
+      ],
+      "bossIds": [
+        "final"
+      ],
+      "afterBossIds": [
+        "final"
+      ],
+      "runDialogue": [
+        "ending"
+      ],
+      "endingIds": [
+        "legacy",
+        "fallback"
+      ],
+      "requiresRoutingChange": true,
+      "cues": [
+        {
+          "screen": "explore",
+          "afterBossId": "final"
+        },
+        {
+          "screen": "dialogue",
+          "runDialogue": "ending",
+          "condition": "旧档或选定变体缺失"
+        },
+        {
+          "screen": "complete",
+          "condition": "旧档或选定变体缺失"
+        }
+      ]
+    },
+    "routingStatus": "当前所有victory都用16，实际最终开门explore与后日谈dialogue/complete未接。",
+    "replacesUsageOf": [
+      "02@final.explore",
+      "03@ending"
+    ],
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 32,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 106.666667,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先选定参考曲并提供真实参考音频或从同一工程导出；只有文本输入时，独立结果不保证同旋律，需人工核对。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "16a",
+    "filename": "16a-七个名字-救援结局.mp3",
+    "title": "七个名字 (救援结局变体)",
+    "scene": "救援后日谈：治疗、照护与平安",
+    "bpm": 72,
+    "timeSignature": "4/4",
+    "durationSec": 106.666667,
+    "prompt": "奇幻救援故事的克制结局音乐，72 BPM，4/4 拍。钢琴与单簧管缓慢接答，弦乐从小调平稳走向明亮和声，保留一点疲惫感。七名考察队员平安回来。弦乐更柔软，突出单簧管与钢琴的接答，像病房门外终于放松的人，结束在温暖但不过甜的和弦。纯器乐，无人声、合唱、歌词或环境音效。 采用D小调走向D大调的和声，后日谈由玩家自行推进，主交付是循环版，不淡出、不写终止式。使用16母曲实际旋律和和声做编制变体，不另写无关旋律。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟72个四分音符，4/4拍，32个完整小节，循环主体约106.67秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "referenceTrackIds": [
+      "16"
+    ],
+    "reason": "玩家救援照护选择有实际结局差异，同母题用更柔软的编制回应。",
+    "usage": {
+      "screens": [
+        "dialogue",
+        "complete"
+      ],
+      "runDialogue": [
+        "ending"
+      ],
+      "endingIds": [
+        "rescue"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "清单中存在，自动播放无映射。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 32,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 106.666667,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先选定参考曲并提供真实参考音频或从同一工程导出；只有文本输入时，独立结果不保证同旋律，需人工核对。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "16b",
+    "filename": "16b-七个名字-证据结局.mp3",
+    "title": "七个名字 (证据结局变体)",
+    "scene": "证据后日谈：保全原始记录与追查责任",
+    "bpm": 72,
+    "timeSignature": "4/4",
+    "durationSec": 106.666667,
+    "prompt": "奇幻救援故事的克制结局音乐，72 BPM，4/4 拍。加入少量羽管键琴与拨弦大提琴，节奏更清楚，像整理原件、把事实逐条摆上桌，情绪平静而坚定。纯器乐，无人声、合唱、歌词或环境音效。 采用D小调走向D大调的和声，后日谈由玩家自行推进，主交付是循环版，不淡出、不写终止式。使用16母曲实际旋律和和声做编制变体，不另写无关旋律。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟72个四分音符，4/4拍，32个完整小节，循环主体约106.67秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "referenceTrackIds": [
+      "16"
+    ],
+    "reason": "证据选择以清楚节奏和拨弦回应，同旋律但不混同照护结局。",
+    "usage": {
+      "screens": [
+        "dialogue",
+        "complete"
+      ],
+      "runDialogue": [
+        "ending"
+      ],
+      "endingIds": [
+        "evidence"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "清单中存在，自动播放无映射。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 32,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 106.666667,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先选定参考曲并提供真实参考音频或从同一工程导出；只有文本输入时，独立结果不保证同旋律，需人工核对。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "16c",
+    "filename": "16c-七个名字-设施结局.mp3",
+    "title": "七个名字 (设施结局变体)",
+    "scene": "设施后日谈：修复出口与防止再发生",
+    "bpm": 72,
+    "timeSignature": "4/4",
+    "durationSec": 106.666667,
+    "prompt": "奇幻救援故事的克制结局音乐，72 BPM，4/4 拍。加入木琴与轻圆号，逐渐增加明亮空间感，像新灯亮起、两条出口都能通行，保持踏实，不写盛大庆典。纯器乐，无人声、合唱、歌词或环境音效。 采用D小调走向D大调的和声，后日谈由玩家自行推进，主交付是循环版，不淡出、不写终止式。使用16母曲实际旋律和和声做编制变体，不另写无关旋律。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟72个四分音符，4/4拍，32个完整小节，循环主体约106.67秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "referenceTrackIds": [
+      "16"
+    ],
+    "reason": "设施选择以木琴和轻圆号表现恢复通行，不写盛大庆典。",
+    "usage": {
+      "screens": [
+        "dialogue",
+        "complete"
+      ],
+      "runDialogue": [
+        "ending"
+      ],
+      "endingIds": [
+        "infrastructure"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "清单中存在，自动播放无映射。",
+    "inventory": {
+      "inOriginalManifest": true,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "generate_missing",
+    "batch": "main",
+    "priority": "P0",
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 32,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 106.666667,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先选定参考曲并提供真实参考音频或从同一工程导出；只有文本输入时，独立结果不保证同旋律，需人工核对。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "17",
+    "filename": "17-这段路安全了.mp3",
+    "title": "这段路安全了",
+    "scene": "教学、演练、遭遇与正式战斗的胜利结果页",
+    "bpm": 96,
+    "timeSignature": "4/4",
+    "reason": "普通战胜不是故事通关，避免14场战斗都播完整后日谈。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "phases": [
+        "victory"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "替换当前victory=16。保留现有短胜利音效；最终开门之后再16。",
+    "replacesUsageOf": [
+      "16@battle.victory"
+    ],
+    "prompt": "D大调带一点借用小调色彩，克制的胜利结果页底乐。柔和钢琴、轻拨弦与低声部弦乐，简短上行动机之后维持宽松、稳定的织体，像确认这段通道安全，队伍终于能松肩。游戏已有约三秒的上行钟音胜利音效，本曲开头前三秒留足空隙，不加号角、镲片和庆功爆点。不是七人全部获救的最终结局，不煽情。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟96个四分音符，4/4拍，16个完整小节，循环主体约40.00秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": false,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "add_new",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 16,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 40,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "durationSec": 40,
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "18",
+    "filename": "18-先让通道安全.mp3",
+    "title": "先让通道安全",
+    "scene": "三场途中多敌战：巡防小队两次、中继哨站一次",
+    "bpm": 116,
+    "timeSignature": "4/4",
+    "reason": "默认远征必经三场多敌战，独立主题区分教学、途中实战与BOSS三个层级。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "bossIds": [
+        "patrol",
+        "relay_guard"
+      ],
+      "afterBossIds": [
+        "duelist",
+        "warden",
+        "weaver"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "两类敌人ID当前未映射；四类小兵/装置跟随所属战斗，不单开音乐。",
+    "prompt": "D小调，回合制救援RPG途中多敌遭遇音乐。短弓弦乐、干净拨弦贝斯、轻鼓与木质打击形成坚定、灵巧的行动节奏，两条短旋律轮流推进，表现前后掩护的巡逻队与给守卫供能的导流装置。比04教学更熟练紧张，比正式BOSS更简洁。玩家判断护卫分担、先拆装置还是群体压制，音乐不代替目标预告。不用最终战宏大圆号或歼灭庆典。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟116个四分音符，4/4拍，56个完整小节，循环主体约115.86秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": false,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "add_new",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 56,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 115.862069,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "durationSec": 115.862069,
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "19",
+    "filename": "19-还没合上的档案.mp3",
+    "title": "还没合上的档案",
+    "scene": "后段探索：被撕掉的那一页、校准之后、撤回追击",
+    "bpm": 80,
+    "timeSignature": "4/4",
+    "reason": "后段间章核对证据与撤销命令，用单独探索主题体现深入总控。",
+    "usage": {
+      "screens": [
+        "explore"
+      ],
+      "afterBossIds": [
+        "weaver",
+        "orrery",
+        "arbiter"
+      ],
+      "layoutIds": [
+        "archive"
+      ],
+      "excludes": [
+        "final"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "按afterBossId分流；final也用archive布局但优先16。",
+    "replacesUsageOf": [
+      "02@weaver.explore",
+      "02@orrery.explore",
+      "02@arbiter.explore"
+    ],
+    "prompt": "C小调。少量羽管键琴、低音单簧管、拨弦大提琴与远处柔和钟琴，表现安静而目标明确的档案探索。在失控总控外核对原始许可、保存真实时序、核销追击命令；节奏清楚而疏，带找到证据后的坚定，不是调查恐怖片、战斗追逐或营地休假。为设备对白和同伴闲谈留大块空间，反复停下阅读也不催促。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 速度固定为每分钟80个四分音符，4/4拍，40个完整小节，循环主体约120.00秒。由第一小节第一拍直接开始，末小节接回第一小节，首尾和声与织体相近，跨界混响保留在循环内，无独立前奏、尾奏、淡出或头尾静音。乐句按4或8小节组织，可随时退出。",
+    "inventory": {
+      "inOriginalManifest": false,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "add_new",
+    "batch": "main",
+    "priority": "P0",
+    "referenceTrackIds": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "loop",
+      "bars": 40,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 120,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "durationSec": 120,
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  },
+  {
+    "id": "20",
+    "filename": "20-先退到安全处.mp3",
+    "title": "先退到安全处",
+    "scene": "战败结果：短暂失利与重新整备",
+    "bpm": 60,
+    "timeSignature": "4/4",
+    "durationSec": 10,
+    "batch": "optional",
+    "priority": "P2",
+    "reason": "当前已有程序失败提示音，功能完整；只在希望统一预渲染音色时替换。",
+    "usage": {
+      "screens": [
+        "battle"
+      ],
+      "phases": [
+        "defeat"
+      ],
+      "requiresRoutingChange": true
+    },
+    "routingStatus": "需一次性模式并避免setPhase(defeat)立即stop；当前全文件loop=true。",
+    "prompt": "D小调，短暂的失败提示音乐。毛毡钢琴下行两三个音，低弦轻托，最后停在留有重新出发余地的和弦。队伍退到安全处重新准备，不代表角色死亡或救援必然失败。不要恐怖、哀悼、爆响或长篇悲情；与现有程序下行提示音二选一，不能叠加播放。 纯器乐。禁止人声、哼唱、合唱、歌词、口白、呼吸采样与伪人声垫；禁止警报、广播、脚步、机器、水流、攻击、爆炸等具象环境或战斗音效。保留中文配音与技能提示的清晰空间，不用长静音、突然爆响、过重低频或提前庆功。 总长约10秒，只播放一次，自然衰减至静音，不循环。",
+    "inventory": {
+      "inOriginalManifest": false,
+      "availableAtAudit": false,
+      "fileSizeAtAudit": 0,
+      "auditioned": false
+    },
+    "action": "add_new",
+    "referenceTrackIds": [],
+    "replacesUsageOf": [],
+    "replacesFiles": [],
+    "bpmUnit": "quarter_note",
+    "loop": {
+      "mode": "one_shot",
+      "bars": null,
+      "quarterNotesPerBar": 4,
+      "targetStartSec": 0,
+      "targetEndSec": 10,
+      "verifiedStartSec": null,
+      "verifiedEndSec": null,
+      "exitAtAnyTime": true
+    },
+    "production": {
+      "delivery": "MP3立体声；若生成端返回无损母带则同时保留，不能把MP3改扩展名冒充WAV。",
+      "sampleRateTargetHz": 44100,
+      "loudnessTargetLUFS": -18,
+      "truePeakCeilingDbTP": -1,
+      "actualDurationAndLoudnessMustBeMeasured": true,
+      "referencePolicy": "先生成并验收，再作为后续变奏的参考。",
+      "existingFilePolicy": "不覆盖已验收曲目；现有脚本跳过超过100KB的同名文件。",
+      "seamlessLoopVerified": false
+    }
+  }
+]

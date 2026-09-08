@@ -85,12 +85,12 @@ test('solo title and help disclose numeric tuning and never advertise dual-type 
 test('solo core and finale HUD and skill tooltip show any-type requirements instead of dual-type gates',()=>{
  const core=make('knibbs'),r=victoryRequirements(core);Object.assign(core.boss,{core:true,coreHits:2,coreTurns:3});
  let html=battle(core),tip=words(tooltipView(core,'skill','knibbs','shot'));
- assert.match(html,new RegExp(`任意属性命中 <b>2 / ${r.coreHits}`));assert.match(tip,/任意属性累计命中 4 次/);assert.doesNotMatch(tip,/物理需命中|还需另一系/);
+ assert.match(html,new RegExp(`任意属性命中 <b>2 / ${r.coreHits}`));assert.match(tip,/任意属性核心命中\s+2 → 3 \/ 4/);assert.doesNotMatch(tip,/物理需命中|还需另一系/);
  const finale=make('knibbs','final');Object.assign(finale.boss,{finale:true,finaleHits:1,finaleTurns:2});
  html=battle(finale);tip=words(tooltipView(finale,'skill','knibbs','shot'));
- assert.match(html,/任意属性命中 <b>1 \/ 2/);assert.match(tip,/任意属性累计命中 2 次/);assert.match(tip,/结束回合且存活/);assert.doesNotMatch(tip,/还需另一系|分别登记 1 次物理/);
+ assert.match(html,/任意属性命中 <b>1 \/ 2/);assert.match(tip,/任意属性终幕命中\s+1 → 2 \/ 2/);assert.doesNotMatch(tip,/结束回合且存活/);assert.doesNotMatch(tip,/还需另一系|分别登记 1 次物理/);
  const party=createBattle('standard','golem');Object.assign(party.boss,{core:true,coreTurns:3});
- assert.match(words(tooltipView(party,'skill','knibbs','shot')),/物理需命中 3 次，魔法需命中 3 次/);
+ assert.match(words(tooltipView(party,'skill','knibbs','shot')),/物理核心命中\s+0 → 1 \/ 3/);
 });
 
 test('skill explanations use live primary or secondary costs and explicit targets',()=>{

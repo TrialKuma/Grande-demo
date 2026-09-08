@@ -5,3 +5,4 @@
 *.blend binary
 # Keep the delivered standalone build byte-for-byte identical.
 /开始游戏.html -text -diff
+开始游戏.html filter=lfs diff=lfs merge=lfs -text

@@ -85,7 +85,7 @@ test('low-stock and emergency recovery variants cannot masquerade as empowered a
  assert.match(tip,/没有原技能的战斗效果/);assert.doesNotMatch(tip,/本次强化已生效|魔法攻击/);
  h.secondary=0;const emergency=card(s,'qianxing','repair');
  assert.match(emergency.body,/应急提炼/);assert.match(emergency.body,/data-skill-type="support"/);assert.doesNotMatch(emergency.attrs,/empowered/);
- assert.match(words(tooltipView(s,'skill','qianxing','repair')),/另花行动点使用/);
+ assert.match(words(tooltipView(s,'skill','qianxing','repair')),/本次只生成 1 份二级资源，不回魔/);
 });
 
 test('full stock exposes a powerful but less efficient cashout while fixed small cashout stays available',()=>{
@@ -153,7 +153,7 @@ test('hard control explains the cancelled enemy action without showing retired r
  const s=createBattle('standard','warden',{partyIds:['qianxing','knibbs','ric'],upgrades:['qianxing_lock'],loadouts:{qianxing:['spike','beam','armor','repair','lock']}});
  assert.equal(useSkill(s,'qianxing','spike').ok,true);assert.equal(useSkill(s,'qianxing','spike').ok,true);assert.equal(useSkill(s,'qianxing','lock').ok,true);
  const responseButtons=buttons(render(s)).filter(b=>b.attrs.includes('data-response='));assert.equal(responseButtons.length,0);
- assert.match(render(s),/敌方行动已取消/);assert.doesNotMatch(render(s),/data-action="guard"/);
+ assert.match(render(s),/行动封锁|停止/);assert.doesNotMatch(render(s),/data-action="guard"/);
  assert.match(words(tooltipView(s,'skill','qianxing','lock')),/辅助技能/);assert.match(words(tooltipView(s,'skill','qianxing','lock')),/不提供破韧增伤/);
 });
 

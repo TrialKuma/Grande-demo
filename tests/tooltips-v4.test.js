@@ -15,7 +15,7 @@ test('tooltip: Ric portrait and growth charges match +/-10, self shield and phys
 });
 test('tooltip: Ric self cleanse never claims it cleanses the whole party and group cleanse matches actual targets',()=>{
  const s=make(),self=clean(tooltipView(s,'skill','ric','shelter')),team=clean(tooltipView(s,'skill','ric','mend'));
- assert.match(self,/自身共鸣 −1/);assert.doesNotMatch(self,/全队共鸣 −1/);assert.match(team,/全队共鸣 −1/);
+ assert.match(self,/自身共鸣\s+−1/);assert.doesNotMatch(self,/全队共鸣\s+−1/);assert.match(team,/全队共鸣\s+−1/);
  s.heroes.forEach(h=>h.resonance=3);assert.equal(useSkill(s,'ric','shelter').ok,true);
  assert.deepEqual(s.heroes.map(h=>h.resonance),[2,3,3]);assert.equal(useSkill(s,'ric','mend').ok,true);assert.deepEqual(s.heroes.map(h=>h.resonance),[1,2,2]);
 });

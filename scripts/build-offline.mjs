@@ -66,15 +66,24 @@ assert.ok(!css.includes('/art/'), 'An unresolved artwork path remains.');
 // HTML parses script/style contents before JavaScript/CSS gets a chance to run.
 // Escaping the opening '<' sequence here prevents source strings ending the tag.
 const manifest = JSON.parse(await readFile(resolve(root, 'public/voices/manifest.json'), 'utf8'));
-const mediaPaths = [...new Set(manifest.clips.map(clip => clip.src)), '/models/qianxing.glb', '/models/grande-detail-kit.glb', '/models/grande-worlds.glb', '/models/grande-boss-cast.glb', ...['ruins','storm','sanctum','floodworks','observatory'].flatMap(id=>[`/concepts/${id}.png`,`/backdrops/${id}.png`])];
+let bgmPaths = [];
+try {
+  const bgmManifest = JSON.parse(await readFile(resolve(root, 'public/bgm/bgm-manifest.json'), 'utf8'));
+  bgmPaths = bgmManifest.filter(t => t.available).map(t => t.url);
+} catch {}
+const mediaPaths = [...new Set(manifest.clips.map(clip => clip.src)), ...bgmPaths, '/models/qianxing.glb', '/models/grande-detail-kit.glb', '/models/grande-worlds.glb', '/models/grande-boss-cast.glb', ...['ruins','storm','sanctum','floodworks','observatory'].flatMap(id=>[`/concepts/${id}.png`,`/backdrops/${id}.png`])];
 const mediaBuffers = await Promise.all(mediaPaths.map(path => readFile(resolve(root, `public${path}`))));
 const media = new Map(mediaPaths.map((path, i) => [path,
   `data:${path.endsWith('.glb') ? 'model/gltf-binary' : path.endsWith('.png') ? 'image/png' : 'audio/mpeg'};base64,${mediaBuffers[i].toString('base64')}`]));
 const embeddedMedia = new Set();
-const js = jsFiles[0].text.replace(/(["'])(\/(?:voices|models|concepts|backdrops)\/[^"']+)\1/g, (whole, quote, path) => {
-  const data = media.get(path);
-  assert.ok(data, `Unexpected local media resource: ${path}`);
-  embeddedMedia.add(path);
+const js = jsFiles[0].text.replace(/(["'])(\/(?:voices|models|concepts|backdrops|bgm)\/[^"']+)\1/g, (whole, quote, path) => {
+  let decodedPath = path;
+  try {
+    decodedPath = JSON.parse(`"${path}"`);
+  } catch {}
+  const data = media.get(decodedPath) || media.get(path);
+  if (!data) return whole;
+  embeddedMedia.add(decodedPath);
   return JSON.stringify(data);
 }).replace(/<\/script/gi, '<\\/script');
 for (const path of mediaPaths) assert.ok(embeddedMedia.has(path), `Missing embedded media: ${path}`);

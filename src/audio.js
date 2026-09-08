@@ -4,6 +4,7 @@
  */
 import {scoreTheme,scoreFrame} from './audio-score.js';
 import {attackSoundPlan,soundLayers} from './audio-sound-design.js';
+import {BgmManager} from './audio-bgm.js';
 const midi = (note) => 440 * 2 ** ((note - 69) / 12);
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const MAX_AUDIO_VOICES=192;
@@ -27,6 +28,19 @@ export class GameAudio {
     this._scene={bossId:'golem',screen:'title'};
     this._theme=scoreTheme(this._scene);
     this._sfxEpoch=0;
+    this._useSynth=true;
+    this._bgm=new BgmManager({
+      onFallback:(needsFallback)=>{
+        this._useSynth=needsFallback;
+        if(needsFallback){
+          if(this.music&&!this.muted&&this.unlocked&&!this._ended&&this.phase!=='victory'){
+            this._startMusic();
+          }
+        }else{
+          this._stopMusic();
+        }
+      }
+    });
     this._hidden = typeof document !== 'undefined' && document.hidden;
     this._gesture = () => { void this.unlock(); };
     this._visibility = () => {
@@ -72,7 +86,11 @@ export class GameAudio {
       if (this.context.state === 'suspended') await this.context.resume();
       if (this._disposed || this.context.state !== 'running') return false;
       this.unlocked = true;
-      this._startMusic();
+      this._bgm.unlock();
+      this._bgm.sync(this._scene);
+      if (this._useSynth) {
+        this._startMusic();
+      }
       return true;
     } catch {
       // The game remains usable if audio is denied by the browser or device.
@@ -157,43 +175,48 @@ export class GameAudio {
 
   setMuted(value) {
     this.muted = Boolean(value);
+    this._bgm?.configure({ muted: this.muted });
     if (!this.context) return;
     this._setGain(this._master.gain, this.muted ? 0 : this.volume, 0.06);
     if (this.muted) {
       this._sfxEpoch++;
       this._stopMusic();
       this._stopVoices('sfx');
-    } else {
+    } else if (this._useSynth) {
       this._startMusic();
     }
   }
 
   setMusic(value) {
     this.music = Boolean(value);
+    this._bgm?.configure({ enabled: this.music });
     if (!this.music) this._stopMusic();
-    else this._startMusic();
+    else if (this._useSynth) this._startMusic();
   }
 
   setVolume(value) {
     const number = Number(value);
     if (!Number.isFinite(number)) return;
     this.volume = clamp(number, 0, 1);
+    this._bgm?.configure({ volume: this.volume });
     if (this.context) this._setGain(this._master.gain, this.muted ? 0 : this.volume);
   }
 
   setDialogue(active) {
     this.dialogue=Boolean(active);
+    this._bgm?.configure({ dialogue: this.dialogue });
     if(this._musicBus&&this._timer!==null)this._setGain(this._musicBus.gain,this.dialogue ? .14 : .66,.2);
   }
 
-  setScene({bossId=this._scene.bossId,screen=this._scene.screen,phase=this.phase}={}) {
+  setScene({bossId=this._scene.bossId,screen=this._scene.screen,phase=this.phase,chapter,dialogue,endingId,interludeBossId}={}) {
     const sceneChanged=bossId!==this._scene.bossId||screen!==this._scene.screen;
     const theme=scoreTheme({bossId,screen}),changed=theme!==this._theme;
-    this._scene={bossId,screen};this._theme=theme;
+    this._scene={bossId,screen,phase,chapter,dialogue,endingId,interludeBossId};this._theme=theme;
     if(sceneChanged){this._sfxEpoch++;this._stopVoices('sfx');}
     if(changed){this._stopMusic();this._step=0;}
     this.setPhase(screen==='battle'?phase:0);
-    if(changed)this._startMusic();
+    this._bgm?.sync({ bossId, screen, phase, chapter, dialogue, endingId, interludeBossId });
+    if(changed && this._useSynth)this._startMusic();
   }
 
   setPhase(value) {
@@ -204,18 +227,20 @@ export class GameAudio {
     const wasEnded = this._ended;
     this.phase = next;
     this._ended = next === 'victory' || next === 'defeat';
+    this._bgm?.sync({ bossId: this._scene.bossId, screen: this._scene.screen, phase: next });
     if (this._ended) {
       this._stopMusic();
+      if (next === 'defeat') this._bgm?.stop();
     } else if (changed || wasEnded) {
       // Align the next phrase with the changed battle state, without overlap.
       this._stopMusic();
       this._step = 0;
-      this._startMusic();
+      if (this._useSynth) this._startMusic();
     }
   }
 
   _startMusic() {
-    if (this._disposed || !this.unlocked || !this.context || this._timer !== null
+    if (!this._useSynth || this._disposed || !this.unlocked || !this.context || this._timer !== null
       || this._hidden || this.muted || !this.music || this._ended || this.phase === 'victory'
       || this.context.state !== 'running') return;
     this._nextNoteTime = this.context.currentTime + 0.09;
@@ -570,6 +595,7 @@ export class GameAudio {
 
   dispose() {
     if (this._disposed) return;
+    this._bgm?.dispose();
     this._stopMusic();
     this._stopVoices();
     this._sfxEpoch++;

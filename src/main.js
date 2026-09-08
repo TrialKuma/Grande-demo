@@ -8,17 +8,21 @@ import './update-3.7.css';
 import './art-review.css';
 import './update-3.9.css';
 import './interludes.css';
+import './combat-hud.css';
+import {positionEnemyIntents} from './enemy-intent-position.js';
+import {enemyIntentTooltipView} from './enemy-intent-ui.js';
 import {createSkillDragController} from './skill-drag.js';
 import {ART_WORLDS,artReviewView} from './art-review.js';
 import {gmToolsView,progressResetView,resetGameProgress,challengePartyView,normalizeChallengeParty,swapChallengeParty} from './gm-tools.js';
 import {DialogueVoice} from './voice.js';
 import {voiceCastView} from './voice-cast.js';
+import {bgmJukeboxView} from './bgm-jukebox.js';
 import {heroJournalView} from './hero-journal.js';
 import {normalizeProfile,rememberCompanions,rememberBossVictories,isDialogueAdvanceGesture,unlockAllHeroes,disableAllHeroes,unlockAllBosses,disableAllBosses,canChallengeBoss,normalizeChallengeBoss} from './player-profile.js';
 import voiceManifest from '../public/voices/manifest.json';
 import {campaignEntry,campaignView} from './campaign-ui.js';
 import {STORY_SPEAKERS} from './story.js';
-import {createRun,normalizeRun,battleForRun,advanceDialogue,completeEncounter,claimReward,replacePartyMember,equipSkill,startNextChapter,regroup,currentChapter,runDialogue,chooseRoute,chooseEvent,storyHistory,unlockRunHeroes,disableRunHeroes,chooseCompanion,startPractice,interludeFor,interactInterlude,advanceInterlude,finishInterlude,updateInterludePosition} from './campaign.js';
+import {createRun,normalizeRun,battleForRun,advanceDialogue,completeEncounter,claimReward,replacePartyMember,equipSkill,startNextChapter,regroup,currentChapter,endingForRun,runDialogue,chooseRoute,chooseEvent,storyHistory,unlockRunHeroes,disableRunHeroes,chooseCompanion,startPractice,interludeFor,interactInterlude,advanceInterlude,finishInterlude,updateInterludePosition} from './campaign.js';
 import './boss-codex.css';
 import {bossCodexView} from './boss-codex.js';
 import {tooltipView} from './status-details.js';
@@ -71,8 +75,8 @@ function updateScene(value){scene?.updateState({...value,enemyTargets:enemyTarge
 function selectTarget(id){if(screen!=='battle'||busy||modal||state.mode!=='playing')return;if(selectEnemyTarget(state,id)){lastSkill=null;updateScene(state);persist();render();audio.play('select');}}
 function setup(){
   app.innerHTML=`<div id="scene" aria-label="可拖动旋转的三维战场"></div><div class="vignette"></div><div id="ui"></div><div id="modal-root"></div><div id="toast" role="status" aria-live="polite"></div><div id="action-caption" aria-live="polite"></div><div id="transition" class="transition"></div>`;
-  try{scene=new BattleScene(document.querySelector('#scene'));scene.setSpeed(prefs.speed);updateScene({...state,mode:'title'});scene.onTargetSelect=selectTarget;}catch(err){console.error(err);document.querySelector('#scene').innerHTML='<div class="render-error">3D 战场未能启动。请在开启硬件加速的 Chrome 或 Edge 中重新打开。</div>';}
-  tooltips=createTooltipController(({kind,owner,detail})=>tooltipView(screen==='camp'&&run?battleForRun(run,owner):state,kind,owner,detail),()=>['battle','camp'].includes(screen)&&!modal&&!busy);
+  try{scene=new BattleScene(document.querySelector('#scene'));scene.setSpeed(prefs.speed);updateScene({...state,mode:'title'});scene.onTargetSelect=selectTarget;scene.onHudFrame=()=>{if(screen==='battle')positionEnemyIntents(scene);};}catch(err){console.error(err);document.querySelector('#scene').innerHTML='<div class="render-error">3D 战场未能启动。请在开启硬件加速的 Chrome 或 Edge 中重新打开。</div>';}
+  tooltips=createTooltipController(({kind,owner,detail})=>kind==='enemy-intent'?enemyIntentTooltipView(feedbackState||state,detail):tooltipView(screen==='camp'&&run?battleForRun(run,owner):state,kind,owner,detail),()=>['battle','camp'].includes(screen)&&!modal&&!busy);
   createSkillDragController({enabled:()=>screen==='camp'&&!busy&&!modal&&!!run,onStart:()=>tooltips?.hide(),onDrop:({owner,skill,slot})=>{const result=equipSkill(run,owner,slot,skill);if(result.ok){skillSlot=result.slot??slot;saveJourney();render();toast('技能位置已调整。');}else toast(result.error);}});
   render();
 }
@@ -87,12 +91,32 @@ function render(){
   else if(screen==='model-review')root.innerHTML=modelReviewView();
   else if(screen==='art-review')root.innerHTML=artReviewView({bossId:artBoss,focus:artFocus,concept:artConcept,status:artStatus});
   else root.innerHTML=campaignView(run,{partySlot,skillSlot,exploration});
-  renderModal();syncDialogue();if(!busy)syncScore();
+  renderModal();syncDialogue();if(!busy)syncScore();if(screen==='battle'&&scene)positionEnemyIntents(scene);
 }
 function titleView(){const records=read(RECORDS,[]);return renderTitle(prefs,saved,toolbar(),Array.isArray(records)?records:[],campaignEntry(run),{unlockedHeroes:profile.unlockedHeroes,unlockedBosses:profile.unlockedBosses});}
 function challengeOptions(){return {mode:prefs.challengeMode,partyIds:prefs.challengeMode==='solo'?[profile.unlockedHeroes.includes(prefs.soloHero)?prefs.soloHero:'knibbs']:normalizeChallengeParty(prefs.partyIds,profile.unlockedHeroes)};}
 function battleView(){return renderBattle(feedbackState||state,busy,toolbar(),formatTime(elapsed+(startedAt?(Date.now()-startedAt)/1000:0)),lastSkill);}
-function syncScore(){audio.setScene?.({bossId:state.boss.id,screen,phase:screen==='battle'?(state.mode==='victory'?'victory':state.mode==='defeat'?'defeat':state.boss.finale?'finale':state.boss.core?'core':state.boss.stage):0});}
+function syncScore(){
+  const activeBossId = (journeyActive && run)
+    ? (run.drill?.bossId || run.skirmish?.bossId || run.interlude?.bossId || currentChapter(run)?.bossId || state?.boss?.id)
+    : (state?.boss?.id || prefs.bossId);
+
+  const phase = screen === 'battle'
+    ? (state?.mode === 'victory' ? 'victory' : state?.mode === 'defeat' ? 'defeat' : state?.boss?.finale ? 'finale' : state?.boss?.core ? 'core' : state?.boss?.stage)
+    : (modal === 'victory' ? 'victory' : modal === 'defeat' ? 'defeat' : 0);
+
+  const ending = (journeyActive && run) ? endingForRun(run) : null;
+
+  audio.setScene?.({
+    bossId: activeBossId,
+    screen,
+    phase,
+    chapter: run?.chapter,
+    dialogue: run?.dialogue,
+    endingId: ending?.id,
+    interludeBossId: run?.interlude?.bossId
+  });
+}
 
 function updateVoiceState(status){
   audio.setDialogue(status==='playing'||status==='loading');
@@ -183,6 +207,7 @@ function renderModal(){
   if(screen==='explore')scene?.setExplorationPaused(!!modal||!!interludeFor(run)?.talking);if(!modal){root.innerHTML='';return;}
   let body='',cls='';
   if(modal==='voice-cast'){body=voiceCastView(voiceManifest);cls='voice-cast-modal';}
+  else if(modal==='bgm-jukebox'){body=bgmJukeboxView();cls='voice-cast-modal';}
   else if(modal==='gm'){body=gmToolsView(profile);}
   else if(modal==='progress-reset'){body=progressResetView();}
   else if(modal==='challenge-party'){body=challengePartyView(prefs.partyIds,profile.unlockedHeroes,challengeSlot);cls='challenge-party-modal';}
@@ -190,7 +215,7 @@ function renderModal(){
   else if(modal==='story-history'){body=storyHistoryView();cls='story-history-modal';}
   else if(modal==='boss-codex'){body=bossCodexView(state,codexId);cls='codex-modal';}
   else if(modal==='help')body=helpView(screen==='battle'?state:screen==='title'?createBattle(prefs.difficulty,prefs.bossId,challengeOptions()):undefined);
-  else if(modal==='pause')body=`<div class="modal-eyebrow">TAKE A BREATH</div><h2>稍作休整</h2><p class="modal-lead">你的远征进度已自动保存在这台设备。</p><div class="settings-list"><button class="settings-voice-cast" data-action="hero-journal">${icon('book')}角色图鉴与招募</button><button class="settings-voice-cast" data-action="voice-cast">${icon('volume')}角色声音试听</button><label>背景音乐 <input type="checkbox" data-setting="music" ${prefs.music?'checked':''}></label><label>中文对白配音 <input type="checkbox" data-setting="voice" ${prefs.voice?'checked':''}></label><label>静音 <input type="checkbox" data-setting="muted" ${prefs.muted?'checked':''}></label><label>主音量 <input type="range" min="0" max="100" value="${prefs.volume*100}" data-setting="volume" aria-label="主音量"></label><label>演出速度 <button data-action="speed">${prefs.speed}×</button></label></div><button class="primary" data-action="close-modal">继续远征 ${icon('play')}</button><div class="modal-secondary">${screen==='battle'?`<button data-action="restart">${icon('repeat')}重新挑战</button>`:''}<button data-action="back-title">返回标题</button></div>`;
+  else if(modal==='pause')body=`<div class="modal-eyebrow">TAKE A BREATH</div><h2>稍作休整</h2><p class="modal-lead">你的远征进度已自动保存在这台设备。</p><div class="settings-list"><button class="settings-voice-cast" data-action="hero-journal">${icon('book')}角色图鉴与招募</button><button class="settings-voice-cast" data-action="voice-cast">${icon('volume')}角色声音试听</button><button class="settings-voice-cast" data-action="bgm-jukebox">${icon('play')}游戏原声试听</button><label>背景音乐 <input type="checkbox" data-setting="music" ${prefs.music?'checked':''}></label><label>中文对白配音 <input type="checkbox" data-setting="voice" ${prefs.voice?'checked':''}></label><label>静音 <input type="checkbox" data-setting="muted" ${prefs.muted?'checked':''}></label><label>主音量 <input type="range" min="0" max="100" value="${prefs.volume*100}" data-setting="volume" aria-label="主音量"></label><label>演出速度 <button data-action="speed">${prefs.speed}×</button></label></div><button class="primary" data-action="close-modal">继续远征 ${icon('play')}</button><div class="modal-secondary">${screen==='battle'?`<button data-action="restart">${icon('repeat')}重新挑战</button>`:''}<button data-action="back-title">返回标题</button></div>`;
   else if(modal==='log')body=`<div class="modal-eyebrow">BATTLE CHRONICLE</div><h2>战斗记录</h2><div class="full-log">${state.log.map(l=>`<p class="log-${l.tone}">${esc(l.text)}</p>`).join('')}</div>`;
   else if(modal==='credits')body=`<div class="modal-eyebrow">BEHIND THE ECHO</div><h2>格朗德 · 魔晶回响</h2><p class="modal-lead">基于格朗德既有角色设定的分支远征。十名 BOSS、两处选路，以及由沿途决定产生的不同结局。</p><div class="credits-copy"><p><b>沿用设定</b><br>尼布斯拉姆的气息、直感发射、单发确认、扩散弹；艾佩莉雅的连击与四种武器；雷克的深渊领域和正负平衡；魔晶巨人的元素解体、地裂、迷雾、共鸣与双系核心。</p><p><b>本次改编</b><br>「停机之前」救援剧情、哈特蒙斯的支援技能，以及折镜刃卫、孢冠司祭、雷脊守卫、缄页织者、四名分支守卫与归零之核为 demo 适配或原创内容。哈特蒙斯、潜行、游木／游墓和补丁 Z 均采用已有角色卡；游木使用气息，其余三人使用魔力。三名魔力角色先将魔力转化为念线、充能或记录，再消耗二级资源换回魔力并触发不同效果。潜行的钉刺护甲、聚焦光束取自既有技能稿，按本版魔力循环重新适配。三场入门实战从一人两项技能开始；同伴沿路线分批加入，每次从附近的一至两人中选择。进入正式远征后，新旧队员至少掌握四招，第五招可通过途中战或操练学习。战后随机三选一成长，最多携带五项技能，整备时可拖动交换；防守由角色自身技能承担。途中编队战可选择攻击目标，敌人之间会护卫、供能或召唤；战后可实际走近同伴与装置交谈，再从出口推进。一、二、三人小队每轮分别获得基础 3、4、6 AP，剩余点数最多保留 2 点到下一轮。</p><p><b>美术与声音</b><br>四张生成图片包含七人头像、船长形态与标题背景。潜行的银焱战甲参照立绘，通过 Blender 脚本建立可编辑网格与分层材质，提供模型展示；其余角色使用程序化模型；十名正式 BOSS 与五处场景采用 Blender 制作的模型，BOSS 使用导出的待机、攻击与受击关键帧动画，另有三种入门小怪和途中编队。五张生成环景补充水渠、山谷、建筑与天空，保留三维战场的自由旋转；远景不是可行走区域。${voiceManifest.clips.length} 句对白按角色选择七种中文神经基础声线，在线生成后保存为本地音频；标题页可逐角色试听；音乐与技能音效由程序合成。</p><p>无需账号。游戏进度仅保存在本机。</p></div><button class="primary" data-action="close-modal">返回 ${icon('arrow')}</button>`;
   else if(modal==='victory'||modal==='defeat'){
@@ -205,7 +230,7 @@ function persist(){if(journeyActive&&run){if(run.phase==='battle'&&state.mode===
 function preferences(){write(PREFS,prefs);}
 function toast(message){const el=document.querySelector('#toast');el.textContent=message;el.classList.add('show');clearTimeout(timer);timer=setTimeout(()=>el.classList.remove('show'),2800);}
 function openModal(type){if(busy)return;stopWalking();voice.pause();clearTimeout(autoStoryTimer);modal=type;scene?.setPaused(true);if(startedAt){elapsed+=(Date.now()-startedAt)/1000;startedAt=0;}renderModal();requestAnimationFrame(()=>document.querySelector('.modal button')?.focus());}
-function closeModal(){if(modal==='model-review'){exitModelReview();return;}modal=null;scene?.setPaused(false);if(screen==='battle'&&state.mode==='playing'&&!startedAt)startedAt=Date.now();renderModal();syncDialogue();if(currentStoryLine())voice.resume();}
+function closeModal(){if(modal==='model-review'){exitModelReview();return;}const wasJukebox=modal==='bgm-jukebox';modal=null;scene?.setPaused(false);if(screen==='battle'&&state.mode==='playing'&&!startedAt)startedAt=Date.now();renderModal();syncDialogue();if(currentStoryLine())voice.resume();if(wasJukebox)syncScore();}
 async function begin(resume=false){
   if(busy)return;
   if(!(resume&&saved)){const bossId=normalizeChallengeBoss(profile,prefs.bossId);if(!bossId){toast('先在远征中击败 BOSS，或在 GM 中开放 BOSS 自由挑战。');return;}prefs.bossId=bossId;}
@@ -268,6 +293,8 @@ function action(name){
   }
   if(name==='challenge-party'){if(!busy&&screen==='title'){challengeSlot=0;openModal('challenge-party');}return;}
   if(name==='hero-journal'){openModal('hero-journal');return;}
+  if(name==='bgm-jukebox'){openModal('bgm-jukebox');return;}
+  if(name==='bgm-stop-audition'){audio._bgm?.stop();const el=document.querySelector('#bgm-playing-status');if(el)el.textContent='试听已停止';return;}
   if(name==='model-exit'){exitModelReview();return;}
   if(voiceAction(name))return;
   if(name==='model-review'){enterModelReview();return;}
@@ -398,6 +425,7 @@ document.addEventListener('click',e=>{
     if(button.dataset.artAnimation){if(!scene?.previewBossAnimation(button.dataset.artAnimation))toast('动作尚未载入，请稍等。');return;}
   }
   if(button.dataset.voiceSpeaker){prefs.voice=true;prefs.muted=false;audio.setMuted(false);audio.unlock();voice.configure({enabled:true,muted:false});voice.play({speaker:button.dataset.voiceSpeaker,text:button.dataset.voiceText});preferences();return;}
+  if(button.dataset.action==='bgm-play-track'&&button.dataset.bgmFilename){prefs.music=true;prefs.muted=false;audio.setMuted(false);audio.setMusic(true);audio.unlock();audio._bgm?.play(button.dataset.bgmFilename);const el=document.querySelector('#bgm-playing-status');if(el)el.textContent=`正在试听: ${button.dataset.bgmFilename}`;preferences();return;}
   if(button.dataset.codexBoss&&modal==='boss-codex'){codexId=button.dataset.codexBoss;renderModal();return;}
   if(button.dataset.journalHero&&modal==='hero-journal'){journalHero=button.dataset.journalHero;renderModal();return;}
   if(modal==='challenge-party'&&screen==='title'&&!busy){
