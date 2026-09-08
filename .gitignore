@@ -10,3 +10,5 @@ __pycache__/
 .env.*
 !.env.example
 *.blend1
+开始游戏.html
+.offline-bundle.js
