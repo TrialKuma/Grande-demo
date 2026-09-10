@@ -2,12 +2,14 @@ import {runPolicy} from '../scripts/pressure-probe.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  BOSSES as ALL_BOSSES, HEROES as ALL_HEROES, SKILLS, DIFFICULTIES, createBattle, heroOf, canUse,
+  BOSSES as ALL_BOSSES, HEROES as ALL_HEROES, SKILLS, DIFFICULTIES, createBattle as createCombatBattle, heroOf, canUse,
   useSkill, usePotion, endRound, prepareResponse, responseOptions,
   skillPreview, heroStatus, bossSummary
 } from '../src/combat.js';
 import {normalizeSave} from '../src/save.js';
 
+// Each fixture explicitly equips four offensive commands; swaps happen only before battle.
+const createBattle=(difficulty='standard',bossId='golem',options={})=>createCombatBattle(difficulty,bossId,{...options,loadouts:{knibbs:['shot','focus','scatter','breathe'],apeilia:['blade','purify','eden','sentinel'],ric:['rune','bind','shelter','mend'],...options.loadouts}});
 const clone = state => structuredClone(state);
 const BOSSES=Object.fromEntries(['golem','duelist','cantor'].map(id=>[id,ALL_BOSSES[id]]));
 const HEROES=ALL_HEROES.slice(0,3);
@@ -17,7 +19,7 @@ function refuse(state, action) {
   assert.deepEqual(state,before,'a refused action must be atomic');
 }
 function valid(state) {
-  assert.equal(state.version,10);
+  assert.equal(state.version,11);
   assert.ok(Object.hasOwn(BOSSES,state.boss.id));
   assert.ok(['playing','victory','defeat'].includes(state.mode));
   assert.equal(state.maxAp,6+state.roundCarry);
@@ -107,16 +109,16 @@ for(const bossId of ['duelist','cantor'])for(const difficulty of Object.keys(DIF
 
 
 
-test('v2: full intuition enhances the next heavy shot then begins a new three-step cycle',()=>{
-  const state=createBattle();
-  for(let index=0;index<3;index++)assert.equal(useSkill(state,'knibbs','shot').ok,true);
+test('v2: ammunition prepares full intuition and the next heavy shot spends it once',()=>{
+  const state=createBattle('standard','golem',{loadouts:{knibbs:['shot','focus','loadburst','breathe']}});
+  assert.equal(useSkill(state,'knibbs','loadburst').ok,true);
   assert.equal(heroOf(state,'knibbs').intuition,3);
   const before=clone(state),preview=skillPreview(state,'knibbs','focus');assert.deepEqual(state,before);
   const result=useSkill(state,'knibbs','focus');assert.equal(result.ok,true);
-  assert.equal(result.events.find(event=>event.type==='attack').amount,Math.round(66*1.4));
-  assert.equal(preview.damage,Math.round(66*1.4));
-  assert.equal(heroOf(state,'knibbs').intuition,1);
-  assert.equal(state.boss.stagger,state.boss.maxStagger-66);valid(state);
+  assert.equal(result.events.find(event=>event.type==='attack').amount,56+36+24);
+  assert.equal(preview.damage,56+36+24);
+  assert.equal(heroOf(state,'knibbs').intuition,0);
+  assert.equal(state.boss.stagger,state.boss.maxStagger-30);valid(state);
 });
 
 test('v2: alternating damage types increases Apeilia damage and refund while repeating blade slows combo',()=>{
@@ -125,50 +127,51 @@ test('v2: alternating damage types increases Apeilia damage and refund while rep
   useSkill(state,'apeilia','blade');assert.equal(heroOf(state,'apeilia').resource,3);
   const result=useSkill(state,'apeilia','purify');assert.equal(result.ok,true);
   assert.equal(heroOf(state,'apeilia').resource,7);assert.equal(heroOf(state,'apeilia').lastKind,'magic');
-  assert.equal(result.events.find(event=>event.type==='attack').amount,2*Math.round(27*1.25*.82));
+  assert.equal(result.events.find(event=>event.type==='attack').amount,2*(18+6-4)); // Alternation +6 INT; rock shell +4 INT.
   state=createBattle();heroOf(state,'apeilia').resource=6;heroOf(state,'apeilia').lastKind='physical';
   const preview=skillPreview(state,'apeilia','sentinel');useSkill(state,'apeilia','sentinel');
-  assert.equal(preview.damage,78);assert.equal(heroOf(state,'apeilia').resource,1);valid(state);
+  assert.equal(preview.damage,50+6);assert.equal(heroOf(state,'apeilia').resource,1);valid(state);
 });
 
-test('v2: Ric crossing zero provides directional team support only to living allies',()=>{
+test('v2: Ric sign flips grant one chaos charge without party healing or shields',()=>{
   let state=createBattle();heroOf(state,'ric').resource=-1;heroOf(state,'apeilia').hp=0;
   assert.equal(useSkill(state,'ric','rune').ok,true);
   assert.equal(heroOf(state,'ric').resource,1);assert.equal(heroOf(state,'ric').balanceBursts,1);
-  assert.equal(heroOf(state,'knibbs').shield,10);assert.equal(heroOf(state,'ric').shield,10);assert.equal(heroOf(state,'apeilia').shield,0);
+  assert.ok(state.heroes.every(h=>h.shield===0));assert.equal(heroOf(state,'ric').ricChaos,1);
   state=createBattle();heroOf(state,'ric').resource=1;state.heroes.forEach(hero=>hero.hp-=20);
   assert.equal(useSkill(state,'ric','bind').ok,true);
   assert.equal(heroOf(state,'ric').resource,-2);assert.equal(heroOf(state,'ric').balanceBursts,1);
-  for(const hero of state.heroes)assert.equal(hero.hp,hero.maxHp-12);
-  assert.equal(state.stats.healed,24);valid(state);
+  for(const hero of state.heroes)assert.equal(hero.hp,hero.maxHp-20);
+  assert.equal(state.stats.healed,0);assert.equal(heroOf(state,'ric').ricChaos,1);valid(state);
 });
 
 test('v2: magic hits remove individual mirrors and physical mitigation follows the remaining count',()=>{
   const state=createBattle('standard','duelist');state.boss.mirror=3;
   const preview=skillPreview(state,'apeilia','purify'),result=useSkill(state,'apeilia','purify');
-  assert.equal(preview.damage,54);assert.equal(result.events.find(event=>event.type==='attack').amount,54);
+  assert.equal(preview.damage,2*18);assert.equal(result.events.find(event=>event.type==='attack').amount,2*18);
   assert.equal(state.boss.mirror,1);assert.ok(preview.notes.some(note=>note.includes('拆除 2 镜片')));
-  const shot=useSkill(state,'knibbs','shot');assert.equal(shot.events.find(event=>event.type==='attack').amount,24);
+  const shot=useSkill(state,'knibbs','shot');assert.equal(shot.events.find(event=>event.type==='attack').amount,22-3); // The last mirror grants 3 AGI.
   assert.equal(state.boss.mirror,1);valid(state);
 });
 
 test('v2: mirror stance reflects once per physical skill after guard and shield, and magic is safe',()=>{
   const state=createBattle('standard','duelist');state.boss.intent='mirror';state.boss.mirror=3;
+  useSkill(state,'knibbs','scatter');heroOf(state,'knibbs').intuition=0;
   const hero=heroOf(state,'knibbs');hero.guard=true;hero.shield=2;
-  const preview=skillPreview(state,'knibbs','scatter'),result=useSkill(state,'knibbs','scatter');
-  assert.equal(preview.damage,36);assert.equal(result.events.find(event=>event.type==='attack').amount,36);
+  const preview=skillPreview(state,'knibbs','shot'),result=useSkill(state,'knibbs','shot');
+  assert.equal(preview.damage,(22-9)+5);assert.equal(result.events.find(event=>event.type==='attack').amount,(22-9)+5);
   const reflections=result.events.filter(event=>event.label==='折镜反噬');assert.equal(reflections.length,1);
-  assert.deepEqual(reflections[0].amounts,{knibbs:5});assert.equal(hero.hp,165);assert.equal(hero.shield,0);
+  assert.deepEqual(reflections[0].amounts,{knibbs:0});assert.equal(hero.hp,170);assert.equal(hero.shield,1);
   assert.ok(preview.notes.some(note=>note.includes('基础')&&note.includes('防御 / 护盾前')));
   const magic=useSkill(state,'apeilia','purify');assert.ok(!magic.events.some(event=>event.label==='折镜反噬'));valid(state);
 });
 
 test('v2: multi-hit physical strips spores and exposes the advertised magic vulnerability',()=>{
   const state=createBattle('standard','cantor');state.boss.spores=5;
-  assert.equal(skillPreview(state,'apeilia','purify').damage,38);
-  assert.equal(useSkill(state,'knibbs','scatter').ok,true);assert.equal(state.boss.spores,0);
+  assert.equal(skillPreview(state,'apeilia','purify').damage,2*(18-6));
+  assert.equal(useSkill(state,'knibbs','scatter').ok,true);assert.equal(useSkill(state,'knibbs','shot').ok,true);assert.equal(state.boss.spores,0);
   const preview=skillPreview(state,'apeilia','purify'),result=useSkill(state,'apeilia','purify');
-  assert.equal(preview.damage,68);assert.equal(result.events.find(event=>event.type==='attack').amount,68);
+  assert.equal(preview.damage,2*(18-(-4)));assert.equal(result.events.find(event=>event.type==='attack').amount,2*(18-(-4)));
   assert.ok(preview.notes.some(note=>note.includes('裸冠')));valid(state);
 });
 
@@ -179,7 +182,7 @@ test('v2: removing spores lowers bloom damage and release clears all remaining s
     const result=endRound(state),event=result.events.find(event=>event.label==='冠孢绽放');
     damage.push(event.amounts.knibbs);assert.equal(state.boss.spores,0);valid(state);
   }
-  assert.deepEqual(damage,[50,100]);
+  assert.deepEqual(damage,[50-4,50+5*14+6]); // Zero spores: -4 INT; five spores: +70 pressure and +6 INT.
 });
 
 test('v2: recovery grants one full round of control immunity and then permits a new break',()=>{
@@ -213,7 +216,12 @@ test('v2: Ric natural balance recovery approaches zero without negative-zero ser
   assert.equal(heroOf(state,'ric').resource,0);assert.equal(Object.is(heroOf(state,'ric').resource,-0),false);valid(state);
 });
 
-function playEncounter(bossId,difficulty){const r=runPolicy(bossId,'tactical',difficulty,{includeState:true,onState:valid});return {state:r.state,history:r.actions};}
+function playEncounter(bossId,difficulty){
+  // Plan the complete shared-AP turn, including preparation, before choosing a
+  // shot. These four-command builds stay fixed for the entire encounter.
+  const loadouts={knibbs:['shot','focus','loadburst','breathe'],apeilia:['blade','purify','eden','reboot'],ric:['rune','bind','shelter','mend']};
+  const r=runPolicy(bossId,'tactical',difficulty,{includeState:true,onState:valid,loadouts,searchWidth:12});return {state:r.state,history:r.actions};
+}
 
 for(const bossId of ['duelist','cantor'])for(const difficulty of Object.keys(DIFFICULTIES)){
   test(`v2 whole battle ${bossId}/${difficulty}: public-API tactics can win without state edits`,()=>{

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createBattle,heroOf,useSkill,endRound} from '../src/combat.js';
 import {normalizeSave} from '../src/save.js';
+import {baseAttributes,effectiveAttributes} from '../src/attributes.js';
 
 const fresh=()=>({...createBattle('standard','duelist',{partyIds:['haart','qianxing','patch'],upgrades:['haart_network']}),elapsed:0});
 const copy=value=>structuredClone(value);
@@ -37,11 +38,11 @@ test('v8 save: v7 stock migration preserves fullness and does not create carried
   }
 });
 
-test('v8 save: real full mind network stores 60 percent buff and resumes identically',()=>{
-  const state=fresh();state.loadouts.haart[4]='network';
+test('save: full mind network preserves attribute empowerment and resumes identically',()=>{
+  const state=fresh();state.loadouts.haart=['page','rest','network','soothe'];
   assert.equal(useSkill(state,'haart','rest').ok,true);
   assert.equal(useSkill(state,'haart','network').ok,true);
-  for(const hero of state.heroes)assert.equal(hero.attackBuff,60);
+  for(const hero of state.heroes)assert.ok(effectiveAttributes(hero).strength>baseAttributes(hero.id).strength);
   const restored=normalizeSave(copy(state));assert.ok(restored);
   assert.deepEqual(useSkill(restored,'qianxing','spike'),useSkill(state,'qianxing','spike'));
   assert.deepEqual(restored,state);

@@ -22,20 +22,20 @@ test('journal starts with Knibbs and explains player-selected recruitment withou
  }
 });
 
-test('each unlocked journal shows the complete skill library, five equipped slots, passive and resource loop',()=>{
+test('each unlocked journal shows the complete skill library, four equipped slots, passive and resource loop',()=>{
  for(const hero of HEROES){
   const html=heroJournalView({unlockedHeroes:[hero.id],selectedHero:hero.id});
   assert.equal((html.match(/data-journal-skill=/g)||[]).length,SKILLS[hero.id].length);
-  assert.equal((html.match(/已装配在 [QWERT] 位/g)||[]).length,5);
+  assert.equal((html.match(/已装配在 [QWER] 位/g)||[]).length,4);
   for(const skill of SKILLS[hero.id])assert.ok(html.includes(`data-journal-skill="${skill.id}"`));
-  assert.ok(html.includes(hero.passiveName));assert.match(html,/基础生命上限/);assert.match(html,/需要战斗奖励/);valid(html);
+  assert.match(html,/角色特性/);assert.ok(html.includes(hero.role));assert.match(html,/基础生命上限/);assert.match(html,/需要战斗奖励/);valid(html);
  }
 });
 
 test('journal distinguishes an earned reward skill from permanent character unlock and respects the actual loadout',()=>{
- const input={unlockedHeroes:['patch'],selectedHero:'patch',upgrades:['patch_revelation'],loadouts:{patch:['keyblade','bookward','chargedslash','fragments','revelation']}},before=structuredClone(input);
+ const input={unlockedHeroes:['patch'],selectedHero:'patch',upgrades:['patch_revelation'],loadouts:{patch:['keyblade','bookward','chargedslash','revelation']}},before=structuredClone(input);
  const html=heroJournalView(input),card=html.match(/<article[^>]*data-journal-skill="revelation"[\s\S]*?<\/article>/)[0];
- assert.match(card,/已获得新技能/);assert.match(card,/已装配在 T 位/);assert.doesNotMatch(card,/需要战斗奖励/);
+ assert.match(card,/已获得新技能/);assert.match(card,/已装配在 R 位/);assert.doesNotMatch(card,/需要战斗奖励/);
  assert.match(html,/新技能和条件强化属于本次远征/);assert.deepEqual(input,before);
  const invalid=heroJournalView({unlockedHeroes:['<script>'],selectedHero:'"><script>alert(1)</script>',upgrades:['bad'],loadouts:{}});
  assert.doesNotMatch(invalid,/<script>|alert\(1\)/);assert.match(invalid,/尼布斯/);valid(invalid);
@@ -63,12 +63,12 @@ test('title solo selection keeps character and boss unlock lists independent',()
  assert.match(allBosses,/10 \/ 10/);assert.doesNotMatch(open,/>010<|<script>/);valid(open);valid(allBosses);
 });
 
-test('solo board renders one complete five-slot row and reads its AP limit in battle and help',()=>{
+test('solo board renders one complete four-slot row and reads its AP limit in battle and help',()=>{
  const s=make('ric');s.round=2;s.roundCarry=2;s.maxAp=7;s.ap=7;const before=structuredClone(s),html=battle(s);
  assert.match(html,/battle-v3 is-solo/);assert.equal((html.match(/class="team-row /g)||[]).length,1);
- assert.equal((html.match(/data-skill=/g)||[]).length,5);assert.match(html,/独狼行动点/);assert.match(html,/<small> \/ 7<\/small>/);
+ assert.equal((html.match(/data-skill=/g)||[]).length,4);assert.match(html,/独狼行动点/);assert.match(html,/<small> \/ 7<\/small>/);
  assert.match(helpView(s),/7 AP/);assert.doesNotMatch(helpView(s),/本场.*6 AP|六场战斗/);
- const party=battle(createBattle());assert.equal((party.match(/class="team-row /g)||[]).length,3);assert.equal((party.match(/data-skill=/g)||[]).length,15);
+ const party=battle(createBattle());assert.equal((party.match(/class="team-row /g)||[]).length,3);assert.equal((party.match(/data-skill=/g)||[]).length,12);
  assert.deepEqual(s,before);valid(html);
 });
 
@@ -85,12 +85,12 @@ test('solo title and help disclose numeric tuning and never advertise dual-type 
 test('solo core and finale HUD and skill tooltip show any-type requirements instead of dual-type gates',()=>{
  const core=make('knibbs'),r=victoryRequirements(core);Object.assign(core.boss,{core:true,coreHits:2,coreTurns:3});
  let html=battle(core),tip=words(tooltipView(core,'skill','knibbs','shot'));
- assert.match(html,new RegExp(`任意属性命中 <b>2 / ${r.coreHits}`));assert.match(tip,/任意属性核心命中\s+2 → 3 \/ 4/);assert.doesNotMatch(tip,/物理需命中|还需另一系/);
+ assert.match(html,new RegExp(`任意属性命中 <b>2 / ${r.coreHits}`));assert.match(tip,/登记一次对应属性的核心命中/);assert.doesNotMatch(tip,/物理需命中|还需另一系/);
  const finale=make('knibbs','final');Object.assign(finale.boss,{finale:true,finaleHits:1,finaleTurns:2});
  html=battle(finale);tip=words(tooltipView(finale,'skill','knibbs','shot'));
- assert.match(html,/任意属性命中 <b>1 \/ 2/);assert.match(tip,/任意属性终幕命中\s+1 → 2 \/ 2/);assert.doesNotMatch(tip,/结束回合且存活/);assert.doesNotMatch(tip,/还需另一系|分别登记 1 次物理/);
+ assert.match(html,/任意属性命中 <b>1 \/ 2/);assert.match(tip,/登记对应属性的终幕命中/);assert.doesNotMatch(tip,/结束回合且存活/);assert.doesNotMatch(tip,/还需另一系|分别登记 1 次物理/);
  const party=createBattle('standard','golem');Object.assign(party.boss,{core:true,coreTurns:3});
- assert.match(words(tooltipView(party,'skill','knibbs','shot')),/物理核心命中\s+0 → 1 \/ 3/);
+ assert.match(words(tooltipView(party,'skill','knibbs','shot')),/登记一次对应属性的核心命中/);
 });
 
 test('skill explanations use live primary or secondary costs and explicit targets',()=>{
@@ -98,7 +98,7 @@ test('skill explanations use live primary or secondary costs and explicit target
  for(const id of ['eden','sentinel']){assert.equal(skillOf('apeilia',id).cost,6);assert.match(skillExplanation(a,'apeilia',id).cost,/6 点连击/);}
  assert.match(heroResourceDescription(heroOf(a,'apeilia')),/伊甸之约消耗 6 点，地狱哨兵消耗 6 点/);
  const h=make('haart'),support=skillExplanation(h,'haart','soothe');
- assert.match(support.cost,/1 点念线。/);assert.doesNotMatch(support.cost,/返还|回魔/);assert.match(support.conditions.join(''),/心智通路/);assert.match(support.conditions.join(''),/回魔规则见角色被动/);assert.doesNotMatch(support.effects.join(''),/恢复.*生命/);assert.match(support.effects.join(''),/伤害降低 55%/);assert.match(support.effects.join(''),/单体攻击转向另一名敌人/);
+ assert.match(support.cost,/1 点念线。/);assert.doesNotMatch(support.cost,/返还|回魔/);assert.match(support.conditions.join(''),/心智通路/);assert.match(support.conditions.join(''),/回复 3 魔力，只结算一次/);assert.doesNotMatch(support.effects.join(''),/恢复.*生命/);assert.match(support.effects.join(''),/力量与智力各降低 16/);assert.match(support.effects.join(''),/单体攻击转向另一名敌人/);
  const shield=skillExplanation(make('ric'),'ric','shelter');assert.match(shield.effects.join(''),/为自己提供 30 点护盾/);assert.doesNotMatch(shield.effects.join(''),/所有存活队员各.*30 点护盾/);
 });
 
@@ -106,7 +106,7 @@ test('Haart passive badge displays current stored threads and rendering is read-
  const s=make('haart','golem',{upgrades:['haart_triage']}),h=heroOf(s,'haart');
  h.secondary=1;assert.match(statusBadges(s,h),/1\/4/);assert.doesNotMatch(statusBadges(s,h),/治疗强化/);
  h.secondary=3;assert.doesNotMatch(statusBadges(s,h),/active good/);
- h.secondary=4;const before=structuredClone(s);assert.match(statusBadges(s,h),/active good/);assert.match(statusBadges(s,h),/4\/4/);assert.deepEqual(s,before);
+ h.secondary=4;const before=structuredClone(s);assert.match(statusBadges(s,h),/ready good/);assert.match(statusBadges(s,h),/4\/4/);assert.deepEqual(s,before);
 });
 
 test('readable manual has four reachable sections and seven independent portrait cards',()=>{

@@ -33,8 +33,9 @@ test('mana: costly preparation buys stronger cash-outs while small spends keep s
   }
 });
 
-test('mana: every five-slot loadout has a legal resource action at every mana, stock, stance and upgrade boundary',()=>{
-  for(const id of Object.keys(MANA_SKILLS))for(const loadout of combinations(MANA_SKILLS[id],5))for(const patchForm of id==='patch'?['observe','record']:['observe'])for(const upgraded of [false,true])for(let mana=0;mana<=10;mana++)for(let secondary=0;secondary<=MANA_HERO_OVERRIDES[id].maxSecondary;secondary++){
+test('mana: kits with a basic or a converter and one-unit outlet have a legal action at every resource boundary',()=>{
+  for(const id of Object.keys(MANA_SKILLS))for(const loadout of combinations(MANA_SKILLS[id],4))for(const patchForm of id==='patch'?['observe','record']:['observe'])for(const upgraded of [false,true])for(let mana=0;mana<=10;mana++)for(let secondary=0;secondary<=MANA_HERO_OVERRIDES[id].maxSecondary;secondary++){
+    if(!loadout.some(base=>base.manaBasic)&&!(loadout.some(base=>base.secondaryGain>0)&&loadout.some(base=>base.secondaryCost===1)))continue;
     const h=hero(id,{resource:mana,secondary,patchForm});
     const s=state(h,{upgrades:upgraded?Object.keys(REWARDS):[],loadouts:{[id]:loadout.map(t=>t.id)}});
     const usable=loadout.map(base=>tuneManaSkill(s,h,base)).filter(t=>!manaSkillError(s,h,t));
@@ -43,17 +44,19 @@ test('mana: every five-slot loadout has a legal resource action at every mana, s
   }
 });
 
-test('mana: emergency produces one powerless unit, and recovery invokes only the passive on a later action',()=>{
-  for(const [id,key] of [['haart','page'],['qianxing','repair'],['patch','collate']]){
+test('mana: emergency conversion costs two AP and the next stocked basic provides the ordinary refund',()=>{
+  for(const [id,key] of [['haart','rest'],['qianxing','repair'],['patch','collate']]){
     const h=hero(id,{resource:0,secondary:0});const emergency=cast(h,key);
-    assert.equal(emergency.ap,1);assert.equal(emergency.manaEmergency,true);assert.equal(emergency.manaReturn,0);assert.equal(h.resource,0);assert.equal(h.secondary,1);
+    assert.equal(emergency.ap,2);assert.equal(emergency.manaEmergency,true);assert.equal(emergency.manaReturn,0);assert.equal(h.resource,0);assert.equal(h.secondary,1);
     for(const effect of ['damage','heal','shield','cleanse','attackBuff','hardControl','weaken','patchStance'])assert.equal(emergency[effect],undefined,effect);
-    const spender=cast(h,id==='haart'?'network':id==='qianxing'?'nova':'revelation');assert.equal(spender.manaRecovery,true);assert.equal(spender.ap,1);assert.equal(h.resource,manaRefundFor(h,1));assert.equal(h.secondary,0);assert.equal(spender.damage,undefined);
+    const expensive=tuneManaSkill(state(h),h,skill(id,id==='haart'?'network':id==='qianxing'?'nova':'revelation'));
+    assert.match(manaSkillError(state(h),h,expensive),/不足/);assert.equal(expensive.manaRecovery,undefined);
+    const spender=cast(h,id==='haart'?'page':id==='qianxing'?'spike':'keyblade');assert.equal(spender.ap,1);assert.equal(h.resource,manaRefundFor(h,1));assert.equal(h.secondary,0);assert.ok(spender.damage>0);assert.equal(spender.manaRecovery,undefined);
   }
 });
 
 test('mana: overflow is rejected, mana is capped and hand-written return values cannot grant mana',()=>{
-  for(const [id,key] of [['haart','page'],['qianxing','spike'],['patch','keyblade']]){
+  for(const [id,key] of [['haart','rest'],['qianxing','repair'],['patch','collate']]){
     const h=hero(id,{secondary:MANA_HERO_OVERRIDES[id].maxSecondary});const s=state(h);let t=tuneManaSkill(s,h,skill(id,key));assert.match(manaSkillError(s,h,t),/放不下/);
     h.resource=0;h.secondary=2;t=tuneManaSkill(s,h,skill(id,key));assert.match(manaSkillError(s,h,t),/魔力不足/);
     const payment=manaAfterSkill(hero(id,{resource:9,secondary:1}),{secondaryCost:1,manaReturn:999});assert.equal(payment.resource,10);assert.equal(payment.secondary,0);
@@ -89,20 +92,22 @@ test('mana: Patch preserves a one-record outlet and scales the final spell by si
   }
 });
 
-test('mana: removing both ordinary builders activates pure backup conversion while retaining another cheap outlet',()=>{
-  for(const id of ['haart','qianxing']){
-    const omitted=id==='haart'?['page','rest']:['spike','repair'],slot=id==='haart'?'anchor':'armor',small=id==='haart'?'soothe':'pulse';
-    const h=hero(id),s=state(h,{loadouts:{[id]:MANA_SKILLS[id].filter(x=>!omitted.includes(x.id)).map(x=>x.id)}});
-    const build=cast(h,slot,s);assert.equal(build.manaBackup,true);assert.equal(h.secondary,MANA_HERO_OVERRIDES[id].maxSecondary);assert.equal(build.damage,undefined);assert.equal(build.attackBuff,undefined);assert.equal(build.shield,undefined);
-    assert.equal(tuneManaSkill(s,h,skill(id,slot)).secondaryCost,1);assert.equal(cast(h,small,s).secondaryCost,1);
-    assert.equal(tuneManaSkill(s,h,skill(id,slot)).manaBackup,true);
+test('mana: a custom all-cash-out build retains skill identities and cannot produce resources implicitly',()=>{
+  for(const id of Object.keys(MANA_SKILLS)){
+    const selected=MANA_SKILLS[id].filter(base=>base.secondaryCost>0).slice(0,4),h=hero(id),s=state(h,{loadouts:{[id]:selected.map(base=>base.id)}});
+    assert.equal(selected.length,4);
+    for(const base of selected){
+      const action=tuneManaSkill(s,h,base);assert.equal(action.name,base.name);
+      assert.equal(action.manaBackup,undefined);assert.equal(action.manaRecovery,undefined);assert.equal(action.secondaryGain,0);
+      assert.equal(action.secondaryCost,base.secondaryCost);assert.match(manaSkillError(s,h,action),/不足/);
+    }
   }
 });
 
-test('mana: upgrades strengthen tactical setup without turning preparation into high damage or granting free mana',()=>{
-  const h=hero('haart',{secondary:2}),hs=state(h,{upgrades:['haart_insight','haart_echo'],boss:{weakened:true}});assert.equal(tuneManaSkill(hs,h,skill('haart','relay')).mark,true);const page=tuneManaSkill(hs,h,skill('haart','page'));assert.equal(page.damage*page.hits,12);assert.equal(page.secondaryGain,1);
+test('mana: upgrades strengthen the basic without restoring its removed mana cost or production',()=>{
+  const h=hero('haart',{secondary:2}),hs=state(h,{upgrades:['haart_insight','haart_echo'],boss:{weakened:true}}),relay=tuneManaSkill(hs,h,skill('haart','relay'));assert.equal(relay.insight,true);assert.equal(relay.mark,undefined);const page=tuneManaSkill(hs,h,skill('haart','page')),plain=tuneManaSkill(state(h),h,skill('haart','page'));assert.equal(page.damage,plain.damage+4);assert.equal(page.hits,plain.hits);assert.equal(page.cost,0);assert.equal(page.secondaryGain,0);assert.equal(page.secondaryCost,1);
   const q=hero('qianxing',{secondary:1}),qs=state(q,{upgrades:['qianxing_grounding'],boss:{heat:2}});assert.equal(tuneManaSkill(qs,q,skill('qianxing','pulse')).weaken,true);
-  const p=hero('patch',{patchForm:'record',resource:1,secondary:0}),ps=state(p,{upgrades:['patch_doubleentry']});let t=tuneManaSkill(ps,p,skill('patch','keyblade'));assert.equal(t.cost,1);assert.equal(t.secondaryGain,1);assert.equal(t.manaReturn,0);assert.equal(t.manaEmergency,undefined);
+  const p=hero('patch',{patchForm:'record',resource:1,secondary:0}),ps=state(p,{upgrades:['patch_doubleentry']});let t=tuneManaSkill(ps,p,skill('patch','keyblade'));assert.equal(t.cost,0);assert.equal(t.secondaryGain,0);assert.equal(t.manaReturn,0);assert.equal(t.manaEmergency,undefined);
   p.patchForm='observe';p.resource=3;t=tuneManaSkill(ps,p,skill('patch','bookward'));assert.equal(t.cost,3);assert.equal(t.secondaryGain,3);
 });
 

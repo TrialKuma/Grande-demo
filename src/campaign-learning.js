@@ -1,10 +1,12 @@
-import {HEROES,SKILLS,DIFFICULTIES,createBattle,normalizeLoadouts} from './combat.js';
+import {HEROES,SKILLS,SKILL_SLOTS,DIFFICULTIES,createBattle,normalizeLoadouts} from './combat.js';
 import {REWARDS,reconcileRewardOffer} from './rewards.js';
 import {normalizeSave} from './save.js';
 import {CHAPTER_BY_BOSS,ROUTE_CHOICES,CAMP_EVENTS,ENDINGS} from './story.js';
 import {TUTORIAL_CHAPTERS} from './tutorial-story.js';
 import {LEARNING_ORDER,TUTORIAL_IDS} from './training.js';
 import {grantShield} from './shields.js';
+import {migrateManaPresets} from './mana-cycles.js';
+import {migrateKnibbsPreset} from './knibbs-passive.js';
 import {beginInterlude,interludeFor,interactInterlude,updateInterludePosition,advanceInterlude as advanceWalkingDialogue,canFinishInterlude,normalizeInterlude,interludeRequiredLines,SKIRMISH_AFTER,SKIRMISH_STORIES} from './interludes.js';
 export {interludeFor,interactInterlude,updateInterludePosition};
 
@@ -25,8 +27,11 @@ export function runRoute(run){return pathFor(run).map((id,index)=>({index,id,bos
 export const formalLearning=run=>run.chapter>=3||(run.history||[]).some(h=>h.bossId==='conduit');
 const oldTrainingCount=(run,id)=>Math.min(3,(run.history||[]).filter(entry=>entry.partyIds?.includes(id)).length+(run.practiceWins?.[id]||0));
 const V5_LEARNING_ORDER={knibbs:['shot','breathe','cover','focus','scatter'],apeilia:['blade','purify','reboot','eden','sentinel'],ric:['rune','shelter','bind','mend','crossing'],haart:['page','soothe','anchor','rest','relay'],qianxing:['spike','pulse','armor','repair','beam'],youmu:['scalpel','sterilize','firstaid','surgery','bloodoath'],patch:['keyblade','chargedslash','bookward','collate','fragments']};
+const PRE_FREE_MANA_LEARNING_ORDER={knibbs:['shot','focus','breathe','cover','scatter'],apeilia:['blade','purify','reboot','eden','sentinel'],ric:['rune','shelter','bind','mend','crossing'],haart:['page','soothe','anchor','relay','rest'],qianxing:['spike','pulse','armor','beam','repair'],youmu:['scalpel','sterilize','surgery','bloodoath','firstaid'],patch:['keyblade','chargedslash','bookward','fragments','collate']};
+const PRE_LOOP_LEARNING_ORDER={...PRE_FREE_MANA_LEARNING_ORDER,knibbs:V5_LEARNING_ORDER.knibbs};
+const PRE_AMMO_LEARNING_ORDER={...LEARNING_ORDER,knibbs:PRE_FREE_MANA_LEARNING_ORDER.knibbs};
 export function trainingCount(run,id){return Math.max(formalLearning(run)?2:0,Math.min(3,(run.learnedBasics?.[id]??(2+oldTrainingCount(run,id)))-2));}
-export function skillAccessFor(run){return Object.fromEntries(heroIds.map(id=>[id,[...LEARNING_ORDER[id].slice(0,2+trainingCount(run,id)),...SKILLS[id].filter(s=>s.unlockKey&&run.upgrades.includes(s.unlockKey)).map(s=>s.id)]]));}
+export function skillAccessFor(run){return Object.fromEntries(heroIds.map(id=>[id,[...LEARNING_ORDER[id].slice(0,trainingCount(run,id)>=3?LEARNING_ORDER[id].length:2+trainingCount(run,id)),...SKILLS[id].filter(s=>s.unlockKey&&run.upgrades.includes(s.unlockKey)).map(s=>s.id)]]));}
 function refreshLoadouts(run){
  run.learnedBasics??=Object.fromEntries(heroIds.map(id=>[id,2+oldTrainingCount(run,id)]));
  if(formalLearning(run))for(const id of heroIds)run.learnedBasics[id]=Math.max(4,run.learnedBasics[id]||2);
@@ -43,7 +48,7 @@ function settle(run){
 }
 export function createLearningRun(difficulty='standard',{gmAllHeroes=false,seed}={}){
  if(!Object.hasOwn(DIFFICULTIES,difficulty))difficulty='standard';
- const run={version:6,id:String(Date.now()),seed:Number.isInteger(seed)?seed>>>0:Math.floor(Math.random()*4294967296),difficulty,chapter:0,phase:'dialogue',dialogue:'before',line:0,legacyRoute:false,routes:{crossing:null,archive:null},events:{crossing:null,archive:null},partyIds:['knibbs'],unlockedHeroes:['knibbs'],recruits:[],practiceWins:{},learnedBasics:Object.fromEntries(heroIds.map(id=>[id,2])),skirmishHistory:[],interludesDone:[],rewardHistory:[],upgrades:[],loadouts:{},history:[],battle:null,lastReward:null,lastLearning:[],focusHero:'knibbs',...(gmAllHeroes?{gmAllHeroes:true}:{})};
+ const run={version:6,learningRevision:4,id:String(Date.now()),seed:Number.isInteger(seed)?seed>>>0:Math.floor(Math.random()*4294967296),difficulty,chapter:0,phase:'dialogue',dialogue:'before',line:0,legacyRoute:false,routes:{crossing:null,archive:null},events:{crossing:null,archive:null},partyIds:['knibbs'],unlockedHeroes:['knibbs'],recruits:[],practiceWins:{},learnedBasics:Object.fromEntries(heroIds.map(id=>[id,2])),skirmishHistory:[],interludesDone:[],rewardHistory:[],upgrades:[],loadouts:{},history:[],battle:null,lastReward:null,lastLearning:[],focusHero:'knibbs',...(gmAllHeroes?{gmAllHeroes:true}:{})};
  return settle(run);
 }
 export function unlockRunHeroes(run){run.gmAllHeroes=true;run.unlockedHeroes=[...heroIds];delete run.gmBattleParty;return run;}
@@ -104,7 +109,7 @@ export function advanceDialogue(run,skip=false){
  if(['before','skirmish'].includes(run.dialogue))run.phase='battle';else if(run.dialogue==='route')run.phase='camp';else if(run.dialogue==='ending')run.phase='complete';else if(run.dialogue==='event')run.phase='reward';else if(currentChapter(run).bossId==='final'){run.dialogue='ending';run.phase='dialogue';}else afterDialogue(run);
  return true;
 }
-export function consequenceNotes(run){const id=currentChapter(run).bossId,notes=[];if(id==='golem'){if(run.routes.crossing==='tide')notes.push('水闸排水：敌方初始韧性 −18');if(run.routes.crossing==='furnace')notes.push('隔热护具：全员初始护盾 +10');if(run.events.crossing==='triage')notes.push('急救接力：全员初始护盾 +18');if(run.events.crossing==='supply')notes.push('独立照明：敌方初始韧性 −24');if(run.events.crossing==='log')notes.push('传动标记：敌方首轮伤害 −20%');}if(id==='final'){if(run.routes.archive==='orrery')notes.push('时序校验：敌方初始屏障 −1');if(run.routes.archive==='arbiter')notes.push('撤销追击：敌方首轮伤害 −20%');if(run.events.archive==='rescue')notes.push('额外护具：全员初始护盾 +24');if(run.events.archive==='evidence')notes.push('许可撤回：敌方初始屏障 −1');if(run.events.archive==='repair')notes.push('独立接地：敌方初始韧性 −24');}return notes;}
+export function consequenceNotes(run){const id=currentChapter(run).bossId,notes=[];if(id==='golem'){if(run.routes.crossing==='tide')notes.push('水闸排水：敌方初始韧性 −18');if(run.routes.crossing==='furnace')notes.push('隔热护具：全员初始护盾 +10');if(run.events.crossing==='triage')notes.push('急救接力：全员初始护盾 +18');if(run.events.crossing==='supply')notes.push('独立照明：敌方初始韧性 −24');if(run.events.crossing==='log')notes.push('传动标记：敌方首轮力量、智力 −8，意志 −4');}if(id==='final'){if(run.routes.archive==='orrery')notes.push('时序校验：敌方初始屏障 −1');if(run.routes.archive==='arbiter')notes.push('撤销追击：敌方首轮力量、智力 −8，意志 −4');if(run.events.archive==='rescue')notes.push('额外护具：全员初始护盾 +24');if(run.events.archive==='evidence')notes.push('许可撤回：敌方初始屏障 −1');if(run.events.archive==='repair')notes.push('独立接地：敌方初始韧性 −24');}return notes;}
 export function battleForRun(run,previewHero){
  let partyIds=run.drill?[run.drill.heroId]:[...run.partyIds];if(previewHero&&!partyIds.includes(previewHero))partyIds=[previewHero,...partyIds.slice(0,-1)];
  const battle=createBattle(run.difficulty,run.drill?.bossId||run.skirmish?.bossId||currentChapter(run).bossId,{partyIds,upgrades:run.upgrades,loadouts:run.loadouts,skillAccess:skillAccessFor(run)});
@@ -141,7 +146,7 @@ export function claimReward(run,id){
  const offer=rewardOptions(run);
  if(run.phase!=='reward'||!naturalHeroes(run).includes(REWARDS[id]?.heroId)||!offer.some(r=>r.id===id))return {ok:false,error:'请从本次同行角色的奖励选项中选择一个。'};
  const reward=REWARDS[id];run.rewardHistory.push({bossId:currentChapter(run).bossId,id,gm:false,...(Array.isArray(run.rewardOfferIds)?{offerIds:offer.map(r=>r.id)}:{})});run.upgrades.push(id);refreshLoadouts(run);
- let replaced=null;if(reward.kind==='skill'){const slots=run.loadouts[reward.heroId];if(!slots.includes(reward.skillId)){const index=Math.min(4,slots.length);replaced=slots[index]||null;slots[index]=reward.skillId;}run.focusHero=reward.heroId;}
+ let replaced=null;if(reward.kind==='skill'){const slots=run.loadouts[reward.heroId];if(!slots.includes(reward.skillId)){const index=Math.min(SKILL_SLOTS-1,slots.length);replaced=slots[index]||null;slots[index]=reward.skillId;}run.focusHero=reward.heroId;}
  run.lastReward={id,replaced};moveOn(run);return {ok:true,reward};
 }
 export function chooseRoute(run,id){if(!routeOptions(run).some(o=>o.id===id))return {ok:false,error:'请选择这一处分岔开放的路线。'};run.routes[routeGroup(run)]=id;run.phase='dialogue';run.dialogue='route';run.line=0;return {ok:true};}
@@ -170,15 +175,19 @@ export function storyHistory(run){
 export function normalizeLearningRun(value){
  if(!isLearningRun(value)||!Object.hasOwn(DIFFICULTIES,value.difficulty)||!Number.isInteger(value.seed)||value.seed<0||value.seed>4294967295||!Number.isInteger(value.chapter)||value.chapter<0||value.chapter>10)return null;
  if(!['dialogue','battle','reward','camp','route','event','recruit','explore','complete'].includes(value.phase)||!['before','after','route','event','ending','skirmish'].includes(value.dialogue))return null;
- const migrated=value.version===5,run=copy(value);run.version=6;run.id=String(value.id||'restored');run.legacyRoute=false;
+ const migrated=value.version===5,learningMigrated=migrated||value.learningRevision!==4,run=copy(value);run.version=6;run.learningRevision=4;run.id=String(value.id||'restored');run.legacyRoute=false;
  for(const group of ['crossing','archive']){if(!run.routes||!run.events)return null;if(run.routes[group]!==null&&!ROUTE_CHOICES[group].options.some(o=>o.id===run.routes[group]))return null;if(run.events[group]!==null&&!CAMP_EVENTS[group].options.some(o=>o.id===run.events[group]))return null;}
  if(!Array.isArray(run.history)||!Array.isArray(run.recruits)||!run.practiceWins||typeof run.practiceWins!=='object'||Array.isArray(run.practiceWins))return null;
- if(migrated){
+ if(learningMigrated){
   run.learnedBasics=Object.fromEntries(heroIds.map(id=>{
-   const oldCount=2+oldTrainingCount(run,id),knownSkills=[...V5_LEARNING_ORDER[id].slice(0,oldCount),...(Array.isArray(run.loadouts?.[id])?run.loadouts[id]:[]),...(Array.isArray(run.battle?.skillAccess?.[id])?run.battle.skillAccess[id]:[])];
+   const oldCount=migrated?2+oldTrainingCount(run,id):run.learnedBasics?.[id],oldOrder=migrated?V5_LEARNING_ORDER:value.learningRevision===3?PRE_AMMO_LEARNING_ORDER:value.learningRevision===2?PRE_FREE_MANA_LEARNING_ORDER:PRE_LOOP_LEARNING_ORDER;
+   if(!Number.isInteger(oldCount)||oldCount<2||oldCount>5)return [id,NaN];
+   const knownSkills=[...oldOrder[id].slice(0,oldCount),...(Array.isArray(run.loadouts?.[id])?run.loadouts[id]:[]),...(Array.isArray(run.battle?.skillAccess?.[id])?run.battle.skillAccess[id]:[])];
    return [id,Math.min(5,Math.max(oldCount,...knownSkills.map(skill=>LEARNING_ORDER[id].indexOf(skill)+1)))];
   }));
-  run.skirmishHistory=[];run.interludesDone=[];
+  run.loadouts=migrateKnibbsPreset(migrateManaPresets(run.loadouts));
+  if(run.battle)run.battle.loadouts=migrateKnibbsPreset(migrateManaPresets(run.battle.loadouts));
+  if(migrated){run.skirmishHistory=[];run.interludesDone=[];}
   if(run.drill&&run.learnedBasics[run.drill.heroId]===5)run.drill.resumeLearned=true;
  }
  if(!run.learnedBasics||typeof run.learnedBasics!=='object'||Array.isArray(run.learnedBasics)||heroIds.some(id=>!Number.isInteger(run.learnedBasics[id])||run.learnedBasics[id]<2||run.learnedBasics[id]>5)||Object.keys(run.learnedBasics).some(id=>!known(id)))return null;
@@ -218,8 +227,8 @@ export function normalizeLearningRun(value){
  if(run.drill&&(run.phase!=='battle'||!run.unlockedHeroes.includes(run.drill.heroId)&&!run.gmBattleParty||!known(run.drill.heroId)||!isTutorial(run.drill.bossId)||trainingCount(run,run.drill.heroId)>=3&&!run.drill.resumeLearned))return null;
  const lines=runDialogue(run);run.line=Number.isInteger(run.line)?Math.max(0,Math.min(run.line,Math.max(0,lines.length-1))):0;if(run.phase==='dialogue'&&!lines.length)return null;
  if(run.phase==='battle'){
-  // v5 migration adds learning access without resetting HP, AP or resources.
-  if(migrated&&run.battle){run.battle.skillAccess=skillAccessFor(run);run.battle.loadouts=normalizeLoadouts(run.upgrades,run.battle.loadouts,run.battle.skillAccess);}
+  // Reordered lessons retain learned skills and in-flight HP, AP and resources.
+  if(learningMigrated&&run.battle){run.battle.skillAccess=skillAccessFor(run);run.battle.loadouts=normalizeLoadouts(run.upgrades,run.battle.loadouts,run.battle.skillAccess);}
   const battle=normalizeSave(run.battle),ids=run.drill?[run.drill.heroId]:run.partyIds,bossId=run.drill?.bossId||run.skirmish?.bossId||path[run.chapter];
   if(battle&&battle.boss.id===bossId&&battle.difficulty===run.difficulty&&battle.heroes.map(h=>h.id).join(',')===ids.join(',')&&JSON.stringify(battle.skillAccess)===JSON.stringify(skillAccessFor(run))&&battle.upgrades.join(',')===run.upgrades.join(','))run.battle=battle;
   else {run.phase='camp';run.battle=null;delete run.drill;run.dialogue=side?'skirmish':'before';settle(run);}

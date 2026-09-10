@@ -1,9 +1,10 @@
+import {SKILL_SLOTS} from './combat.js';
 // Delegated listeners survive the camp view being redrawn after a swap.
 export function createSkillDragController({enabled, onDrop, onStart=()=>{}}, root=document) {
   let source=null, pointer=null, ignoreClickUntil=0;
   const clear=()=>{root.querySelectorAll('.skill-dragging,.skill-drop-target').forEach(el=>el.classList.remove('skill-dragging','skill-drop-target'));source=null;pointer=null;};
   const slotAt=(x,y)=>root.elementFromPoint(x,y)?.closest('[data-drag-slot]');
-  const validSlot=slot=>source&&enabled()&&slot&&slot.dataset.dragOwner===source.owner&&Number(slot.dataset.dragSlot)>=0&&Number(slot.dataset.dragSlot)<5;
+  const validSlot=slot=>source&&enabled()&&slot&&slot.dataset.dragOwner===source.owner&&Number.isInteger(Number(slot.dataset.dragSlot))&&Number(slot.dataset.dragSlot)>=0&&Number(slot.dataset.dragSlot)<SKILL_SLOTS;
   const highlight=slot=>{root.querySelectorAll('.skill-drop-target').forEach(el=>el.classList.remove('skill-drop-target'));if(validSlot(slot))slot.classList.add('skill-drop-target');};
   // Pointer dragging works in embedded browsers as well as ordinary desktop tabs.
   root.addEventListener('pointerdown',event=>{
@@ -41,7 +42,7 @@ export function createSkillDragController({enabled, onDrop, onStart=()=>{}}, roo
   });
   root.addEventListener('dragover',event=>{
     const slot=event.target.closest('[data-drag-slot]');
-    if(!source||!enabled()||!slot||slot.dataset.dragOwner!==source.owner)return;
+    if(!validSlot(slot))return;
     event.preventDefault();event.dataTransfer.dropEffect='move';
     root.querySelectorAll('.skill-drop-target').forEach(el=>{if(el!==slot)el.classList.remove('skill-drop-target');});
     slot.classList.add('skill-drop-target');
@@ -50,7 +51,7 @@ export function createSkillDragController({enabled, onDrop, onStart=()=>{}}, roo
     const slot=event.target.closest('[data-drag-slot]'),item=source;
     if(!item||!enabled()||!slot||slot.dataset.dragOwner!==item.owner){clear();return;}
     event.preventDefault();const index=Number(slot.dataset.dragSlot);clear();ignoreClickUntil=Date.now()+250;
-    if(Number.isInteger(index)&&index>=0&&index<5)onDrop({...item,slot:index});
+    if(Number.isInteger(index)&&index>=0&&index<SKILL_SLOTS)onDrop({...item,slot:index});
   });
   root.addEventListener('dragend',()=>{ignoreClickUntil=Date.now()+250;clear();});
   root.addEventListener('click',event=>{if(Date.now()<ignoreClickUntil){event.preventDefault();event.stopImmediatePropagation();}},true);

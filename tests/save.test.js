@@ -20,10 +20,10 @@ test('save: valid in-progress state resumes with identical subsequent skill and 
 });
 
 test('save: exposed core retains hit counts, freshness and complete-turn deadline',()=>{
-  const value=createBattle();value.boss.hp=1;useSkill(value,'knibbs','shot');useSkill(value,'apeilia','purify');endRound(value);
+  const value=createBattle('standard','golem',{loadouts:{knibbs:['shot','focus','scatter','breathe']}});value.boss.hp=1;useSkill(value,'knibbs','shot');useSkill(value,'apeilia','purify');endRound(value);
   const restored=normalizeSave(clone(value));assert.ok(restored);assert.equal(restored.boss.coreMagic,2);assert.equal(restored.boss.coreTurns,2);assert.equal(restored.boss.coreFresh,false);
   assert.deepEqual(endRound(restored),endRound(value));assert.equal(restored.boss.coreTurns,1);
-  useSkill(restored,'knibbs','scatter');useSkill(restored,'ric','bind');assert.equal(restored.mode,'victory');
+  useSkill(restored,'knibbs','scatter');useSkill(restored,'knibbs','shot');useSkill(restored,'ric','bind');assert.equal(restored.mode,'victory');
 });
 
 test('save: timed-out reformed boss and a selected fallen teammate are valid',()=>{
@@ -34,7 +34,7 @@ test('save: timed-out reformed boss and a selected fallen teammate are valid',()
 
 test('save: invalid top-level shapes, unsupported version, finished modes and unknown difficulty fail closed',()=>{
   for(const value of [null,undefined,[],{},'bad',7])assert.equal(normalizeSave(value),null);
-  invalid(s=>s.version=11);invalid(s=>s.mode='victory');invalid(s=>s.mode='defeat');invalid(s=>s.difficulty='missing');invalid(s=>s.difficulty='toString');invalid(s=>s.difficulty=['standard']);
+  invalid(s=>s.version=12);invalid(s=>s.mode='victory');invalid(s=>s.mode='defeat');invalid(s=>s.difficulty='missing');invalid(s=>s.difficulty='toString');invalid(s=>s.difficulty=['standard']);
 });
 
 test('save: invalid hero membership, selected IDs or incomplete hero records are rejected',()=>{
@@ -44,7 +44,7 @@ test('save: invalid hero membership, selected IDs or incomplete hero records are
 test('save: current hero definitions replace untrusted metadata while preserving the chosen party order',()=>{
   const value=createBattle();value.heroes.reverse();for(const hero of value.heroes){hero.name='<bad>';hero.color='red;display:none';hero.maxHp=9999;hero.maxResource=9999;hero.role='outdated';hero.extra='discard';}
   const restored=normalizeSave(value);assert.ok(restored);assert.deepEqual(restored.heroes.map(h=>h.id),value.heroes.map(h=>h.id));
-  for(const hero of restored.heroes){const canonical=HEROES.find(h=>h.id===hero.id);for(const key of Object.keys(canonical))assert.equal(hero[key],canonical[key]);}
+  for(const hero of restored.heroes){const canonical=HEROES.find(h=>h.id===hero.id);for(const key of Object.keys(canonical))assert.deepEqual(hero[key],canonical[key]);}
   assert.equal(restored.heroes[0].extra,undefined);
 });
 
@@ -75,13 +75,13 @@ test('save: normalization is pure and returns independent arrays and nested obje
 });
 
 test('save: every snapshot from a complete normal API battle remains resumable until victory',()=>{
-  let state=createBattle('story');
+  let state=createBattle('story','golem',{loadouts:{knibbs:['shot','focus','scatter','breathe']}});
   for(let step=0;step<200&&state.mode==='playing';step++){
     const restored=normalizeSave(clone(state));assert.ok(restored,`snapshot ${step}`);state=restored;
     if(state.boss.core){
-      if(state.boss.corePhysical<3&&useSkill(state,'knibbs','scatter').ok)continue;
+      if(state.boss.corePhysical<3){const h=heroOf(state,'knibbs'),skill=h.ammo==='scatter'||h.resource<6?'shot':'scatter';if(useSkill(state,'knibbs',skill).ok)continue;}
       if(state.boss.coreMagic<3&&useSkill(state,'apeilia','purify').ok)continue;
-      if(state.boss.coreMagic<3&&useSkill(state,'ric','rune').ok)continue;
+      if(state.boss.coreMagic<3&&useSkill(state,'ric','bind').ok)continue;
     }else{
       if(state.boss.charging&&useSkill(state,'ric','bind').ok)continue;
       if(!state.boss.marked&&useSkill(state,'knibbs','focus').ok)continue;
@@ -111,7 +111,7 @@ function legacyV1() {
 test('save v2: a real v1 shape migrates to golem with new passives and no prepared response',()=>{
   const old=legacyV1(),before=clone(old),restored=normalizeSave(old);
   assert.ok(restored);assert.deepEqual(old,before);
-  assert.equal(restored.version,10);assert.equal(restored.boss.id,'golem');
+  assert.equal(restored.version,11);assert.equal(restored.boss.id,'golem');
   assert.equal(restored.response,null);assert.equal(restored.boss.hp,900);
   assert.equal(heroOf(restored,'knibbs').intuition,0);
   assert.equal(heroOf(restored,'apeilia').lastKind,null);
@@ -156,7 +156,7 @@ test('save v3: a captured v2 duelist response migrates without losing resources 
   value.heroes.forEach(hero=>Object.assign(hero,{intuition:0,lastKind:null,balanceBursts:0}));
   value.heroes[0].intuition=2;value.heroes[1].resource=4;value.heroes[1].lastKind='magic';
   Object.assign(value.boss,{id:'duelist',hp:1080,maxHp:1080,intent:'rend',phasePending:false,mirror:2,spores:0,controlImmune:0});
-  const restored=normalizeSave(value);assert.ok(restored);assert.equal(restored.version,10);
+  const restored=normalizeSave(value);assert.ok(restored);assert.equal(restored.version,11);
   assert.equal(restored.response,null);assert.equal(restored.ap,6);assert.deepEqual(restored.upgrades,[]);
   assert.equal(heroOf(restored,'knibbs').intuition,2);assert.equal(heroOf(restored,'apeilia').lastKind,'magic');
   assert.equal(endRound(restored).ok,true);assert.ok(normalizeSave(restored));

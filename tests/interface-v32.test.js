@@ -30,18 +30,18 @@ function allRecruitedCamp(){
   return run;
 }
 
-test('interface 3.2: all seven heroes render exactly five usable command slots and Q/W/E/R/T',()=>{
+test('interface 3.2: all seven heroes render exactly four usable command slots and Q/W/E/R',()=>{
   assert.equal(HEROES.length,7);
   for(const hero of HEROES){
     const state=createBattle('standard','warden',{partyIds:partyFor(hero.id)}),before=structuredClone(state);
     const html=renderBattle(state),cards=skillButtons(html,hero.id);
-    clean(html);assert.equal(cards.length,5,hero.id);
-    assert.equal(buttons(html).filter(b=>b.attrs.includes('data-skill="')).length,15);
+    clean(html);assert.equal(cards.length,4,hero.id);
+    assert.equal(buttons(html).filter(b=>b.attrs.includes('data-skill="')).length,12);
     const skills=activeSkills(state,hero.id);
     for(const [index,card]of cards.entries()){
       const skill=skills[index],preview=skillPreview(state,hero.id,skill.id);
       assert.ok(card.attrs.includes(`data-skill="${skill.id}"`));
-      assert.ok(card.body.includes(`<kbd>${'QWERT'[index]}</kbd>`));
+      assert.ok(card.body.includes(`<kbd>${'QWER'[index]}</kbd>`));
       assert.ok(card.body.includes(resolvedSkill(state,hero.id,skill.id).name));
       assert.ok(card.body.includes(`aria-label="本次削韧 ${preview.coverFire?preview.counterStagger:preview.stagger||0}"`));
     }
@@ -49,21 +49,21 @@ test('interface 3.2: all seven heroes render exactly five usable command slots a
   }
 });
 
-test('interface 3.2: the camp renders all seven recruits and exactly five loadout slots per hero',()=>{
+test('interface 3.2: the camp renders all seven recruits and exactly four loadout slots per hero',()=>{
   const run=allRecruitedCamp();assert.equal(run.unlockedHeroes.length,7);
   for(const hero of HEROES){
     run.focusHero=hero.id;
-    const before=structuredClone(run),html=campaignView(run,{skillSlot:4});clean(html);
+    const before=structuredClone(run),html=campaignView(run,{skillSlot:3});clean(html);
     assert.equal(buttons(html).filter(b=>b.attrs.includes('data-view-hero="')).length,7);
     const slots=buttons(html).filter(b=>b.attrs.includes('data-loadout-slot="'));
-    assert.equal(slots.length,5,hero.id);
+    assert.equal(slots.length,4,hero.id);
     for(const [index,slot]of slots.entries()){
       assert.ok(slot.attrs.includes(`data-loadout-slot="${index}"`));
       assert.ok(slot.attrs.includes(`data-owner="${hero.id}"`));
       assert.ok(slot.attrs.includes(`data-detail="${run.loadouts[hero.id][index]}"`));
-      assert.ok(slot.body.includes(`<kbd>${'QWERT'[index]}</kbd>`));
+      assert.ok(slot.body.includes(`<kbd>${'QWER'[index]}</kbd>`));
     }
-    assert.match(text(html),/7 \/ 7/);assert.match(text(html),/已携带 5 项 · 最多 5 项/);
+    assert.match(text(html),/7 \/ 7/);assert.match(text(html),/已携带 4 项 · 最多 4 项/);
     assert.deepEqual(run,before);
   }
 });
@@ -79,15 +79,15 @@ test('interface 3.2: new portrait identifiers and accessible names agree across 
   assert.match(portrait('youmu_inner'),/class="portrait youmu_inner"[^>]*aria-label="游墓"/);
 });
 
-test('interface 3.2: captain activation changes all five visible skills, tooltip details and the portrait, then restores them',()=>{
-  const state=createBattle('standard','warden',{partyIds:['youmu','patch','ric']}),youmu=heroOf(state,'youmu');
+test('interface 3.2: captain activation changes all four visible skills, tooltip details and the portrait, then restores them',()=>{
+  const state=createBattle('standard','warden',{partyIds:['youmu','patch','ric'],loadouts:{youmu:['scalpel','surgery','firstaid','bloodoath']}}),youmu=heroOf(state,'youmu');
   const doctorNames=activeSkills(state,'youmu').map(s=>resolvedSkill(state,'youmu',s.id).name);
   assert.ok(renderBattle(state).includes(portrait('youmu')));
   youmu.hp=60;assert.equal(useSkill(state,'youmu','bloodoath').ok,true);
   assert.equal(youmu.youmuForm,'captain');
   const before=structuredClone(state),html=renderBattle(state),cards=skillButtons(html,'youmu');
   clean(html);assert.ok(html.includes(portrait('youmu_inner')));assert.ok(!html.includes(portrait('youmu')));
-  const captainNames=['铁血弯刀','船长威严','枪弹盛宴','沉渊炼狱号','死海整帆'];
+  const captainNames=['铁血弯刀','船长威严','枪弹盛宴','沉渊炼狱号'];
   for(const [index,card]of cards.entries()){
     const id=activeSkills(state,'youmu')[index].id,tooltip=tooltipView(state,'skill','youmu',id);
     assert.ok(card.body.includes(captainNames[index]));assert.ok(!card.body.includes(doctorNames[index]));
@@ -112,7 +112,7 @@ test('interface 3.2: Patch collection enhancement has the same visible name and 
   assert.match(text(html),/收录/);clean(html);
 });
 
-test('each reward screen states its actual choice count and a new skill occupies slot five',()=>{
+test('each reward screen states its actual choice count and a new skill occupies slot four',()=>{
   const run=createRun('standard',{legacyRoute:true});
   for(let chapter=0;chapter<5;chapter++){
     reachReward(run);
@@ -124,10 +124,10 @@ test('each reward screen states its actual choice count and a new skill occupies
     const reward=options.find(r=>r.kind==='skill')||options[0];assert.ok(reward);
     assert.equal(claimReward(run,reward.id).ok,true);
     if(reward.kind==='skill'){
-      assert.equal(run.loadouts[reward.heroId][4],reward.skillId);
-      const camp=campaignView(run),slot=buttons(camp).find(b=>b.attrs.includes('data-loadout-slot="4"'));
+      assert.equal(run.loadouts[reward.heroId][3],reward.skillId);
+      const camp=campaignView(run),slot=buttons(camp).find(b=>b.attrs.includes('data-loadout-slot="3"'));
       assert.ok(slot.attrs.includes(`data-detail="${reward.skillId}"`));
-      assert.match(text(camp),/已装入第 5 位/);
+      assert.match(text(camp),/已装入第 4 位/);
     }
   }
 });

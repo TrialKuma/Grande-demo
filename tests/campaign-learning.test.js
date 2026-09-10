@@ -21,7 +21,7 @@ test('new expedition starts with one hero, two usable skills and 3 AP; profile u
  const run=createRun('standard',{seed:37});restore(run);
  assert.equal(run.version,6);assert.deepEqual(run.partyIds,['knibbs']);assert.deepEqual(run.unlockedHeroes,['knibbs']);
  const b=battleForRun(run);assert.equal(b.boss.id,'scout');assert.equal(b.ap,3);
- assert.deepEqual(activeSkills(b,'knibbs').map(s=>s.id),['shot','breathe']);assert.match(canUse(b,'knibbs','focus'),/尚未|学习/);
+ assert.deepEqual(activeSkills(b,'knibbs').map(s=>s.id),['shot','focus']);assert.match(canUse(b,'knibbs','breathe'),/尚未|学习/);
  assert.deepEqual(normalizeProfile(null).unlockedHeroes,['knibbs']);
  assert.equal(unlockAllBosses(null).unlockedBosses.length,10);
 });
@@ -63,7 +63,7 @@ test('party grows from one to two to three; skill learning follows participation
  assert.equal(run.phase,'camp');assert.deepEqual(run.history,history);assert.equal(trainingCount(run,'apeilia'),1);assert.equal(skillAccessFor(run).apeilia.length,3);assert.equal(run.upgrades.length,0);
  enter(run);win(run);finishDialogue(run);assert.equal(run.phase,'camp');enter(run);win(run);finishDialogue(run);recruit(run,'ric');
  assert.equal(run.partyIds.length,3);assert.equal(battleForRun(run).ap,6);assert.equal(skillAccessFor(run).ric.length,4);assert.equal(skillAccessFor(run).apeilia.length,5);
- assert.equal(startPractice(run,'apeilia').ok,false);assert.equal(skillAccessFor(run).knibbs.length,5);
+ assert.equal(startPractice(run,'apeilia').ok,false);assert.equal(skillAccessFor(run).knibbs.length,7);
 });
 
 test('GM off preserves earned learning but does not keep unchosen companions in party',()=>{
@@ -73,8 +73,8 @@ test('GM off preserves earned learning but does not keep unchosen companions in 
  const forged=structuredClone(run);forged.partyIds[1]='patch';assert.equal(normalizeRun(forged),null);
 });
 
-test('all seven learning orders contain exactly their five base skills; old saves retain route and clamp dialogue cursor',()=>{
- for(const [id,skills]of Object.entries(LEARNING_ORDER)){assert.equal(skills.length,5);assert.equal(new Set(skills).size,5);}
+test('all seven learning orders contain unique base skills including Knibbs ammo choices; old saves retain route and clamp dialogue cursor',()=>{
+ for(const [id,skills]of Object.entries(LEARNING_ORDER)){const count=id==='knibbs'?7:5;assert.equal(skills.length,count);assert.equal(new Set(skills).size,count);}
  const run=createRun('standard',{skipTutorial:true});run.line=22;const restored=normalizeRun(run);assert.ok(restored);assert.equal(restored.version,4);assert.equal(currentChapter(restored).bossId,'duelist');assert.ok(restored.line<=9);
 });
 

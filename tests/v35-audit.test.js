@@ -26,17 +26,17 @@ test('v3.5 final audit: self-blood payment preserves shield batches and presenta
   const view=playView(before,s,r.events);assert.equal(heroOf(view,'youmu').hp,h.hp);assert.equal(heroOf(view,'youmu').shield,h.shield);assert.ok(normalizeSave(s));
 });
 
-test('v3.5 final audit: expiry plus fresh harmony has the same final shield value in playback and saved combat',()=>{
+test('v3.5 final audit: shield expiry with passive domain returning to zero matches playback and saved combat',()=>{
   const s=createBattle('standard','duelist'),ric=heroOf(s,'ric');for(const h of s.heroes){grantShield(h,14);h.shieldLayers[0].turns=1;}
   ric.resource=-2;s.boss.broken=true;s.boss.stagger=0;
   const before=structuredClone(s),r=endRound(s),view=playView(before,s,r.events);
-  for(const h of s.heroes){assert.equal(h.shield,10);assert.equal(heroOf(view,h.id).shield,10);assert.deepEqual(h.shieldLayers,[{amount:10,turns:2}]);}
+  for(const h of s.heroes){assert.equal(h.shield,0);assert.equal(heroOf(view,h.id).shield,0);assert.deepEqual(h.shieldLayers,[]);}
   assert.ok(normalizeSave(s));
 });
 
 test('v3.5 final audit: forced control and posture break cannot bank two cancelled enemy turns in either order',()=>{
   for(const order of ['control-first','break-first']){
-    const s=createBattle('standard','warden',{partyIds:['qianxing','knibbs','apeilia'],upgrades:['qianxing_lock']}),h=heroOf(s,'qianxing');s.loadouts.qianxing=['spike','beam','armor','repair','lock'];h.secondary=3;s.boss.stagger=1;
+    const s=createBattle('standard','warden',{partyIds:['qianxing','knibbs','apeilia'],upgrades:['qianxing_lock']}),h=heroOf(s,'qianxing');s.loadouts.qianxing=['spike','beam','armor','lock'];h.secondary=3;s.boss.stagger=1;
     if(order==='control-first'){act(s,'qianxing','lock');act(s,'knibbs','shot');}else{act(s,'knibbs','shot');act(s,'qianxing','lock');}
     assert.equal(s.boss.broken,true);assert.equal(s.boss.hardControl,0);assert.ok(normalizeSave(s));const hp=s.heroes.map(h=>h.hp);
     endRound(s);assert.deepEqual(s.heroes.map(h=>h.hp),hp);assert.equal(s.boss.controlImmune,1);assert.equal(s.boss.exposed,false);

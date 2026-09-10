@@ -2,6 +2,9 @@ import {HEROES,SKILLS,SKILL_SLOTS,SOLO_RULES,DIFFICULTIES,BOSSES,BOSS_INTENTS,RE
 import {migrateRoster} from './legacy-roster.js';
 import {grantShield} from './shields.js';
 import {ACTION_POINT_RULES,baseActionPoints} from './action-points.js';
+import {ATTRIBUTE_NAMES,baseAttributes} from './attributes.js';
+import {migrateManaPresets} from './mana-cycles.js';
+import {KNIBBS_AMMO,knibbsPassiveDefaults,migrateKnibbsPreset} from './knibbs-passive.js';
 
 const HERO_IDS = new Set(HEROES.map(hero => hero.id));
 const LOG_TONES = new Set(['normal','system','good','warning','bad']);
@@ -12,7 +15,7 @@ const finite = (value,min,max) => Number.isFinite(value) && value >= min && valu
 const boolean = value => typeof value === 'boolean';
 
 /** Restore only validated combat data; current definitions own names and visual metadata. */
-function normalizeLegacySave(value) {
+function normalizeLegacySave(value,sourceVersion=value?.version) {
   if (!object(value) || ![1,2,3,4,5,6,7,8,9].includes(value.version) || value.mode !== 'playing' || typeof value.difficulty !== 'string' || !Object.hasOwn(DIFFICULTIES,value.difficulty)) return null;
   const legacy=value.version===1,expansion=value.version>=3,oldBalance=value.version<4;
   if(value.version>=6&&!['solo','party'].includes(value.challengeMode))return null;
@@ -50,13 +53,23 @@ function normalizeLegacySave(value) {
     if(!object(value.loadouts)||Object.keys(value.loadouts).length!==roster.length)return null;
     for(const h of roster){
       const ids=value.loadouts[h.id];
-      const slots=value.version<5?4:SKILL_SLOTS;
-      if(!Array.isArray(ids)||(value.version<9?ids.length!==slots:ids.length>slots)||new Set(ids).size!==ids.length||ids.some(id=>!isSkillUnlocked(upgrades,h.id,id)||Array.isArray(skillAccess?.[h.id])&&!skillAccess[h.id].includes(id)))return null;
-      loadouts[h.id]=[...ids];
+      const legacySlots=value.version<5?4:5;
+      if(!Array.isArray(ids)||(value.version<9?![SKILL_SLOTS,legacySlots].includes(ids.length):ids.length>legacySlots)||new Set(ids).size!==ids.length||ids.some(id=>!isSkillUnlocked(upgrades,h.id,id)||Array.isArray(skillAccess?.[h.id])&&!skillAccess[h.id].includes(id)))return null;
+      // Old five-slot saves keep their chosen order. The removed fifth command
+      // remains in learned access / rewards and can be equipped again at camp.
+      loadouts[h.id]=ids.slice(0,SKILL_SLOTS);
     }
     const normalized=normalizeLoadouts(upgrades,loadouts,skillAccess);
     if(value.version>=9&&Object.keys(loadouts).some(id=>JSON.stringify(loadouts[id])!==JSON.stringify(normalized[id])))return null;
     loadouts=normalized;
+  }
+  if(value.manaRevision!==1){
+    loadouts=migrateManaPresets(loadouts);
+    if(skillAccess)for(const [id,slots]of Object.entries(loadouts))if(Array.isArray(skillAccess[id]))skillAccess[id]=[...new Set([...skillAccess[id],...slots])];
+  }
+  if(value.knibbsRevision!==1){
+    loadouts=migrateKnibbsPreset(loadouts);
+    if(skillAccess&&Array.isArray(skillAccess.knibbs)&&loadouts.knibbs?.includes('loadburst'))skillAccess.knibbs=[...new Set([...skillAccess.knibbs,'loadburst'])];
   }
   const state = createBattle(value.difficulty,bossId,{mode:solo?'solo':'party',partyIds,upgrades,loadouts,skillAccess,singleEnemy:true});
   for (const hero of state.heroes) {
@@ -74,6 +87,16 @@ function normalizeLegacySave(value) {
     Object.assign(hero,{hp:saved.hp,resource:saved.resource,shield:saved.shield,resonance:saved.resonance,guard:saved.guard,used:[...saved.used],cooldowns});
     if(value.version>=9){if(!integer(saved.protection,0,55))return null;hero.protection=saved.protection;}
     else{hero.protection=saved.guard?55:0;hero.guard=false;}
+    if(!integer(saved.ricChaos??0,0,1)||hero.id!=='ric'&&saved.ricChaos)return null;
+    hero.ricChaos=saved.ricChaos??0;
+    if(hero.id==='ric'&&value.ricRevision!==1){hero.guard=false;hero.protection=0;}
+    if(hero.id==='knibbs'){
+      if(value.knibbsRevision===1){
+        if(!Object.hasOwn(KNIBBS_AMMO,saved.ammo)||!boolean(saved.followupReady)||!boolean(saved.specialSpent)||!Array.isArray(saved.followupUsed)||new Set(saved.followupUsed).size!==saved.followupUsed.length||saved.followupUsed.some(id=>!['load','shot','reload'].includes(id)))return null;
+        if(saved.ammo!=='normal'&&saved.specialSpent||!saved.followupReady&&saved.followupUsed.some(id=>id!=='reload'))return null;
+        Object.assign(hero,{ammo:saved.ammo,followupReady:saved.followupReady,specialSpent:saved.specialSpent,followupUsed:[...saved.followupUsed]});
+      }else Object.assign(hero,knibbsPassiveDefaults());
+    }
     if(value.version>=7){
       if(!Array.isArray(saved.shieldLayers)||saved.shieldLayers.length>60||saved.shieldLayers.some(x=>!object(x)||!integer(x.amount,1,60)||!integer(x.turns,1,2))||saved.shieldLayers.reduce((n,x)=>n+x.amount,0)!==saved.shield)return null;
       hero.shieldLayers=saved.shieldLayers.map(x=>({amount:x.amount,turns:x.turns}));
@@ -114,6 +137,13 @@ function normalizeLegacySave(value) {
   }
   if (!state.heroes.some(hero => hero.hp > 0)) return null;
 
+  // The teaching enemies now survive a complete resource loop. Carry already
+  // inflicted damage into the larger health pool instead of restarting a save.
+  if(sourceVersion<=10&&BOSSES[bossId].isTutorial&&object(value.boss)){
+    const scale=({scout:[1,1,1],bulwark:[.4,.85,1],conduit:[.18,.65,1]})[bossId][partySize-1];
+    const oldMax=Math.round(900*({scout:.15,bulwark:.3,conduit:.52})[bossId]*scale*(solo?SOLO_RULES.bossHp:1));
+    if(value.boss.maxHp===oldMax&&value.boss.maxHp!==state.boss.maxHp&&integer(value.boss.hp,0,oldMax))value={...value,boss:{...value.boss,maxHp:state.boss.maxHp,hp:value.boss.hp===0?0:Math.max(1,state.boss.maxHp-(oldMax-value.boss.hp))}};
+  }
   const boss = value.boss;
   if(value.version>=5&&!integer(boss?.weakened,0,1))return null;
   if (!object(boss) || boss.maxHp !== state.boss.maxHp || boss.maxStagger !== (oldBalance?100:state.boss.maxStagger)) return null;
@@ -201,10 +231,36 @@ function normalizeLegacySave(value) {
   return state;
 }
 
-/** Version 10 validates each unit through the same battle rules and then rebuilds
+function restoreAttributeState(saved,unit,required){
+  const keys=Object.keys(ATTRIBUTE_NAMES);
+  if(saved.attributes!==undefined){
+    if(!object(saved.attributes)||Object.keys(saved.attributes).length!==keys.length||keys.some(key=>!integer(saved.attributes[key],0,100)))return false;
+  }else if(required)return false;
+  unit.attributes=baseAttributes(unit.id,unit.youmuForm);
+  const buffs=saved.attributeBuffs??[];
+  if(required&&!Array.isArray(saved.attributeBuffs)||!Array.isArray(buffs)||buffs.length>32||new Set(buffs.map(b=>b?.id)).size!==buffs.length)return false;
+  for(const buff of buffs){
+    if(!object(buff)||typeof buff.id!=='string'||!buff.id.length||buff.id.length>80||typeof buff.label!=='string'||!buff.label.length||buff.label.length>100||!object(buff.stats)||!Object.keys(buff.stats).length||Object.keys(buff.stats).some(key=>!keys.includes(key)||!finite(buff.stats[key],-30,30))||!integer(buff.turns,1,3)||buff.charges!==undefined&&buff.charges!==1||buff.tone!==undefined&&!['good','warning'].includes(buff.tone)||buff.cleansable!==undefined&&!boolean(buff.cleansable))return false;
+  }
+  unit.attributeBuffs=buffs.map(buff=>({id:buff.id,label:buff.label,stats:{...buff.stats},turns:buff.turns,...(buff.charges!==undefined?{charges:buff.charges}:{}),...(buff.tone!==undefined?{tone:buff.tone}:{}),...(buff.cleansable!==undefined?{cleansable:buff.cleansable}:{})}));
+  if(required&&!Object.hasOwn(saved,'control'))return false;
+  const control=saved.control??null;
+  if(control!==null&&(!object(control)||!['stun','silence'].includes(control.type)||control.turns!==1||typeof control.source!=='string'||!control.source.length||control.source.length>100||typeof control.label!=='string'||!control.label.length||control.label.length>100||!boolean(control.fresh)))return false;
+  unit.control=control?{type:control.type,turns:1,source:control.source,label:control.label,fresh:control.fresh}:null;
+  if(required&&!Object.hasOwn(saved,'controlGuard')||!integer(saved.controlGuard??0,0,1))return false;
+  unit.controlGuard=saved.controlGuard??0;
+  return true;
+}
+
+/** Versions 10–11 validate each unit through the same battle rules and rebuild
  * the primary alias. Serialized duplicate boss objects can never disagree. */
 export function normalizeSave(value){
-  if(value?.version!==10)return normalizeLegacySave(value);
+  if(value?.manaRevision!==undefined&&value.manaRevision!==1)return null;
+  if(value?.knibbsRevision!==undefined&&value.knibbsRevision!==1)return null;
+  if(value?.ricRevision!==undefined&&value.ricRevision!==1)return null;
+  if(![10,11].includes(value?.version))return normalizeLegacySave(value);
+  const attributeRules=value.version===11;
+  if(attributeRules&&!integer(value.rngState,0,4294967295))return null;
   if(!object(value)||!Array.isArray(value.heroes)||value.heroes.some(h=>!object(h))||!Array.isArray(value.enemies)||value.enemies.length<1||value.enemies.length>8)return null;
   if(value.enemies.some((e,i)=>!object(e)||e.unitId!==(i===0?'boss':'enemy-'+i))||JSON.stringify(value.boss)!==JSON.stringify(value.enemies[0]))return null;
   if(value.enemies.filter(e=>e.defeated===false).length>3)return null;
@@ -226,17 +282,20 @@ export function normalizeSave(value){
     const intents=['zero_end','quake',...(BOSS_INTENTS[enemy.id]||[])];
     if(enemy.recordedIntent!==null&&(!object(enemy.recordedIntent)||enemy.recordedIntent.actor!=='patch'||!partyIds.includes('patch')||!intents.includes(enemy.recordedIntent.intent)))return null;
     const copy={...value,version:9,boss:{...enemy,hp:enemy.defeated?1:enemy.hp}};
-    const checked=normalizeLegacySave(copy);if(!checked)return null;
+    const checked=normalizeLegacySave(copy,value.version);if(!checked)return null;
     if(!restored)restored=checked;
     const clean=checked.boss;
     for(const key of ['unitId','modelId','role','defeated','guardianFor','supportCharge','summons','confusion','cover','recordedIntent'])clean[key]=structuredClone(enemy[key]);
-    clean.hp=enemy.hp;units.push(clean);
+    if(!restoreAttributeState(enemy,clean,attributeRules))return null;
+    if(enemy.defeated)clean.hp=0;units.push(clean);
   }
   for(const hero of restored.heroes){const saved=value.heroes.find(h=>h.id===hero.id);
+    if(!restoreAttributeState(saved,hero,attributeRules))return null;
     if(!integer(saved.evasion,0,1)||!integer(saved.fieldCare,0,35)||!boolean(saved.executionRefund))return null;
     if(saved.evasion&&hero.id!=='apeilia'||saved.fieldCare&&hero.id!=='youmu')return null;
     hero.evasion=saved.evasion;hero.fieldCare=saved.fieldCare;hero.executionRefund=saved.executionRefund;
   }
   restored.enemies=units;restored.boss=units[0];restored.selectedEnemyId=value.selectedEnemyId;
+  if(integer(value.rngState,0,4294967295))restored.rngState=value.rngState;
   return restored;
 }

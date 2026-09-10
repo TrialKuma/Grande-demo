@@ -245,7 +245,7 @@
 .ending-outcomes .primary-outcome{border-color:#dbc38988;background:#76623822}
 .ending-outcomes strong{font-size:14px;color:#d7e2e9}.ending-outcomes span{font-size:12px;color:#a4becd}
 .ending-outcomes>p{font-size:13px;line-height:1.8;color:#a9bccb;margin:8px 0 0}
-.loadout-slots{grid-template-columns:repeat(5,minmax(0,1fr))}
+.loadout-slots{grid-template-columns:repeat(4,minmax(0,1fr))}
 .story-progress{bottom:18px}.dialogue-stage{bottom:170px}
 @media(max-width:1000px){.journey-route{gap:6px}.route-node strong{font-size:11px}.branch-choice-grid{gap:18px}.event-choice-grid{gap:14px}.event-choice-card{padding:19px}.story-progress{left:4%;right:4%}.dialogue-stage{left:4%;right:4%;bottom:165px}}
 @media(max-width:700px){

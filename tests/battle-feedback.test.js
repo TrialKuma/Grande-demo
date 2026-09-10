@@ -3,14 +3,16 @@ import assert from 'node:assert/strict';
 import {createBattle,heroOf,useSkill,endRound,prepareResponse} from '../src/combat.js';
 import {damagingEvent,hpLossFor,hitDamageFor,impactTiming,attackTheme,materialFor,createFeedbackState,applyFeedbackImpact} from '../src/battle-feedback.js';
 import {battleView} from '../src/interface.js';
+import {addAttributeEffect} from '../src/attributes.js';
 
 test('feedback: each hit reports real HP loss, including overkill and changing enemy layers',()=>{
-  const s=createBattle('standard','duelist');s.boss.hp=12;
-  const event=useSkill(s,'knibbs','scatter').events.find(e=>e.type==='attack');
-  assert.equal(event.skillId,'scatter');assert.equal(event.bossId,'duelist');
-  assert.deepEqual(event.hitAmounts.boss,[7,5,0,0,0,0]);
-  assert.equal(hpLossFor(event,'boss'),12);
-  assert.equal(Array.from({length:6},(_,i)=>hitDamageFor(event,'boss',i)).reduce((a,b)=>a+b),12);
+  const s=createBattle('standard','duelist',{loadouts:{knibbs:['shot','focus','scatter','cover']}});useSkill(s,'knibbs','scatter');heroOf(s,'knibbs').intuition=0;s.boss.hp=3;
+  addAttributeEffect(s.boss,{id:'impact-fixture',label:'防护',stats:{agility:30},turns:1});
+  const event=useSkill(s,'knibbs','shot').events.find(e=>e.type==='attack');
+  assert.equal(event.skillId,'shot');assert.equal(event.bossId,'duelist');
+  assert.deepEqual(event.hitAmounts.boss,[1,1,1,0,0,0]);
+  assert.equal(hpLossFor(event,'boss'),3);
+  assert.equal(Array.from({length:6},(_,i)=>hitDamageFor(event,'boss',i)).reduce((a,b)=>a+b),3);
   const caster=createBattle('standard','duelist'),before=caster.boss.hp;
   const magic=useSkill(caster,'apeilia','purify').events.find(e=>e.type==='attack');
   assert.equal(magic.hitAmounts.boss.reduce((a,b)=>a+b),before-caster.boss.hp);
@@ -18,7 +20,7 @@ test('feedback: each hit reports real HP loss, including overkill and changing e
 
 test('feedback: full shield absorption produces zero injuries, partial absorption reports only lost life',()=>{
   for(const shield of [60,10]){
-    const s=createBattle('standard','duelist'),h=heroOf(s,'knibbs');useSkill(s,'knibbs','cover');h.shield=shield;
+    const s=createBattle('standard','duelist'),h=heroOf(s,'knibbs');useSkill(s,'knibbs','loadburst');useSkill(s,'knibbs','cover');h.shield=shield;
     const before=h.hp;
     const events=endRound(s).events.filter(e=>e.type==='boss'&&e.amounts);
     assert.ok(events.length>0);assert.ok(events.some(e=>e.absorbedAmounts.knibbs>0));
@@ -29,8 +31,8 @@ test('feedback: full shield absorption produces zero injuries, partial absorptio
 });
 
 test('feedback: registering core hits, healing and shield grants never become HP injuries',()=>{
-  const s=createBattle('standard','golem');s.boss.core=true;s.boss.hp=0;
-  const e=useSkill(s,'knibbs','scatter').events.find(e=>e.type==='attack');
+  const s=createBattle('standard','golem',{loadouts:{knibbs:['shot','focus','scatter','cover']}});useSkill(s,'knibbs','scatter');s.boss.core=true;s.boss.hp=0;
+  const e=useSkill(s,'knibbs','shot').events.find(e=>e.type==='attack');
   assert.equal(e.amount,0);assert.equal(hpLossFor(e,'boss'),0);assert.ok(e.hitAmounts.boss.every(n=>n===0));
   for(const type of ['heal','shield','buff','phase','break']){
     const harmless={type,amount:99,amounts:{knibbs:99},hpLosses:{knibbs:99}};
@@ -79,10 +81,10 @@ const hud=view=>battleView(view,true,'','00:00',null);
 
 test('feedback: the last shell hit reaches zero on the health bar before core or finale appears',()=>{
   for(const bossId of ['golem','final']){
-    const state=createBattle('standard',bossId);state.boss.hp=10;
-    const before=structuredClone(state),result=useSkill(state,'knibbs','scatter'),resolved=structuredClone(state);
+    const state=createBattle('standard',bossId,{loadouts:{knibbs:['shot','focus','scatter','cover']}});useSkill(state,'knibbs','scatter');state.boss.hp=1;
+    const before=structuredClone(state),result=useSkill(state,'knibbs','shot'),resolved=structuredClone(state);
     const view=createFeedbackState(before,state),attack=result.events.find(e=>e.type==='attack'),phase=result.events.find(e=>['phase','core'].includes(e.type));
-    assert.ok(phase);assert.equal(view.boss.hp,10);assert.equal(view.boss.core,false);assert.equal(view.boss.finale,false);
+    assert.ok(phase);assert.equal(view.boss.hp,1);assert.equal(view.boss.core,false);assert.equal(view.boss.finale,false);
     assert.match(hud(view),/class="foe-health"/);
     replay(view,attack);
     assert.equal(view.boss.hp,0);assert.match(hud(view),/class="foe-health"><i style="width:0%"/);

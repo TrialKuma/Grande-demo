@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createBattle, HEROES, SKILLS, DIFFICULTIES, heroOf, canUse, useSkill, usePotion, guard, endRound, intentInfo, activeSkills} from '../src/combat.js';
+import {effectiveAttributes} from '../src/attributes.js';
+import {createBattle as createCombatBattle, HEROES, SKILLS, DIFFICULTIES, heroOf, canUse, useSkill, usePotion, guard, endRound, intentInfo, activeSkills} from '../src/combat.js';
 import {runPolicy} from '../scripts/pressure-probe.mjs';
+// Offensive four-command fixtures keep core-hit and resource tests independent
+// of the expedition's defensive starter selection. No command changes midfight.
+const createBattle=(difficulty='standard',bossId='golem',options={})=>createCombatBattle(difficulty,bossId,{...options,loadouts:{knibbs:['shot','focus','scatter','breathe'],apeilia:['blade','purify','eden','sentinel'],ric:['rune','bind','shelter','mend'],...options.loadouts}});
 
 function snapshot(state) { return structuredClone(state); }
 function valid(state) {
@@ -33,7 +37,7 @@ function freshCore(difficulty='standard') { const state=createBattle(difficulty)
 test('new battle: all difficulties have valid bounded state and unknown difficulty falls back',()=>{
   for (const [difficulty,config] of Object.entries(DIFFICULTIES)) {const s=createBattle(difficulty);valid(s);assert.equal(s.boss.hp,config.hp);assert.equal(s.ap,6);}
   assert.equal(createBattle('unknown').difficulty,'standard');
-  assert.equal(HEROES.length,7);const original=createBattle();assert.equal(original.heroes.length,3);for(const h of original.heroes)assert.equal(activeSkills(original,h.id).length,5);
+  assert.equal(HEROES.length,7);const original=createBattle();assert.equal(original.heroes.length,3);for(const h of original.heroes)assert.equal(activeSkills(original,h.id).length,4);
 });
 
 test('invalid skill requests do not spend AP, resources, turns, or stats',()=>{
@@ -41,7 +45,7 @@ test('invalid skill requests do not spend AP, resources, turns, or stats',()=>{
   rejected(s,()=>useSkill(s,'constructor','shot'));rejected(s,()=>useSkill(s,'toString','shot'));
   heroOf(s,'knibbs').hp=0;rejected(s,()=>useSkill(s,'knibbs','shot'));
   s=createBattle();s.ap=0;rejected(s,()=>useSkill(s,'knibbs','shot'));
-  s=createBattle();heroOf(s,'knibbs').resource=3;rejected(s,()=>useSkill(s,'knibbs','focus'));
+  s=createBattle();heroOf(s,'knibbs').resource=1;rejected(s,()=>useSkill(s,'knibbs','focus'));
   s=createBattle();heroOf(s,'apeilia').resource=3;rejected(s,()=>useSkill(s,'apeilia','eden'));
   s=createBattle();heroOf(s,'ric').resource=10;rejected(s,()=>useSkill(s,'ric','rune'));
   heroOf(s,'ric').resource=-10;rejected(s,()=>useSkill(s,'ric','bind'));
@@ -52,23 +56,23 @@ test('invalid skill requests do not spend AP, resources, turns, or stats',()=>{
 test('resources gain and spend correctly, with caps and once-per-round restoration',()=>{
   const s=createBattle();heroOf(s,'knibbs').hp-=20;
   act(s,'knibbs','breathe');assert.equal(heroOf(s,'knibbs').resource,10);assert.equal(heroOf(s,'knibbs').hp,166);
-  act(s,'knibbs','focus');assert.equal(heroOf(s,'knibbs').resource,6);
-  act(s,'knibbs','scatter');assert.equal(heroOf(s,'knibbs').resource,0);
-  next(s);assert.equal(heroOf(s,'knibbs').resource,2);assert.equal(canUse(s,'knibbs','breathe'),'');
+  act(s,'knibbs','focus');assert.equal(heroOf(s,'knibbs').resource,8);
+  act(s,'knibbs','scatter');assert.equal(heroOf(s,'knibbs').resource,3); // The confirmed quick load refunds one after paying six.
+  next(s);assert.equal(heroOf(s,'knibbs').resource,5);assert.equal(canUse(s,'knibbs','breathe'),'');
 });
 
 test('Apeilia repeated blades gain reduced combo and multi-hit skills spend it once',()=>{
-  const s=createBattle();act(s,'apeilia','blade');act(s,'apeilia','blade');assert.equal(heroOf(s,'apeilia').resource,3);
+  const s=createBattle('standard','golem',{loadouts:{apeilia:['blade','purify','eden','reboot']}});act(s,'apeilia','blade');act(s,'apeilia','blade');assert.equal(heroOf(s,'apeilia').resource,3);
   rejected(s,()=>useSkill(s,'apeilia','eden'));act(s,'apeilia','blade');assert.equal(heroOf(s,'apeilia').resource,4);
   rejected(s,()=>useSkill(s,'apeilia','eden'));act(s,'apeilia','reboot');assert.equal(heroOf(s,'apeilia').resource,6);
   const result=act(s,'apeilia','eden');assert.equal(heroOf(s,'apeilia').resource,0);assert.equal(result.events.find(e=>e.type==='attack').hits,4);
-  rejected(s,()=>useSkill(s,'apeilia','sentinel'));
-  next(s);heroOf(s,'apeilia').resource=9;act(s,'apeilia','purify');assert.equal(heroOf(s,'apeilia').resource,10);act(s,'apeilia','sentinel');assert.equal(heroOf(s,'apeilia').resource,4);
+  rejected(s,()=>useSkill(s,'apeilia','eden'));
+  const magic=createBattle();heroOf(magic,'apeilia').resource=9;act(magic,'apeilia','purify');assert.equal(heroOf(magic,'apeilia').resource,10);act(magic,'apeilia','sentinel');assert.equal(heroOf(magic,'apeilia').resource,4);
 });
 
 test('Ric can reach either balance boundary but cannot overshoot it',()=>{
-  const s=createBattle();act(s,'ric','rune');act(s,'ric','shelter');act(s,'ric','shelter');assert.equal(heroOf(s,'ric').resource,10);
-  rejected(s,()=>useSkill(s,'ric','rune'));act(s,'ric','crossing');assert.equal(heroOf(s,'ric').resource,-10);
+  const s=createBattle('standard','golem',{loadouts:{ric:['rune','shelter','mend','crossing']}});act(s,'ric','rune');act(s,'ric','shelter');act(s,'ric','shelter');assert.equal(heroOf(s,'ric').resource,10);
+  rejected(s,()=>useSkill(s,'ric','rune'));rejected(s,()=>useSkill(s,'ric','crossing'));heroOf(s,'ric').resource=-10;
   next(s);assert.equal(heroOf(s,'ric').resource,-8);rejected(s,()=>useSkill(s,'ric','mend'));
 });
 
@@ -79,19 +83,19 @@ test('bind cooldown blocks exactly two subsequent player rounds',()=>{
 });
 
 test('magic resistance, piercing and mark affect damage without overflow',()=>{
-  let s=createBattle();assert.equal(act(s,'apeilia','purify').events.find(e=>e.type==='attack').amount,44);
-  s=createBattle();heroOf(s,'apeilia').resource=6;assert.equal(act(s,'apeilia','sentinel').events.find(e=>e.type==='attack').amount,62);
-  s=createBattle();act(s,'knibbs','focus');assert.equal(act(s,'knibbs','shot').events.find(e=>e.type==='attack').amount,31);
+  let s=createBattle();assert.equal(act(s,'apeilia','purify').events.find(e=>e.type==='attack').amount,2*(18-4)); // Rock shell grants 4 INT defense.
+  s=createBattle();heroOf(s,'apeilia').resource=6;assert.equal(act(s,'apeilia','sentinel').events.find(e=>e.type==='attack').amount,50); // Piercing ignores shell defense.
+  s=createBattle();act(s,'knibbs','scatter');act(s,'knibbs','shot');assert.equal(s.boss.marked,true);assert.equal(act(s,'knibbs','focus').events.find(e=>e.type==='attack').amount,56+12); // Mark strengthens confirmation, not the whole party.
 });
 
 test('each physical or magic hit counts separately and counters cap at three',()=>{
-  const s=freshCore();next(s);act(s,'knibbs','scatter');assert.equal(s.boss.corePhysical,3);assert.equal(s.boss.coreMagic,0);assert.equal(s.mode,'playing');
+  const s=freshCore();next(s);act(s,'knibbs','scatter');act(s,'knibbs','shot');assert.equal(s.boss.corePhysical,3);assert.equal(s.boss.coreMagic,0);assert.equal(s.mode,'playing');
   act(s,'apeilia','purify');assert.equal(s.boss.coreMagic,2);assert.equal(s.boss.fog,3);
   const result=act(s,'ric','bind');assert.equal(s.boss.defeated,true);assert.equal(s.mode,'victory');assert.ok(result.events.some(e=>e.type==='victory'));
 });
 
 test('a lethal multi-hit skill has no automatic core hits from overflow',()=>{
-  const s=createBattle();s.boss.hp=1;const result=act(s,'knibbs','scatter');
+  const s=createBattle();act(s,'knibbs','scatter');s.boss.hp=1;const result=act(s,'knibbs','shot');
   assert.equal(s.boss.hp,0);assert.equal(s.stats.damage,1);assert.equal(s.boss.core,true);assert.equal(s.boss.corePhysical,0);assert.equal(s.boss.coreMagic,0);assert.equal(s.mode,'playing');
   assert.equal(result.events.find(e=>e.type==='attack').amount,1);assert.ok(result.events.some(e=>e.type==='core'));
 });
@@ -106,7 +110,7 @@ test('core gets the exposure remainder plus two complete player rounds',()=>{
 test('a reformed boss can expose a clean fresh core and still be defeated',()=>{
   const s=freshCore();act(s,'apeilia','purify');next(s);next(s);next(s);assert.equal(s.boss.reforms,1);
   s.boss.hp=1;act(s,'knibbs','shot');assert.equal(s.boss.coreMagic,0);assert.equal(s.boss.corePhysical,0);assert.equal(s.boss.coreTurns,2);assert.equal(s.boss.coreFresh,true);
-  next(s);act(s,'knibbs','scatter');act(s,'apeilia','purify');act(s,'ric','bind');assert.equal(s.mode,'victory');
+  next(s);act(s,'knibbs','scatter');act(s,'knibbs','shot');act(s,'apeilia','purify');act(s,'ric','bind');assert.equal(s.mode,'victory');
 });
 
 test('direct bind interrupt wins over pending ground rupture and cancels boss actions',()=>{
@@ -128,9 +132,9 @@ test('crossing a phase on the last AP announces rupture for the next complete pl
   const second=next(s);assert.ok(second.events.some(e=>e.label==='地裂'));
 });
 
-test('guard reduces damage before shields absorb it, and expires next round',()=>{
-  const s=createBattle();s.boss.intentTarget='ric';act(s,'ric','shelter');assert.equal(heroOf(s,'ric').shield,30);assert.equal(heroOf(s,'ric').protection,55);rejected(s,()=>guard(s,'ric'));
-  next(s);assert.equal(heroOf(s,'ric').hp,152);assert.equal(heroOf(s,'ric').shield,0);assert.equal(heroOf(s,'ric').guard,false);
+test('passive field defense reduces damage before shields absorb it',()=>{
+  const s=createBattle();s.boss.intentTarget='ric';act(s,'ric','shelter');assert.equal(heroOf(s,'ric').shield,30);assert.equal(heroOf(s,'ric').protection,0);rejected(s,()=>guard(s,'ric'));
+  next(s);assert.equal(heroOf(s,'ric').hp,160-(85-4-30));assert.equal(heroOf(s,'ric').shield,0);assert.equal(heroOf(s,'ric').guard,false); // Passive +4 AGI applies before the 30-point shield.
 });
 
 test('shelter caps shields at sixty and cleanses living party members',()=>{
@@ -140,7 +144,7 @@ test('shelter caps shields at sixty and cleanses living party members',()=>{
 
 test('negative domain weakens the enemy and exposes it without duplicating the doctor healing role',()=>{
   const s=createBattle();heroOf(s,'knibbs').hp=70;heroOf(s,'apeilia').hp=0;heroOf(s,'ric').hp=100;s.heroes.forEach(h=>h.resonance=3);
-  act(s,'ric','mend');assert.equal(heroOf(s,'knibbs').hp,70);assert.equal(heroOf(s,'ric').hp,100);assert.equal(heroOf(s,'apeilia').hp,0);assert.equal(heroOf(s,'knibbs').resonance,2);assert.equal(s.boss.weakened,1);assert.equal(s.boss.vulnerable,2);assert.equal(s.stats.healed,0);
+  act(s,'ric','mend');assert.equal(heroOf(s,'knibbs').hp,70);assert.equal(heroOf(s,'ric').hp,100);assert.equal(heroOf(s,'apeilia').hp,0);assert.equal(heroOf(s,'knibbs').resonance,2);assert.equal(s.boss.weakened,0);assert.equal(s.boss.vulnerable,0);assert.equal(effectiveAttributes(s.boss,s).strength,-3);assert.equal(s.stats.healed,0);
 });
 
 test('potions revive fallen heroes, clear resonance and spend one AP and one supply',()=>{
@@ -167,20 +171,20 @@ test('crossing another HP phase while broken cannot re-arm ground rupture next r
 });
 
 test('healing events expose exact per-target HP gains including capped overheal',()=>{
-  const s=createBattle();heroOf(s,'knibbs').hp=70;heroOf(s,'apeilia').hp=140;heroOf(s,'ric').hp=100;
-  heroOf(s,'ric').resource=2;const result=act(s,'ric','crossing'),event=result.events.find(e=>e.type==='heal');
-  assert.deepEqual(event.amounts,{knibbs:8,apeilia:5,ric:8});assert.equal(Object.values(event.amounts).reduce((a,b)=>a+b,0),s.stats.healed);
+  const s=createBattle('standard','golem',{upgrades:['ric_equilibrium'],loadouts:{ric:['rune','shelter','mend','equilibrium']}});heroOf(s,'knibbs').hp=70;heroOf(s,'apeilia').hp=140;heroOf(s,'ric').hp=100;
+  heroOf(s,'ric').resource=2;const result=act(s,'ric','equilibrium'),event=result.events.find(e=>e.type==='heal');
+  assert.deepEqual(event.amounts,{knibbs:16,apeilia:5,ric:16});assert.equal(Object.values(event.amounts).reduce((a,b)=>a+b,0),s.stats.healed);
   next(s);heroOf(s,'knibbs').hp=168;const self=act(s,'knibbs','breathe').events.find(e=>e.type==='heal');assert.deepEqual(self.amounts,{knibbs:2});
 });
 
 test('damage events expose exact per-target losses after guard, shields and lethal HP cap',()=>{
-  const s=createBattle();s.boss.charging=true;heroOf(s,'knibbs').shield=60;act(s,'apeilia','reboot');heroOf(s,'ric').hp=4;
-  const before=s.heroes.map(h=>h.hp);const event=next(s).events.find(e=>e.label==='地裂');assert.deepEqual(event.amounts,{knibbs:10,apeilia:0,ric:4});
+  const s=createBattle('standard','golem',{loadouts:{apeilia:['blade','purify','eden','reboot']}});s.boss.charging=true;heroOf(s,'knibbs').shield=60;act(s,'apeilia','reboot');heroOf(s,'ric').hp=4;
+  const before=s.heroes.map(h=>h.hp);const event=next(s).events.find(e=>e.label==='地裂');assert.deepEqual(event.amounts,{knibbs:70-60,apeilia:0,ric:4}); // Shield, one-hit evasion and lethal HP cap resolve independently.
   s.heroes.forEach((h,i)=>assert.equal(event.amounts[h.id],before[i]-h.hp));assert.equal(heroOf(s,'ric').hp,0);valid(s);
 });
 
 test('JSON save round-trip preserves resources, cooldowns, guard and subsequent deterministic actions',()=>{
-  const s=createBattle('challenge');act(s,'ric','bind');act(s,'apeilia','blade');act(s,'knibbs','cover');
+  const s=createBattle('challenge','golem',{loadouts:{knibbs:['shot','focus','loadburst','cover']}});act(s,'ric','bind');act(s,'apeilia','blade');act(s,'knibbs','loadburst');act(s,'knibbs','cover');
   const resumed=JSON.parse(JSON.stringify(s));assert.deepEqual(resumed,s);assert.deepEqual(endRound(resumed),endRound(s));assert.deepEqual(resumed,s);
   assert.deepEqual(useSkill(resumed,'knibbs','focus'),useSkill(s,'knibbs','focus'));assert.deepEqual(resumed,s);valid(resumed);
   const core=freshCore();act(core,'apeilia','purify');next(core);const resumedCore=JSON.parse(JSON.stringify(core));
@@ -193,7 +197,7 @@ test('party defeat stops boss follow-up actions and all future controls',()=>{
 });
 
 test('victory stops all future actions without consuming remaining resources',()=>{
-  const s=freshCore();next(s);act(s,'knibbs','scatter');act(s,'apeilia','purify');act(s,'ric','bind');assert.equal(s.mode,'victory');
+  const s=freshCore();next(s);act(s,'knibbs','scatter');act(s,'knibbs','shot');act(s,'apeilia','purify');act(s,'ric','bind');assert.equal(s.mode,'victory');
   rejected(s,()=>useSkill(s,'knibbs','shot'));rejected(s,()=>endRound(s));rejected(s,()=>usePotion(s,'knibbs'));rejected(s,()=>guard(s,'knibbs'));
 });
 
@@ -202,7 +206,10 @@ test('intent priority is core, broken, charging, then the ordinary action',()=>{
 });
 
 function playStrategy(difficulty, aggressive=true) {
-  const result=runPolicy('golem',aggressive?'tactical':'pass-only',difficulty,{includeState:true,onState:valid});
+  // Precommit to a physical multi-hit carrier for the core. Loading is a real
+  // action in the search; the policy never grants ammunition or changes slots.
+  const loadouts={knibbs:['shot','focus','scatter','breathe'],apeilia:['blade','purify','eden','reboot'],ric:['rune','bind','shelter','mend']};
+  const result=runPolicy('golem',aggressive?'tactical':'pass-only',difficulty,{includeState:true,onState:valid,loadouts,searchWidth:12});
   assert.notEqual(result.state.mode,'playing',`strategy stalled ${difficulty}: ${result.actions.join(', ')}`);
   return {state:result.state,history:result.actions};
 }

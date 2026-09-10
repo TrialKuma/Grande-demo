@@ -10,24 +10,24 @@ const render=state=>battleView(state,false,'','00:00',null);
 const plain=html=>html.replace(/<[^>]*>/g,' ');
 
 test('3.7 UI: learning battles show only the actual learned commands and matching party layout',()=>{
- const state=createBattle('standard','scout',{partyIds:['knibbs'],skillAccess:{knibbs:['shot','breathe']}}),before=structuredClone(state),html=render(state);
+ const state=createBattle('standard','scout',{partyIds:['knibbs'],skillAccess:{knibbs:['shot','focus']}}),before=structuredClone(state),html=render(state);
  assert.equal((html.match(/data-skill=/g)||[]).length,2);
  assert.match(html,/--skill-count:2/);assert.match(html,/--party-size:1/);assert.match(html,/is-small-party/);
- assert.match(html,/基础 3/);assert.ok(html.includes(LESSONS.scout.text));
- assert.doesNotMatch(html,/data-response=|data-action="guard"|data-skill="focus"/);
+ assert.match(tooltipView(state,'action-points','knibbs'),/基础 3 点/);assert.ok(html.includes(LESSONS.scout.text));
+ assert.doesNotMatch(html,/data-response=|data-action="guard"|data-skill="breathe"/);
  assert.deepEqual(state,before);
  const pair=createBattle('standard','bulwark',{partyIds:['knibbs','haart'],skillAccess:{knibbs:['shot','breathe','cover'],haart:['page','soothe']}});
  const pairHtml=render(pair);assert.equal((pairHtml.match(/data-skill=/g)||[]).length,5);
- assert.match(pairHtml,/--skill-count:3/);assert.match(pairHtml,/--party-size:2/);assert.match(pairHtml,/基础 4/);
+ assert.match(pairHtml,/--skill-count:3/);assert.match(pairHtml,/--party-size:2/);assert.match(tooltipView(pair,'action-points','knibbs'),/基础 4 点/);
 });
 
 test('3.9 UI: gunner cover reports a prepared counter instead of a team shield',()=>{
- const state=createBattle('standard','duelist'),knibbs=heroOf(state,'knibbs');
+ const state=createBattle('standard','duelist'),knibbs=heroOf(state,'knibbs');knibbs.intuition=3;
  assert.equal(useSkill(state,'knibbs','cover').ok,true);
  assert.equal(knibbs.shield,0);assert.equal(knibbs.protection,0);
  assert.match(statusBadges(state,knibbs),/data-detail="cover"/);
  const tip=plain(tooltipView(state,'status','knibbs','cover'));
- assert.match(tip,/行动前先射击/);assert.match(tip,/伤害降低 50%/);
+ assert.match(tip,/行动前射击/);assert.match(tip,/力量与智力各降低 18/);
  assert.doesNotMatch(plain(tooltipView(state,'skill','knibbs','cover')),/所有存活队员.*伤害降低 30%/);
  state.boss.broken=true;endRound(state);
  assert.doesNotMatch(statusBadges(state,knibbs),/data-detail="cover"/);assert.equal(knibbs.shield,0);
@@ -35,7 +35,7 @@ test('3.9 UI: gunner cover reports a prepared counter instead of a team shield',
 
 test('3.7 UI: the finale requires a real character defense cast rather than a retired response field',()=>{
  const state=createBattle('standard','final');Object.assign(state.boss,{finale:true,hp:0,finalePhysical:1,finaleMagic:1});
- state.response={id:'parry',actor:'knibbs'};
+ state.response={id:'parry',actor:'knibbs'};heroOf(state,'knibbs').intuition=3;
  assert.match(render(state),/角色防护 <b>待施放/);
  assert.equal(useSkill(state,'knibbs','cover').ok,true);
  assert.match(render(state),/角色防护 <b>✓/);

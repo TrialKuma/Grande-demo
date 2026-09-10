@@ -10,13 +10,13 @@ const allRewards=Object.keys(REWARDS);
 function setup(id,boss='golem',extra={}){
   return createBattle('standard',boss,{partyIds:[id,...['knibbs','apeilia'].filter(x=>x!==id)].slice(0,3),...extra});
 }
-function equip(s,id,skillId){s.loadouts[id]=[skillId,...MANA_SKILLS[id].filter(x=>!x.unlockKey&&x.id!==skillId).map(x=>x.id)].slice(0,5);}
+function equip(s,id,skillId){s.loadouts[id]=[skillId,...MANA_SKILLS[id].filter(x=>!x.unlockKey&&x.id!==skillId).map(x=>x.id)].slice(0,4);}
 
 test('mana integration: every hero starts with canonical conversion and reclaim skills; only actual spending triggers the passive',()=>{
   for(const id of manaIds){
-    const s=setup(id),h=heroOf(s,id);assert.equal(h.secondary,0);assert.equal(h.resource,10);assert.equal(activeSkills(s,id).length,5);assert.equal(h.secondaryName,HEROES.find(x=>x.id===id).secondaryName);
-    const producer={haart:'page',qianxing:'spike',patch:'keyblade'}[id],raw=MANA_SKILLS[id].find(x=>x.id===producer),p=skillPreview(s,id,producer);assert.equal(p.refund,0);assert.equal(p.secondaryAfter,1);assert.equal(p.resourceAfter,10-raw.cost);
-    assert.ok(useSkill(s,id,producer).ok);assert.equal(h.resource,10-raw.cost);assert.equal(h.secondary,1);
+    const s=setup(id),h=heroOf(s,id);assert.equal(h.secondary,0);assert.equal(h.resource,10);assert.equal(activeSkills(s,id).length,4);assert.equal(h.secondaryName,HEROES.find(x=>x.id===id).secondaryName);
+    const producer={haart:'rest',qianxing:'repair',patch:'bookward'}[id],raw=MANA_SKILLS[id].find(x=>x.id===producer),p=skillPreview(s,id,producer);assert.equal(p.refund,0);assert.equal(p.secondaryAfter,raw.secondaryGain);assert.equal(p.resourceAfter,10-raw.cost);
+    assert.ok(useSkill(s,id,producer).ok);assert.equal(h.resource,10-raw.cost);assert.equal(h.secondary,raw.secondaryGain);
     const secondary=h.secondary,mana=h.resource;endRound(s);assert.equal(h.resource,mana);assert.equal(h.secondary,secondary);
   }
 });
@@ -40,19 +40,21 @@ test('mana integration: dynamic preview agrees with actual payment and direct da
 
 test('mana integration: failed overflow or insufficient-secondary casts preserve all state',()=>{
   for(const id of manaIds){
-    const s=setup(id),h=heroOf(s,id),producer={haart:'page',qianxing:'spike',patch:'keyblade'}[id];h.secondary=MANA_HERO_OVERRIDES[id].maxSecondary;h.records=id==='patch'?h.secondary:0;
+    const s=setup(id),h=heroOf(s,id),producer={haart:'rest',qianxing:'repair',patch:'bookward'}[id];h.secondary=MANA_HERO_OVERRIDES[id].maxSecondary;h.records=id==='patch'?h.secondary:0;
     let before=structuredClone(s),r=useSkill(s,id,producer);assert.equal(r.ok,false);assert.match(r.error,/放不下/);assert.deepEqual(s,before);
-    h.secondary=0;h.records=0;const consumer={haart:'relay',qianxing:'pulse',patch:'chargedslash'}[id];before=structuredClone(s);r=useSkill(s,id,consumer);assert.equal(r.ok,false);assert.match(r.error,/不足/);assert.deepEqual(s,before);
+    h.secondary=0;h.records=0;const consumer={haart:'relay',qianxing:'armor',patch:'chargedslash'}[id];before=structuredClone(s);r=useSkill(s,id,consumer);assert.equal(r.ok,false);assert.match(r.error,/不足/);assert.deepEqual(s,before);
   }
 });
 
-test('mana integration: emergency and low-stock reclamation do not retain the original attack, shield, heal or cooldown',()=>{
-  for(const [id,producer,consumer] of [['haart','page','intercept'],['qianxing','spike','lock'],['patch','bookward','injunction']]){
+test('mana integration: emergency converters remain powerless while low-stock control skills stay unavailable',()=>{
+  for(const [id,producer,consumer] of [['haart','rest','intercept'],['qianxing','repair','lock'],['patch','bookward','injunction']]){
     const s=setup(id,'golem',{upgrades:allRewards}),h=heroOf(s,id);h.resource=0;h.secondary=0;h.records=0;h.hp-=20;equip(s,id,consumer);
     if(!s.loadouts[id].includes(producer))s.loadouts[id][1]=producer;
+    const basic={haart:'page',qianxing:'spike',patch:'keyblade'}[id];if(!s.loadouts[id].includes(basic))s.loadouts[id][2]=basic;
     const initialHp=h.hp,initialBossHp=s.boss.hp;let p=skillPreview(s,id,producer);assert.equal(p.damage,0);assert.equal(p.heal,0);assert.equal(p.shield,0);
     assert.ok(useSkill(s,id,producer).ok);assert.equal(h.resource,0);assert.equal(h.secondary,1);assert.equal(h.hp,initialHp);assert.equal(h.shield,0);assert.equal(h.attackBuff,0);
-    p=skillPreview(s,id,consumer);assert.equal(p.ap,1);assert.equal(p.damage,0);const expected=manaRefundFor(h,1);assert.ok(useSkill(s,id,consumer).ok);assert.equal(h.resource,expected);assert.equal(h.secondary,0);assert.equal(s.boss.hp,initialBossHp);assert.equal(s.boss.hardControl,0);assert.equal(s.boss.weakened,0);assert.ok(!h.cooldowns[consumer]);
+    assert.equal(p.ap,2);const beforeFailed=structuredClone(s),rejected=useSkill(s,id,consumer);assert.equal(rejected.ok,false);assert.match(rejected.error,/不足/);assert.deepEqual(s,beforeFailed);assert.equal(s.boss.hp,initialBossHp);
+    p=skillPreview(s,id,basic);const expected=manaRefundFor(h,1);assert.ok(useSkill(s,id,basic).ok);assert.equal(h.resource,expected);assert.equal(h.secondary,0);assert.ok(s.boss.hp<initialBossHp);assert.equal(s.boss.hardControl,0);assert.equal(s.boss.weakened,0);assert.ok(!h.cooldowns[consumer]);
   }
 });
 
@@ -64,7 +66,7 @@ test('mana integration: disabled generic evade never bypasses the secondary-reso
 });
 
 test('mana integration: Haart grants an individual next-attack buff that survives utility and is consumed once',()=>{
-  const s=setup('haart','golem',{upgrades:['haart_network']}),h=heroOf(s,'haart');equip(s,'haart','network');h.secondary=4;h.resource=1;
+  const s=setup('haart','golem',{upgrades:['haart_network'],loadouts:{knibbs:['shot','focus','breathe','cover']}}),h=heroOf(s,'haart');equip(s,'haart','network');h.secondary=4;h.resource=1;
   assert.ok(useSkill(s,'haart','network').ok);assert.equal(h.resource,6);for(const ally of s.heroes)assert.equal(ally.attackBuff,60);
   const before=skillPreview(s,'knibbs','shot').damage;assert.ok(useSkill(s,'knibbs','breathe').ok);assert.equal(heroOf(s,'knibbs').attackBuff,60);assert.equal(skillPreview(s,'knibbs','shot').damage,before);
   assert.ok(useSkill(s,'knibbs','shot').ok);assert.equal(heroOf(s,'knibbs').attackBuff,0);assert.equal(heroOf(s,'apeilia').attackBuff,60);assert.equal(h.attackBuff,60);
@@ -93,9 +95,9 @@ test('mana integration: core and finale ignore hard control and strip effects bu
 
 test('mana integration: v8 save retains mana, secondary stock and stance after both conversion and reclamation',()=>{
   for(const id of manaIds){
-    const s=setup(id),producer={haart:'page',qianxing:'spike',patch:'bookward'}[id];assert.ok(useSkill(s,id,producer).ok);
+    const s=setup(id),producer={haart:'rest',qianxing:'repair',patch:'bookward'}[id];assert.ok(useSkill(s,id,producer).ok);
     const restored=normalizeSave(structuredClone(s));assert.ok(restored,id);assert.equal(heroOf(restored,id).resource,heroOf(s,id).resource);assert.equal(heroOf(restored,id).secondary,heroOf(s,id).secondary);
-    const consumer={haart:'soothe',qianxing:'pulse',patch:'chargedslash'}[id],expected=skillPreview(restored,id,consumer);assert.ok(useSkill(restored,id,consumer).ok);const again=normalizeSave(structuredClone(restored));assert.ok(again,id);
+    const consumer={haart:'soothe',qianxing:'armor',patch:'chargedslash'}[id],expected=skillPreview(restored,id,consumer);assert.ok(useSkill(restored,id,consumer).ok);const again=normalizeSave(structuredClone(restored));assert.ok(again,id);
     assert.equal(heroOf(again,id).resource,expected.resourceAfter);assert.equal(heroOf(again,id).secondary,expected.secondaryAfter);if(id==='patch')assert.equal(heroOf(again,id).patchForm,'record');
   }
 });

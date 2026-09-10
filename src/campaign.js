@@ -5,6 +5,8 @@ import {CHAPTERS,CHAPTER_BY_BOSS,ROUTE_CHOICES,CAMP_EVENTS,ENDINGS} from './stor
 import {migrateRoster} from './legacy-roster.js';
 import {RECRUIT_AFTER,earnedCompanions} from './roster-unlocks.js';
 import {grantShield} from './shields.js';
+import {migrateManaPresets} from './mana-cycles.js';
+import {migrateKnibbsPreset} from './knibbs-passive.js';
 import * as learning from './campaign-learning.js';
 export {recruitOptions,chooseCompanion,startPractice,skillAccessFor,trainingCount,isLearningRun,formalLearning,interludeFor,interactInterlude,advanceInterlude,finishInterlude,updateInterludePosition} from './campaign-learning.js';
 
@@ -25,6 +27,10 @@ const EXTRA_POOLS={
  arbiter:['patch_precision','patch_archive','qianxing_reinforce','haart_triage','ric_grace','knibbs_expose','knibbs_steadyhands','apeilia_brace','youmu_aftercare','patch_injunction']
 };
 const poolFor=id=>EXTRA_POOLS[id]||REWARD_POOLS[MAIN_PATH.indexOf(id)]||[];
+function restoredRunLoadouts(value){
+ const loadouts=value.manaRevision===1?value.loadouts:migrateManaPresets(value.loadouts);
+ return normalizeLoadouts(value.upgrades,value.knibbsRevision===1?loadouts:migrateKnibbsPreset(loadouts));
+}
 const naturalAtReward=(run,index)=>earnedCompanions({history:run.history.slice(0,index+1)});
 const gmRewardKeysFor=run=>(run.upgrades||[]).filter((id,index)=>!naturalAtReward(run,index).includes(REWARDS[id]?.heroId)&&(run.gmAllHeroes===true||Array.isArray(run.gmRewardKeys)&&run.gmRewardKeys.includes(id)));
 const rewardRecruitAllowed=(run,id,index)=>naturalAtReward(run,index).includes(REWARDS[id]?.heroId)||run.gmAllHeroes===true||Array.isArray(run.gmRewardKeys)&&run.gmRewardKeys.includes(id);
@@ -52,7 +58,7 @@ export function endingForRun(run){if(learning.isLearningRun(run))return learning
 export function createRun(difficulty='standard',{legacyRoute=false,gmAllHeroes=false,skipTutorial=false,seed}={}){
   if(!legacyRoute&&!skipTutorial)return learning.createLearningRun(difficulty,{gmAllHeroes,seed});
   if(typeof difficulty!=='string'||!Object.hasOwn(DIFFICULTIES,difficulty))difficulty='standard';
-  const run={version:4,id:String(Date.now()),difficulty,chapter:0,phase:'dialogue',dialogue:'before',line:0,legacyRoute:!!legacyRoute,routes:{crossing:null,archive:null},events:{crossing:null,archive:null},partyIds:[...ORIGINAL_PARTY],
+  const run={version:4,manaRevision:1,knibbsRevision:1,id:String(Date.now()),difficulty,chapter:0,phase:'dialogue',dialogue:'before',line:0,legacyRoute:!!legacyRoute,routes:{crossing:null,archive:null},events:{crossing:null,archive:null},partyIds:[...ORIGINAL_PARTY],
     unlockedHeroes:[...ORIGINAL_PARTY],upgrades:[],loadouts:normalizeLoadouts(),history:[],battle:null,lastReward:null,focusHero:'knibbs'};
   return gmAllHeroes===true?unlockRunHeroes(run):run;
 }
@@ -105,11 +111,11 @@ export function consequenceNotes(run){if(learning.isLearningRun(run))return lear
   if(run.routes.crossing==='furnace')notes.push('隔热护具：全员初始护盾 +10');
   if(run.events.crossing==='triage')notes.push('急救接力：全员初始护盾 +18');
   if(run.events.crossing==='supply')notes.push('独立照明：敌方初始韧性 −24');
-  if(run.events.crossing==='log')notes.push('传动标记：敌方首轮伤害 −20%');
+  if(run.events.crossing==='log')notes.push('传动标记：敌方首轮力量、智力 −8，意志 −4');
  }
  if(id==='final'){
   if(run.routes.archive==='orrery')notes.push('时序校验：敌方初始屏障 −1');
-  if(run.routes.archive==='arbiter')notes.push('撤销追击：敌方首轮伤害 −20%');
+  if(run.routes.archive==='arbiter')notes.push('撤销追击：敌方首轮力量、智力 −8，意志 −4');
   if(run.events.archive==='rescue')notes.push('额外护具：全员初始护盾 +24');
   if(run.events.archive==='evidence')notes.push('许可撤回：敌方初始屏障 −1');
   if(run.events.archive==='repair')notes.push('独立接地：敌方初始韧性 −24');
@@ -249,9 +255,9 @@ function normalizeLegacyRun(value){
   if(value.upgrades.some((id,i)=>!REWARD_POOLS[i]?.includes(id)||!rewardRecruitAllowed(value,id,i)))return null;
   const pending=value.phase==='reward'||value.phase==='dialogue'&&value.dialogue==='after';
   if(value.upgrades.length!==Math.min(5,won-(pending?1:0)))return null;
-  const copy={version:3,id:String(value.id||'restored'),difficulty:value.difficulty,chapter:value.chapter,phase:value.phase,dialogue:value.dialogue,
+  const copy={version:3,manaRevision:1,knibbsRevision:1,id:String(value.id||'restored'),difficulty:value.difficulty,chapter:value.chapter,phase:value.phase,dialogue:value.dialogue,
     line:Number.isInteger(value.line)?Math.max(0,Math.min(value.line,CHAPTERS[value.chapter][value.dialogue].length-1)):0,
-    partyIds:[...value.partyIds],unlockedHeroes:unlocked,upgrades:[...value.upgrades],loadouts:normalizeLoadouts(value.upgrades,value.loadouts),
+    partyIds:[...value.partyIds],unlockedHeroes:unlocked,upgrades:[...value.upgrades],loadouts:restoredRunLoadouts(value),
     history:value.history.map((h,i)=>({bossId:CHAPTERS[i].bossId,round:h.round,damage:Number.isFinite(h.damage)?Math.max(0,h.damage):0,breaks:Number.isFinite(h.breaks)?Math.max(0,h.breaks):0,partyIds:Array.isArray(h.partyIds)?h.partyIds.filter(id=>HEROES.some(p=>p.id===id)).slice(0,3):[]})),
     battle:null,lastReward:value.lastReward&&REWARDS[value.lastReward.id]?{id:value.lastReward.id,replaced:typeof value.lastReward.replaced==='string'?value.lastReward.replaced:null}:null,
     focusHero:unlocked.includes(value.focusHero)||gmBattleParty&&value.partyIds.includes(value.focusHero)?value.focusHero:value.partyIds[0],...(gmAllHeroes?{gmAllHeroes:true}:{}),...(gmBattleParty?{gmBattleParty:true}:{}),...(gmRewardKeysFor(value).length?{gmRewardKeys:gmRewardKeysFor(value)}:{})};
@@ -305,8 +311,8 @@ export function normalizeRun(value){if(learning.isLearningRun(value))return lear
  const pending=value.phase==='reward'||value.phase==='event'||value.phase==='dialogue'&&['after','event'].includes(value.dialogue);
  if(!Array.isArray(value.upgrades)||new Set(value.upgrades).size!==value.upgrades.length||value.upgrades.length!==Math.min(7,won-(pending?1:0)))return null;
  if(value.upgrades.some((id,i)=>!REWARDS[id]||!poolFor(path[i]).includes(id)||!rewardRecruitAllowed(value,id,i)))return null;
- const copy={version:4,id:String(value.id||'restored'),difficulty:value.difficulty,chapter:value.chapter,phase:value.phase,dialogue:value.dialogue,
-  line:0,legacyRoute:false,routes,events,partyIds:[...value.partyIds],unlockedHeroes:unlocked,upgrades:[...value.upgrades],loadouts:normalizeLoadouts(value.upgrades,value.loadouts),
+ const copy={version:4,manaRevision:1,knibbsRevision:1,id:String(value.id||'restored'),difficulty:value.difficulty,chapter:value.chapter,phase:value.phase,dialogue:value.dialogue,
+  line:0,legacyRoute:false,routes,events,partyIds:[...value.partyIds],unlockedHeroes:unlocked,upgrades:[...value.upgrades],loadouts:restoredRunLoadouts(value),
   history:value.history.map(h=>({bossId:h.bossId,round:h.round,damage:Number.isFinite(h.damage)?Math.max(0,h.damage):0,breaks:Number.isFinite(h.breaks)?Math.max(0,h.breaks):0,partyIds:Array.isArray(h.partyIds)?h.partyIds.filter(id=>HEROES.some(p=>p.id===id)).slice(0,3):[]})),
   battle:null,lastReward:value.lastReward&&REWARDS[value.lastReward.id]?{id:value.lastReward.id,replaced:typeof value.lastReward.replaced==='string'?value.lastReward.replaced:null}:null,
   focusHero:unlocked.includes(value.focusHero)||gmBattleParty&&value.partyIds.includes(value.focusHero)?value.focusHero:value.partyIds[0],...(gmAllHeroes?{gmAllHeroes:true}:{}),...(gmBattleParty?{gmBattleParty:true}:{}),...(gmRewardKeysFor(value).length?{gmRewardKeys:gmRewardKeysFor(value)}:{})};

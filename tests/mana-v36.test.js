@@ -25,20 +25,23 @@ test('mana v36: passive refunds are independent of hit count, skill-owned return
   }
 });
 
-test('mana v36: expensive builders cannot pretend to be free emergency while a cheaper equipped conversion is affordable',()=>{
-  for(const [id,bulk,mana] of [['haart','rest',3],['qianxing','repair',3],['patch','collate',2]]){
+test('mana v36: low-mana conversion buys one unit and never pretends that remaining mana is free',()=>{
+  for(const [id,bulk,mana,cost] of [['haart','rest',3,2],['qianxing','repair',3,3],['patch','collate',2,1]]){
     const h=hero(id,mana),state={heroes:[h],boss:{},upgrades:[]};
-    const t=tuneManaSkill(state,h,base(id,bulk));assert.equal(t.manaEmergency,undefined);assert.match(manaSkillError(state,h,t),/魔力不足/);
-    assert.match(manaSkillError(state,h,{id:bulk,cost:0,secondaryGain:1,manaEmergency:true}),/没有可支付/);
+    const t=tuneManaSkill(state,h,base(id,bulk));assert.equal(t.manaEmergency,undefined);assert.equal(manaSkillError(state,h,t),null);
+    assert.equal(t.cost,cost);assert.equal(t.secondaryGain,1);assert.equal(t.ap,1);assert.equal(t.damage,undefined);assert.equal(t.shield,undefined);
+    assert.deepEqual(manaAfterSkill(h,t),{resource:mana-cost,secondary:1});
+    assert.match(manaSkillError(state,h,{id:bulk,cost:0,secondaryGain:1,manaEmergency:true}),/都为空/);
   }
   const h=hero('patch',3,0,'observe'),state={heroes:[h],boss:{},upgrades:['patch_doubleentry'],loadouts:{patch:['bookward','fragments','collate','revelation','injunction']}};
   assert.equal(tuneManaSkill(state,h,base('patch','bookward')).cost,3);
   assert.equal(tuneManaSkill(state,h,base('patch','collate')).manaEmergency,undefined,'stance discount is part of affordability');
 });
 
-test('mana v36: every legal five-slot resource state can eventually reach the maximum stock, including builderless and high-record builds',()=>{
+test('mana v36: four-slot kits with explicit conversion and a one-unit outlet can refill from every resource state',()=>{
   let checked=0;
-  for(const id of Object.keys(MANA_SKILLS))for(const selected of combinations(bases(id),5))for(const upgraded of [false,true]){
+  for(const id of Object.keys(MANA_SKILLS))for(const selected of combinations(bases(id),4))for(const upgraded of [false,true]){
+    if(!selected.some(base=>base.secondaryGain>0)||!selected.some(base=>base.manaBasic||base.secondaryCost===1))continue;
     const max=MANA_HERO_OVERRIDES[id].maxSecondary,forms=id==='patch'?['observe','record']:['observe'];
     const nodes=new Map(),reverse=new Map(),targets=[];
     for(const form of forms)for(let mana=0;mana<=10;mana++)for(let stock=0;stock<=max;stock++){
@@ -69,10 +72,20 @@ test('mana v36: small spenders remain small at full stock and bulk preparation n
   }
 });
 
-test('mana v36: partial-stock reverse variants lose every original and growth combat effect',()=>{
+test('mana v36: insufficient expensive skills keep their effects and costs but cannot turn into reverse recovery',()=>{
   for(const [id,key] of [['haart','intercept'],['haart','network'],['qianxing','lock'],['qianxing','beam'],['patch','revelation'],['patch','injunction']]){
     const h=hero(id,0,1,'record'),state={heroes:[h],boss:{weakened:1},upgrades:Object.keys(REWARDS)};
-    const t=tuneManaSkill(state,h,base(id,key));assert.equal(t.manaRecovery,true);assert.equal(t.ap,1);assert.equal(t.secondaryCost,1);
-    for(const effect of ['damage','hits','stagger','heal','shield','weaken','vulnerable','mark','attackBuff','cleanse','stripBuffs','hardControl','cooldown'])assert.equal(t[effect],undefined,`${id}/${key}/${effect}`);
+    const raw=base(id,key),t=tuneManaSkill(state,h,raw);assert.equal(t.manaRecovery,undefined);assert.equal(t.manaEmergency,undefined);assert.equal(t.manaBackup,undefined);
+    assert.equal(t.ap,raw.ap);assert.equal(t.secondaryCost,raw.secondaryCost);assert.equal(t.secondaryGain,0);assert.match(manaSkillError(state,h,t),/不足/);
+    for(const effect of ['damage','hits','attackBuff','hardControl','cooldown'])if(raw[effect])assert.equal(t[effect],raw[effect],`${id}/${key}/${effect}`);
+    if(raw.stagger)assert.equal(t.stagger,raw.stagger+(id==='patch'&&key==='revelation'?6:0),'learned precision still affects the original spell');
   }
+});
+
+test('mana v36: a deliberate build without a one-unit outlet can strand one unit without silently changing skills',()=>{
+ const h=hero('haart',0,1),selected=['rest','relay','network','intercept'],state={heroes:[h],boss:{},upgrades:Object.keys(REWARDS),loadouts:{haart:selected}};
+ for(const id of selected){
+  const t=tuneManaSkill(state,h,base('haart',id));assert.ok(manaSkillError(state,h,t));
+  assert.equal(t.manaEmergency,undefined);assert.equal(t.manaRecovery,undefined);assert.equal(t.manaBackup,undefined);
+ }
 });

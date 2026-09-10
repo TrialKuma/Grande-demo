@@ -6,12 +6,14 @@ import {impactTiming,damagingEvent,attackTheme} from './battle-feedback.js';
 import {impactSchedule,reactionPose,dispatchImpacts,actorStanding,IMPACT_COLORS} from './scene-feedback.js';
 import {SceneAtmosphere} from './scene-atmosphere.js';
 import {contactEffect} from './scene-impact.js';
+import {spellProjectile,bladeRibbon,castSigil,shieldLattice} from './scene-spellfx.js';
 import {loadSceneDetails,detailEnvironment,detailEnemy,beginModelStudio,endModelStudio} from './scene-details.js';
 import {loadSceneWorlds,applySceneWorld} from './scene-worlds.js';
 import {loadBossModels,applyBossModel,playBossAnimation,reactBossToImpact,resetBossAnimation,updateBossAnimation,disposeBossModels} from './scene-boss-models.js';
 import {SceneExploration} from './scene-exploration.js';
 import {SceneBackdrop} from './scene-backdrop.js';
 import {syncSceneEnemies,syncEnemyVisibility,pickedEnemy} from './scene-enemies.js';
+import {SceneStatusFX,bossIdleFacing} from './scene-status-fx.js';
 
 // Original local geometry, plus one reference-guided Blender character sample.
 const TAU = Math.PI * 2;
@@ -185,12 +187,18 @@ function person(id) {
     const arm = new THREE.Group();
     arm.position.set(side * .335, 1.61, 0);
     body.add(arm);
+    const holdsBook = id === 'haart' && side === -1;
+    const elbow = holdsBook ? [-.105, -.32, .12] : [side * .14, -.38, .028];
+    const wrist = holdsBook ? [.14, -.40, .50] : [side * .13, -.62, .19];
+    const palm = holdsBook ? [.16, -.425, .55] : [side * .13, -.69, .21];
     orb(arm, palette.coat, [.175, .17, .18], [side * .045, -.01, 0], 0);
-    rod(arm, palette.coat, [side * .045, -.04, 0], [side * .14, -.36, .025], .12, .11);
-    orb(arm, palette.silver, [.09, .09, .09], [side * .14, -.38, .028], 0);
-    rod(arm, id === 'apeilia' ? palette.white : palette.coat, [side * .14, -.38, .03], [side * .13, -.62, .19], .09, .11);
-    mesh(arm, new THREE.CylinderGeometry(.1, .1, .07, 7), palette.trim, side * .13, -.59, .17);
-    orb(arm, id === 'apeilia' ? palette.dark : palette.skin, [.082, .09, .08], [side * .13, -.69, .21], 0);
+    rod(arm, palette.coat, [side * .045, -.04, 0], elbow, .12, .11);
+    orb(arm, palette.silver, [.09, .09, .09], elbow, 0);
+    rod(arm, id === 'apeilia' ? palette.white : palette.coat, elbow, wrist, .09, .11);
+    if (holdsBook) rod(arm, palette.trim, wrist, palm, .09, .085);
+    else mesh(arm, new THREE.CylinderGeometry(.1, .1, .07, 7), palette.trim, side * .13, -.59, .17);
+    const hand = orb(arm, id === 'apeilia' ? palette.dark : palette.skin, [.082, .09, .08], palm, 0);
+    bones[side === 1 ? 'rightHand' : 'leftHand'] = hand;
     bones[side === 1 ? 'rightArm' : 'leftArm'] = arm;
   }
   const head = face(body, palette, { older: id === 'knibbs', android: id === 'apeilia' });
@@ -296,13 +304,19 @@ function person(id) {
       plate(head, palette.skin, [[-.035,-.08],[side*.13,.11],[.025,.06]], .035, [side*.26,0,0]);
       box(body, palette.dark, [.12, .20, .11], [side * .32, 1.06, -.03]);
     }
-    const book = new THREE.Group(); bones.leftArm.add(book); book.position.set(-.10, -.51, .45); book.rotation.x = -.6;
+    // Characters face +Z. Pages face local -Z, tilted upward toward the reader;
+    // the covers face forward/downward and the bent left arm supports the spine.
+    const book = new THREE.Group(); book.name = 'haart-reading-book';
+    bones.leftArm.add(book); book.position.set(.16, -.34, .54); book.rotation.x = 1.10;
     for(const side of [-1, 1]) {
-      const leaf = new THREE.Group(); book.add(leaf); leaf.rotation.y = side * -.25;
-      box(leaf, palette.dark, [.32,.44,.065], [side*.16,0,0]);
-      box(leaf, palette.white, [.28,.39,.045], [side*.16,0,.048]);
-      for(let row=0;row<5;row++) box(leaf,palette.trim,[.19,.008,.008],[side*.16,.12-row*.06,.075]);
-      box(leaf,palette.gold,[.025,.44,.04],[side*.31,0,.02]);
+      const leaf = new THREE.Group(); book.add(leaf); leaf.rotation.y = side * .25;
+      box(leaf, palette.dark, [.32,.44,.055], [side*.16,0,.023]).name = 'haart-book-cover';
+      const page = box(leaf, palette.white, [.28,.39,.035], [side*.16,0,-.021]);
+      page.name = side < 0 ? 'haart-page-left' : 'haart-page-right';
+      page.userData.readingNormal = [0, 0, -1];
+      for(let row=0;row<5;row++) box(leaf,palette.trim,[.19,.008,.008],[side*.16,.12-row*.06,-.043]);
+      box(leaf,palette.gold,[.025,.44,.04],[side*.31,0,.019]);
+      box(leaf,palette.trim,[.11,.13,.013],[side*.16,0,.057]).rotation.z=Math.PI/4;
     }
     rod(book,palette.gold,[0,-.24,0],[0,.24,0],.023);
     bones.weapon = book;
@@ -311,29 +325,39 @@ function person(id) {
       animated.push({ object: page, type: 'prism', angle: i / 3 * TAU, y: 1.74, radius: .59 });
     }
   } else if (id === 'qianxing') {
-    // Silver alloy exosuit; no furnace, heat tank, medieval shield or axe.
+    // The same low-poly body and rigid limbs as the party, with an alloy
+    // exosuit, back reactor and spike gauntlet identifying this character.
     orb(body, palette.silver, [.34, .28, .23], [0, 1.43, .08], 0);
     plate(body, palette.dark, [[-.28,.20],[-.19,-.22],[0,-.29],[.19,-.22],[.28,.20]], .08, [0,1.48,.22]);
     for (const side of [-1, 1]) {
       const arm = bones[side > 0 ? 'rightArm' : 'leftArm'];
       orb(arm, palette.silver, [.22,.15,.21], [side*.025,.04,0], 0);
       plate(arm,palette.trim,[[-.17,.03],[0,-.14],[.16,.02],[.10,.15],[-.10,.15]],.06,[side*.03,.015,.17]);
-      plate(body,palette.silver,[[-.10,.16],[0,-.14],[.10,.16]],.08,[side*.155,.53,.12]);
+      const knee=plate(body,palette.silver,[[-.10,.16],[0,-.14],[.10,.16]],.08,[side*.155,.53,.12]);
       box(body,palette.cyan,[.025,.22,.025],[side*.19,1.44,.315]).rotation.z=side*-.2;
-      box(body,palette.silver,[.15,.30,.07],[side*.16,.27,.11]);
-      rod(body,palette.cyan,[side*.155,.13,.16],[side*.155,.4,.15],.012);
+      const greave=box(body,palette.silver,[.15,.30,.07],[side*.16,.27,.11]);
+      const legLight=rod(body,palette.cyan,[side*.155,.13,.16],[side*.155,.4,.15],.012);
+      body.updateMatrixWorld(true);
+      for(const part of [knee,greave,legLight])bones[side>0?'rightLeg':'leftLeg'].attach(part);
       box(body,palette.dark,[.17,.43,.13],[side*.18,1.38,-.29]);
     }
+    const reactor=new THREE.Group();reactor.name='qianxing-back-reactor';body.add(reactor);reactor.position.set(0,1.45,-.32);
+    box(reactor,palette.dark,[.33,.47,.17]);
+    box(reactor,palette.silver,[.30,.07,.19],[0,.23,0]);
+    box(reactor,palette.silver,[.30,.07,.19],[0,-.23,0]);
+    mesh(reactor,new THREE.TorusGeometry(.115,.021,5,12),palette.trim,0,0,-.108);
+    orb(reactor,palette.cyan,[.083,.083,.025],[0,0,-.115],0);
+    for(const side of [-1,1])for(let row=0;row<3;row++)box(reactor,palette.silver,[.035,.025,.028],[side*.142,.10-row*.10,-.10]);
     box(body,palette.cyan,[.045,.25,.026],[0,1.47,.323]);
     plate(head,palette.silver,[[-.045,.11],[.035,.09],[.035,-.09],[-.04,-.11]],.027,[-.23,.01,.09]);
     box(head,palette.cyan,[.018,.04,.018],[-.255,.04,.12]);
-    const emitter = new THREE.Group(); bones.rightArm.add(emitter); emitter.position.set(.13,-.52,.24);
+    const emitter = new THREE.Group(); emitter.name='qianxing-arm-emitter';bones.rightArm.add(emitter); emitter.position.set(.13,-.52,.24);
     box(emitter,palette.silver,[.25,.23,.43],[0,0,.16]);
     box(emitter,palette.dark,[.18,.16,.09],[0,0,.40]);
     orb(emitter,palette.cyan,[.059,.059,.025],[0,0,.455],1);
     for(const side of [-1,1])rod(emitter,palette.trim,[side*.1,.075,.13],[side*.1,.075,.42],.018);
     bones.weapon=emitter;
-    const gauntlet = new THREE.Group(); bones.leftArm.add(gauntlet); gauntlet.position.set(-.13,-.5,.25);
+    const gauntlet = new THREE.Group();gauntlet.name='qianxing-spike-gauntlet';bones.leftArm.add(gauntlet); gauntlet.position.set(-.13,-.5,.25);
     box(gauntlet,palette.silver,[.26,.32,.16],[0,0,0]);
     for(const x of [-.075,0,.075])rod(gauntlet,palette.trim,[x,.10,.05],[x,.10,.35],.026,.008,5);
   } else if (id === 'youmu') {
@@ -451,7 +475,7 @@ function person(id) {
     mat.userData.originalEmissive = mat.emissive.clone();
     mat.userData.originalIntensity = mat.emissiveIntensity;
   }
-  return { id, root, body, bones, palette, animated, forms, mats, height: 2.43, hp: 1, shieldAmount: 0, flash: 0, action: false };
+  return { id, root, body, bones, palette, animated, forms, mats, modelSource:'procedural', height: 2.43, hp: 1, shieldAmount: 0, flash: 0, action: false };
 }
 
 function golem() {
@@ -974,7 +998,7 @@ export class BattleScene {
     this.bossCache = new Map();
     const boss = golem();
     boss.root.position.set(...BOSS_POSITION);
-    boss.root.rotation.y = Math.atan2(PARTY_PLACEMENTS[0][0], PARTY_PLACEMENTS[0][2]);
+    boss.root.rotation.y = bossIdleFacing(boss.root.position);
     boss.basePosition = boss.root.position.clone();
     boss.baseRotation = boss.root.rotation.y;
     boss.visualScale = V(.98, .98, .98);
@@ -985,6 +1009,8 @@ export class BattleScene {
     this.actors.set('boss', boss);
     this.bossCache.set('golem', boss);
     boss.isEnemy=true;boss.root.userData.enemyUnitId='boss';
+    this.statusFx=new SceneStatusFX(this);
+    this.fxLayers={};this.fxSeed=4187;
     this.backdrop=new SceneBackdrop(this);this.backdrop.setWorld(this.environmentId);
     this.installScenePointers();
     loadSceneDetails(this).then(()=>{
@@ -1510,6 +1536,12 @@ export class BattleScene {
   setSpeed(speed) { this.speed = clamp(Number(speed) || 1, .25, 4); }
   setPaused(paused) { this.paused = Boolean(paused); }
 
+  setManualPlayback(enabled){this.manualPlayback=!!enabled;if(this.controls)this.controls.enableDamping=!enabled;}
+  resetEffectSeed(seed=4187){this.fxSeed=seed>>>0;}
+  effectRandom(){this.fxSeed=((this.fxSeed??4187)*1664525+1013904223)>>>0;return this.fxSeed/4294967296;}
+  fxLayerEnabled(name){return this.fxLayers?.[name]!==false;}
+  setFxLayer(name,enabled){this.fxLayers||={};this.fxLayers[name]=!!enabled;if(name==='status'&&this.statusFx)this.statusFx.enabled=!!enabled;}
+
   previewBossAnimation(kind='attack') {
     if(this.disposed||this.modelReview||this.state.mode==='playing')return false;
     return playBossAnimation(this.actors.get('boss'),kind);
@@ -1598,7 +1630,19 @@ export class BattleScene {
     }
   }
 
+  setDetailedHeroPreview(hero, enabled) {
+    if(!hero?.reviewModel)return;
+    hero.proceduralView||={body:hero.body,bones:hero.bones,mats:hero.mats,animated:hero.animated,modelSource:'procedural'};
+    hero.proceduralView.body.visible=!enabled;
+    hero.reviewModel.body.visible=enabled;
+    Object.assign(hero,enabled?hero.reviewModel:hero.proceduralView);
+  }
+
   loadDetailedHero(hero) {
+    // The Blender sample is opt-in and confined to its comparison studio.
+    // A cached/pending preview must never replace the live party appearance.
+    if(!this.modelReview||!hero)return Promise.resolve({status:'procedural'});
+    if(hero.reviewModel){this.setDetailedHeroPreview(hero,true);return Promise.resolve({status:'ready',source:QIANXING_MODEL_URL});}
     if (hero.modelPromise) return hero.modelPromise;
     hero.modelPromise = new Promise(resolve => {
       new GLTFLoader().load(QIANXING_MODEL_URL, gltf => {
@@ -1621,14 +1665,12 @@ export class BattleScene {
             mats.add(mat);
           }
         });
-        // Swap only the character, keeping combat markers and state intact.
-        this.removeEffect(hero.body);
+        // Retain the party body and all weapon/limb references for studio exit.
+        // Loading can finish after exit, in which case the sample stays hidden.
+        body.visible=false;
         hero.root.add(body);
-        hero.body = body;
-        hero.bones = bones;
-        hero.mats = [...mats];
-        hero.animated = [];
-        hero.modelSource = 'blender';
+        hero.reviewModel={body,bones,mats:[...mats],animated:[],modelSource:'blender'};
+        if(this.modelReview&&this.actors.get('qianxing')===hero)this.setDetailedHeroPreview(hero,true);
         resolve({ status: 'ready', source: QIANXING_MODEL_URL });
       }, undefined, error => {
         console.warn('潜行模型载入失败，保留可玩的基础外观。', error);
@@ -1690,6 +1732,7 @@ export class BattleScene {
     if (!saved || this.disposed) return;
     endModelStudio(this);
     const hero = this.heroCache.get('qianxing');
+    this.setDetailedHeroPreview(hero,false);
     hero.root.position.copy(saved.position);
     hero.basePosition.copy(saved.basePosition);
     hero.root.rotation.copy(saved.rotation);
@@ -1728,7 +1771,7 @@ export class BattleScene {
     if (!next) {
       next = ENEMY_FACTORIES[modelId]();
       next.root.position.set(...BOSS_POSITION);
-      next.root.rotation.y = Math.atan2(PARTY_PLACEMENTS[0][0], PARTY_PLACEMENTS[0][2]);
+      next.root.rotation.y = bossIdleFacing(next.root.position);
       next.basePosition = next.root.position.clone();
       next.baseRotation = next.root.rotation.y;
       next.visualScale = V(1, 1, 1);
@@ -1796,7 +1839,6 @@ export class BattleScene {
         this.scene.add(hero.root);
         this.createActorMarker(hero);
         this.heroCache.set(id, hero);
-        if(id==='qianxing')this.loadDetailedHero(hero);
       }
       hero.basePosition.set(...PARTY_PLACEMENTS[index]);
       hero.root.position.copy(hero.basePosition);
@@ -1852,10 +1894,10 @@ export class BattleScene {
       if(boss.modelId==='final')boss.shield.visible=boss.sealCount>0||boss.finaleOpen;
       boss.broken = !!state.boss.broken;
       boss.fog = state.boss.fog || 0;
-      const target=this.actors.get(state.boss.intentTarget)||this.actors.get(this.activePartyIds[0]);
-      if(target)boss.baseRotation=Math.atan2(target.basePosition.x-boss.basePosition.x,target.basePosition.z-boss.basePosition.z);
     }
     syncSceneEnemies(this,state.enemyTargets||[],id=>(ENEMY_FACTORIES[id]||ENEMY_FACTORIES.scout)());
+    for(const actor of this.actors.values())if(actor.isEnemy){actor.baseRotation=bossIdleFacing(actor.basePosition);if(!actor.action)actor.root.rotation.y=actor.baseRotation;}
+    this.statusFx?.sync(this.state);
     this.syncArtPreviewVisibility();
     if(this.bossPreviewFocus||this.artPreview){this.resize();this.resetCamera();}
   }
@@ -1935,7 +1977,8 @@ export class BattleScene {
   addEffect(object, duration, update, delay = 0) {
     if(this.effects.length>=180){const retired=this.effects.shift();this.removeEffect(retired.object);}
     this.effectRoot.add(object);
-    object.visible = delay <= 0;
+    object.userData.fxLayer||='accent';
+    object.visible = delay <= 0&&this.fxLayerEnabled(object.userData.fxLayer);
     this.effects.push({ object, duration, update, elapsed: -delay });
     return object;
   }
@@ -1947,11 +1990,12 @@ export class BattleScene {
     const mat = debris ? material('#9c81af') : new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending });
     const group = new THREE.Group();
     group.position.copy(position);
+    group.userData.fxLayer='debris';
     const points = [];
     for (let i = 0; i < count; i++) {
       const m = mesh(group, geometry, mat);
-      const direction = V((Math.random() - .5) * 2, Math.random() * 1.8 - .35, (Math.random() - .5) * 2).normalize();
-      points.push({ mesh: m, velocity: direction.multiplyScalar((1.6 + Math.random() * 3) * power), spin: Math.random() * 7 });
+      const direction = V((this.effectRandom() - .5) * 2, this.effectRandom() * 1.8 - .35, (this.effectRandom() - .5) * 2).normalize();
+      points.push({ mesh: m, velocity: direction.multiplyScalar((1.6 + this.effectRandom() * 3) * power), spin: this.effectRandom() * 7 });
     }
     this.addEffect(group, .63 + power * .13, (t, age) => {
       for (const p of points) {
@@ -1966,6 +2010,7 @@ export class BattleScene {
   flashAt(position, color, size = 2, delay = 0) {
     size=Math.min(size,this.reducedMotion?1.1:3.2);
     const glow = this.glow(color, size, 1);
+    glow.userData.fxLayer='impact';
     glow.position.copy(position);
     this.addEffect(glow, .33, t => {
       glow.scale.setScalar(size * (1 + t * .8));
@@ -1975,6 +2020,7 @@ export class BattleScene {
 
   shockwave(position, color, size = 3, delay = 0, vertical = false) {
     const r = ring(this.effectRoot, 1, .025, color, 0, 1);
+    r.userData.fxLayer='impact';
     r.position.copy(position);
     if (vertical) {
       r.rotation.set(0, 0, 0);
@@ -2003,6 +2049,7 @@ export class BattleScene {
     ctx.fillText(String(text), 256, 65);
     const texture = new THREE.CanvasTexture(canvas);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false }));
+    sprite.userData.fxLayer='numbers';
     sprite.position.copy(position);
     sprite.scale.set(small ? 3.2 : 3.9, small ? .8 : .975, 1);
     sprite.renderOrder = 100;
@@ -2014,58 +2061,16 @@ export class BattleScene {
     }, delay);
   }
 
-  bolt(from, to, color, delay = 0, width = .04, duration = .2) {
-    const group = new THREE.Group();
-    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending });
-    const beam = rod(group, mat, from, to, width);
-    const light = this.glow(color, .9, .95);
-    group.add(light);
-    this.addEffect(group, duration, t => {
-      const end = from.clone().lerp(to, ease(t));
-      const start = from.clone().lerp(to, Math.max(0, ease(t) - .35));
-      const delta = end.clone().sub(start);
-      beam.position.copy(start).add(end).multiplyScalar(.5);
-      beam.quaternion.setFromUnitVectors(V(0, 1, 0), delta.clone().normalize());
-      const total = from.distanceTo(to);
-      beam.scale.y = Math.max(.001, delta.length() / total);
-      light.position.copy(end);
-      mat.opacity = t > .8 ? (1 - t) * 5 : 1;
-    }, delay);
+  bolt(from, to, color, delay = 0, width = .04, duration = .2, theme='arcane',index=0) {
+    return spellProjectile(this,from,to,color,{delay,width,duration,theme,index});
   }
 
-  slash(position, color = '#77fff0', delay = 0, scale = 1.5) {
-    const group = new THREE.Group();
-    group.position.copy(position);
-    group.quaternion.copy(this.camera.quaternion);
-    group.rotation.z += -.6;
-    const startRotation=group.rotation.z;
-    const mat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending });
-    const arc = mesh(group, new THREE.RingGeometry(.85, 1.01, 45, 1, -.35, Math.PI * 1.32), mat);
-    arc.castShadow = false;
-    const thin = mesh(group, new THREE.RingGeometry(1.04, 1.07, 45, 1, -.2, Math.PI * 1.1), mat);
-    this.addEffect(group, .38, t => {
-      group.scale.setScalar(scale * (.5 + t * .65));
-      group.rotation.z=startRotation+t*.8;
-      mat.opacity = (1 - t) ** .6;
-    }, delay);
+  slash(position, color = '#77fff0', delay = 0, scale = 1.5,index=0) {
+    return bladeRibbon(this,position,color,{delay,scale,index});
   }
 
-  runeCircle(position, color, delay = 0, duration = .8, radius = 1.3) {
-    const group = new THREE.Group();
-    group.position.copy(position);
-    group.position.y = .53;
-    const r1 = ring(group, radius, .035, color, 0, 1);
-    ring(group, radius * .79, .012, color, .01, .8);
-    for (let i = 0; i < 6; i++) {
-      const a = i / 6 * TAU;
-      const b = ((i + 2) % 6) / 6 * TAU;
-      rod(group, r1.material, [Math.cos(a) * radius * .78, .02, Math.sin(a) * radius * .78], [Math.cos(b) * radius * .78, .02, Math.sin(b) * radius * .78], .014, .014, 4);
-    }
-    this.addEffect(group, duration, t => {
-      group.rotation.y = t * .7;
-      group.scale.setScalar(Math.min(1, t * 6) * (1 + t * .1));
-      group.traverse(n => { if (n.material) n.material.opacity = t > .65 ? (1 - t) / .35 : .85; });
-    }, delay);
+  runeCircle(position, color, delay = 0, duration = .8, radius = 1.3,theme='arcane') {
+    return castSigil(this,position,color,{delay,duration,radius,theme});
   }
 
   play(event = {}, {onImpact} = {}) {
@@ -2091,7 +2096,8 @@ export class BattleScene {
     const isHealing = type === 'heal';
     const isShield = type === 'shield' || (style === 'guard' && type!=='buff' && !isHealing && !damagingEvent(event));
     const response = ['parry', 'evade', 'counter'].includes(style);
-    const color = response ? style === 'counter' ? '#ffcc86' : style === 'parry' ? '#88fff1' : '#a8d7ff' : isHealing ? '#91ffc2' : isShield ? '#84e9ff' : IMPACT_COLORS[attackTheme(event)];
+    const theme=attackTheme(event);
+    const color = response ? style === 'counter' ? '#ffcc86' : style === 'parry' ? '#88fff1' : '#a8d7ff' : isHealing ? '#91ffc2' : isShield ? '#84e9ff' : IMPACT_COLORS[theme];
     let duration = timing.duration;
     const impactAt = timing.impactAt;
     actor.action = true;
@@ -2100,7 +2106,7 @@ export class BattleScene {
     const from = this.positionOf(actor.id, actor.isEnemy ? actor.height*.55 : 1.42);
     const direction = primary.root.position.clone().sub(origin).setY(0).normalize();
     if (direction.lengthSq() < .001) direction.copy(this.actors.get(actor.isEnemy ? partyLead : this.state?.selectedEnemyId||'boss').root.position).sub(origin).setY(0).normalize();
-    if (direction.lengthSq() > .001) actor.root.rotation.y = Math.atan2(direction.x, direction.z);
+    if (direction.lengthSq() > .001&&(!actor.isEnemy||damagingEvent(event))) actor.root.rotation.y = Math.atan2(direction.x, direction.z);
     const dashDistance = Math.max(0, origin.distanceTo(primary.root.position) - (primary.id === 'boss' ? 1.95 : 1.1));
     let movement = 'cast';
 
@@ -2161,7 +2167,8 @@ export class BattleScene {
             rod(ghost, ghostMat, [sign * .14, 1.05, 0], [sign * .19, .12, .09], .10, .14, 5);
             rod(ghost, ghostMat, [sign * .36, 1.58, 0], [sign * .45, .91, .16], .08, .13, 5);
           }
-          this.addEffect(ghost, .52, t => { ghostMat.opacity = (1 - t) * .22; ghost.position.addScaledVector(side, .007); }, .10 + i * .08);
+          const ghostBase=ghost.position.clone();
+          this.addEffect(ghost, .52, t => { ghostMat.opacity = (1 - t) * .22; ghost.position.copy(ghostBase).addScaledVector(side, t*.22); }, .10 + i * .08);
         }
         this.slash(from.clone().addScaledVector(side, .4), color, .19, .75);
         this.burst(from.clone().addScaledVector(side, .75), color, 12, .4, .24);
@@ -2174,15 +2181,17 @@ export class BattleScene {
       }
       if (event.label) this.floatingText(this.positionOf(actor.id, actor.height + .15), event.label, color, .14, true);
     } else if(type==='buff'){
-      for(const id of targets){this.runeCircle(this.positionOf(id,.15),color,.08,.8,id==='boss'?1.7:.85);this.floatingText(this.positionOf(id,id==='boss'?3.6:2.2),event.label||'状态改变',color,.2,true);}
+      for(const id of targets){this.runeCircle(this.positionOf(id,.15),color,.08,.8,id==='boss'?1.7:.85,theme);this.floatingText(this.positionOf(id,id==='boss'?3.6:2.2),event.label||'状态改变',color,.2,true);}
     } else if (isHealing || isShield) {
-      this.runeCircle(origin, color, 0, .83, .93);
+      this.runeCircle(origin, color, 0, .83, .93,theme);
       for (const [i, id] of targets.entries()) {
         const p = this.positionOf(id, .2);
-        this.runeCircle(p, color, .12 + i * .035, .78, .9);
-        this.shockwave(p.clone().add(V(0, .12, 0)), color, 1.1, .17 + i * .035);
-        for (let j = 0; j < 12; j++) {
-          const a = j / 12 * TAU;
+        this.runeCircle(p, color, .12 + i * .035, .78, .9,theme);
+        if(isShield)shieldLattice(this,p,color,{delay:.12+i*.035});
+        else this.shockwave(p.clone().add(V(0, .12, 0)), color, 1.1, .17 + i * .035);
+        const motes=this.reducedMotion?3:isShield?4:12;
+        for (let j = 0; j < motes; j++) {
+          const a = j / motes * TAU;
           const sprite = this.glow(color, .22, .85);
           const base = p.clone().add(V(Math.cos(a) * .6, 0, Math.sin(a) * .6));
           sprite.position.copy(base);
@@ -2202,8 +2211,8 @@ export class BattleScene {
         const muzzle = from.clone().add(direction.clone().multiplyScalar(.75));
         this.flashAt(muzzle, color, 1.3, delay);
         for(const id of targets){
-          const recipient=this.actors.get(id),impact=this.positionOf(id,recipient.isEnemy?recipient.height*.55:1.3).add(V((Math.random()-.5)*.3,(Math.random()-.5)*.35,0));
-          this.bolt(muzzle,impact,color,delay,.035,.16);
+          const recipient=this.actors.get(id),impact=this.positionOf(id,recipient.isEnemy?recipient.height*.55:1.3).add(V((this.effectRandom()-.5)*.12,(this.effectRandom()-.5)*.16,0));
+          this.bolt(muzzle,impact,color,delay,theme==='silverfire'?.10:.055,.16,theme,h);
         }
       }
     } else if (style === 'slash') {
@@ -2211,7 +2220,7 @@ export class BattleScene {
       for (let h = 0; h < hitCount; h++) {
         for(const id of targets){
           const recipient=this.actors.get(id),p=this.positionOf(id,recipient.isEnemy?recipient.height*.55:1.3).add(V(0,(h%2)*.32-.1,0));
-          this.slash(p,color,impactAt-.05+h*interval,1.25+(h%2)*.2);
+          this.slash(p,color,impactAt-.05+h*interval,1.25+(h%2)*.2,h);
         }
       }
     } else if (style === 'quake') {
@@ -2233,15 +2242,16 @@ export class BattleScene {
           const sprite = this.glow(color, 3, .35);
           const a = j / 5 * TAU;
           sprite.position.copy(p).add(V(Math.cos(a) * .7, j * .2, Math.sin(a) * .7));
+          const mistBase=sprite.position.clone();
           this.addEffect(sprite, .85, t => {
             sprite.material.opacity = Math.sin(t * Math.PI) * .32;
             sprite.scale.setScalar(2.0 + t * 2);
-            sprite.position.y += .004;
+            sprite.position.y = mistBase.y+t*.24;
           }, j * .045);
         }
       }
     } else {
-      this.runeCircle(origin, color, 0, .8, actor.id === 'boss' ? 1.75 : .85);
+      this.runeCircle(origin, color, 0, .8, actor.id === 'boss' ? 1.75 : .85,theme);
       for (let h = 0; h < hitCount; h++) {
         const travel=style==='burst'&&actor.id==='boss'?.25:.22;
         const delay=impactAt-travel+h*interval;
@@ -2249,9 +2259,9 @@ export class BattleScene {
           const p = this.positionOf(id, id === 'boss' ? 2.9 : 1.35);
           if (style === 'burst' && actor.id === 'boss') {
             const above = p.clone().add(V(.8, 5, -.5));
-            this.bolt(above, p, color, delay, .17, .25);
+            this.bolt(above, p, color, delay, .17, .25,theme,h);
           } else {
-            this.bolt(from.clone().add(V(0, .23, 0)), p, color, delay, style === 'burst' ? .11 : .075, .22);
+            this.bolt(from.clone().add(V(0, .23, 0)), p, color, delay, style === 'burst' ? .14 : .10, .22,theme,h);
           }
         }
       }
@@ -2345,6 +2355,12 @@ export class BattleScene {
     const rawDt = Math.min(.05, (now - this.lastTime) / 1000);
     this.lastTime = now;
     const dt = this.paused ? 0 : rawDt * this.speed;
+    if(!this.manualPlayback)this.advanceFrame(dt,rawDt);
+    this.raf = requestAnimationFrame(this.frame);
+  }
+
+  advanceFrame(dt,rawDt=dt,render=true){
+    if(this.disposed)return;
     this.time += dt;
     const t = this.time;
     this.controls.update();
@@ -2445,8 +2461,10 @@ export class BattleScene {
       for (const mat of actor.mats) {
         const intensity=mat.userData.originalIntensity+(mat.userData.mechanismIntensity||0);
         if (actor.flash > 0) {
-          mat.emissive.set(actor.flashColor||'#f6dbb5');
-          mat.emissiveIntensity = Math.max(intensity,Math.min(2.5,intensity+actor.flash*5));
+          // Keep the material's shading readable during a hit. The contact
+          // lens supplies the bright flash instead of bleaching the full body.
+          mat.emissive.set(actor.flashColor||'#f6dbb5').lerp(mat.userData.originalEmissive,1-Math.min(.38,actor.flash*2.7));
+          mat.emissiveIntensity = Math.max(intensity,.8);
         } else {
           mat.emissive.copy(mat.userData.originalEmissive);
           mat.emissiveIntensity = intensity;
@@ -2514,7 +2532,7 @@ export class BattleScene {
       const effect = this.effects[i];
       effect.elapsed += dt;
       if (effect.elapsed < 0) continue;
-      effect.object.visible = true;
+      effect.object.visible = this.fxLayerEnabled(effect.object.userData.fxLayer);
       const progress = Math.min(1, effect.elapsed / effect.duration);
       effect.update(progress, effect.elapsed);
       if (progress >= 1) {
@@ -2530,10 +2548,11 @@ export class BattleScene {
       this.camera.position.y += Math.cos(this.time*48)*pulse*.45;
       this.shake *= Math.exp(-dt*19);
     }
-    this.renderer.render(this.scene, this.camera);
-    this.onHudFrame?.();
+    this.statusFx?.sync(this.state);
+    this.statusFx?.update(this.time);
+    if(this.fxLayers?.environment!==undefined){this.environment.visible=this.fxLayers.environment;this.atmosphere.root.visible=this.fxLayers.environment;this.backdrop.root.visible=this.fxLayers.environment;}
+    if(render){this.renderer.render(this.scene, this.camera);this.onHudFrame?.();}
     this.camera.position.copy(originalPosition);
-    this.raf = requestAnimationFrame(this.frame);
   }
 
   removeEffect(object) {
@@ -2565,6 +2584,7 @@ export class BattleScene {
     for (const action of this.actions) action.finish();
     this.actions.length = 0;
     this.atmosphere.dispose();
+    this.statusFx?.dispose();
     this.backdrop?.dispose();
     disposeBossModels(this);
     this.removeEffect(this.scene);

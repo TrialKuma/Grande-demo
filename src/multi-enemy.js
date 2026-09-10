@@ -1,4 +1,5 @@
 import {BOSSES} from './encounters.js';
+import {baseAttributes} from './attributes.js';
 
 export const ENEMY_LIMITS=Object.freeze({alive:3,history:8});
 export function enemyById(state,id){return (state.enemies||[state.boss]).find(enemy=>(enemy.unitId||'boss')===id);}
@@ -28,7 +29,7 @@ export function ensureEnemySelection(state){
   state.selectedEnemyId=livingEnemies(state)[0]?.unitId||'boss';
 }
 export function enemyDefaults(id,unitId='boss',role='boss'){
-  return {unitId,modelId:BOSSES[id]?.modelId||id,role,defeated:false,guardianFor:null,supportCharge:0,
+  return {unitId,modelId:BOSSES[id]?.modelId||id,role,attributes:baseAttributes(id),attributeBuffs:[],control:null,controlGuard:0,defeated:false,guardianFor:null,supportCharge:0,
     confusion:null,recordedIntent:null,cover:null,summons:0,actionSuppression:1};
 }
 export function stampEnemyEvents(state,events){

@@ -73,7 +73,7 @@ export function createTooltipController(content, enabled) {
     if(Date.now()<suppressClickUntil&&target===anchor){
       e.preventDefault();e.stopImmediatePropagation();return;
     }
-    if(target?.dataset.tooltip==='status'){
+    if(target?.dataset.tooltip==='status'||target?.dataset.enemyStatus){
       e.preventDefault();e.stopImmediatePropagation();
       if(anchor===target&&pinned)hide();else show(target,true);
       return;

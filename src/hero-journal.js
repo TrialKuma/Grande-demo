@@ -1,7 +1,9 @@
 import {HEROES,SKILLS,REWARDS,createBattle,heroOf,resolvedSkill} from './combat.js';
-import {heroResourceDescription,passiveDetail,skillExplanation,skillTypeBadge} from './status-details.js';
+import {heroResourceDescription,heroConceptDescription,skillExplanation,skillTypeBadge} from './status-details.js';
 import {esc,portrait} from './interface.js';
 import {icon} from './icons.js';
+import {ammoProfile} from './knibbs-passive.js';
+import {manaRecoveryView} from './resource-ui.js';
 
 const starters=['knibbs'];
 export const HERO_UNLOCKS={
@@ -20,12 +22,21 @@ export function journalUnlockedHeroes(ids=[]){
 
 function conditionVariants(state,hero,skill){
   const cases=[];
+  if(hero.id==='knibbs'){
+    if(skill.loadAmmo)cases.push(['单发确认已命中，追加窗口可用',{followupReady:true,followupUsed:[]}],['已射出特殊子弹，可以重装填',{specialSpent:true,followupReady:true,followupUsed:['load','shot']}]);
+    if(['shot','focus'].includes(skill.id))for(const ammo of ['blast','scatter','breach'])cases.push([`已装${ammoProfile(ammo).name}并持有三层直感`,{ammo,intuition:3}]);
+    if(skill.id==='shot')cases.push(['追加窗口可用',{followupReady:true,followupUsed:[]}]);
+    if(skill.id==='cover')cases.push(['持有三层直感，可以预备反制',{intuition:3}]);
+  }
   if(hero.id==='youmu'){
     if(skill.id==='surgery')cases.push(['已经保存标本',{specimen:'fog'}]);
     cases.push(['游墓接管期间',{youmuForm:'captain',captainTurns:2}]);
   }
   if(hero.id==='ric'&&skill.id==='rune')cases.push(['平衡至少为 +4，或持有剑势',{resource:4}]);
   if(hero.id==='ric'&&skill.id==='bind')cases.push(['平衡不高于 −4，或敌人正受到束缚',{resource:-4}]);
+  if(hero.id==='ric'&&skill.crossing)cases.push(['平衡为 −4，可以翻转领域',{resource:-4}]);
+  if(skill.manaBasic)cases.push([`持有至少 1 ${hero.secondaryName}时自动强化`,{secondary:1}]);
+  if(hero.id==='patch'&&skill.manaBasic)cases.push(['收录姿态出手，持有至少 1 条记录',{patchForm:'record',secondary:1}]);
   if(hero.id==='qianxing'&&skill.id==='beam')cases.push(['施放前已有 3 格充能',{secondary:3}]);
   if(hero.id==='patch'&&skill.id==='chargedslash')cases.push(['观测姿态，逐条使用记录',{patchForm:'observe',secondary:1}],['收录姿态，逐条使用记录',{patchForm:'record',secondary:1}]);
   if(hero.id==='patch'&&['fragments','injunction'].includes(skill.id))cases.push(['观测姿态下消耗记录',{patchForm:'observe',secondary:skill.secondaryCost||1}],['收录姿态下消耗记录',{patchForm:'record',secondary:skill.secondaryCost||1}]);
@@ -34,7 +45,7 @@ function conditionVariants(state,hero,skill){
   return `<details class="journal-variants"><summary>查看条件满足后的具体变招</summary>${cases.map(([condition,fields])=>{
     const alternate=structuredClone(state),actor=heroOf(alternate,hero.id);Object.assign(actor,fields);
     const variant=resolvedSkill(alternate,hero.id,skill.id),explanation=skillExplanation(alternate,actor,skill.id);
-    return `<section><h5>${esc(variant.name)}</h5>${skillTypeBadge(variant)}<p class="journal-condition">${esc(condition)}。</p><p>${esc(explanation.cost)}</p>${explanation.effects.map(effect=>`<p>${esc(effect)}</p>`).join('')}${variant.captainFinish?'<p>炮击后立即退出船长状态，并进入两轮虚脱。</p>':''}</section>`;
+    return `<section><h5>${esc(variant.name)}</h5>${skillTypeBadge(variant)}<p class="journal-condition">${esc(condition)}。</p><p>${esc(explanation.cost)}</p>${explanation.recovery?`<p class="journal-recovery">${esc(explanation.recovery)}</p>`:''}${explanation.effects.map(effect=>`<p>${esc(effect)}</p>`).join('')}${variant.captainFinish?'<p>炮击后立即退出船长状态，并进入两轮虚脱。</p>':''}</section>`;
   }).join('')}</details>`;
 }
 
@@ -49,15 +60,15 @@ export function heroJournalView({unlockedHeroes=[],selectedHero='knibbs',upgrade
     content+=`<div class="journal-locked"><span>${icon('flag')}</span><h4>在远征中与他相遇</h4><p>${esc(HERO_UNLOCKS[selected.id])}</p><p>解锁后可以在这里查看完整技能，也能在自由挑战中选择该角色独自出战。</p></div>`;
   }else{
     const partyIds=[selected.id,...HEROES.filter(hero=>hero.id!==selected.id).slice(0,2).map(hero=>hero.id)];
-    const state=createBattle('standard','golem',{partyIds,upgrades:owned,loadouts}),hero=heroOf(state,selected.id),passive=passiveDetail(state,hero);
+    const state=createBattle('standard','golem',{partyIds,upgrades:owned,loadouts}),hero=heroOf(state,selected.id);
     const equipped=state.loadouts[hero.id];
     const skills=SKILLS[hero.id].map(skill=>{
       const explanation=skillExplanation(state,hero,skill.id),earned=!skill.unlockKey||owned.includes(skill.unlockKey),slot=equipped.indexOf(skill.id);
       const label=skill.unlockKey?(earned?'已获得新技能':'需要战斗奖励'):'基础技能 · 远征中逐步学习';
-      return `<article class="journal-skill ${earned?'':'reward-locked'}" data-journal-skill="${skill.id}"><div class="journal-skill-heading">${icon(skill.icon)}<div><h4>${esc(resolvedSkill(state,hero.id,skill.id).name)}</h4>${skillTypeBadge(resolvedSkill(state,hero.id,skill.id))}<span>${label}${slot>=0?` · 已装配在 ${'QWERT'[slot]} 位`:''}</span></div></div><p class="journal-payment">${esc(explanation.cost)}</p>${explanation.effects.map(text=>`<p>${esc(text)}</p>`).join('')}${explanation.conditions.length?`<ul>${explanation.conditions.map(text=>`<li>${esc(text)}</li>`).join('')}</ul>`:''}${conditionVariants(state,hero,skill)}</article>`;
+      return `<article class="journal-skill ${earned?'':'reward-locked'}" data-journal-skill="${skill.id}"><div class="journal-skill-heading">${icon(skill.icon)}<div><h4>${esc(resolvedSkill(state,hero.id,skill.id).name)}</h4>${skillTypeBadge(resolvedSkill(state,hero.id,skill.id))}<span>${label}${slot>=0?` · 已装配在 ${'QWER'[slot]} 位`:''}</span></div></div><p class="journal-payment">${esc(explanation.cost)}</p>${explanation.effects.map(text=>`<p>${esc(text)}</p>`).join('')}${explanation.conditions.length?`<ul>${explanation.conditions.map(text=>`<li>${esc(text)}</li>`).join('')}</ul>`:''}${conditionVariants(state,hero,skill)}</article>`;
     }).join('');
     const growth=Object.values(REWARDS).filter(reward=>reward.heroId===hero.id);
-    content+=`<p class="journal-bio">${esc(selected.bio)}</p><div class="journal-stats"><div><span>基础生命上限</span><strong>${selected.maxHp}</strong></div><div><span>${esc(hero.resourceName)}上限</span><strong>${hero.id==='ric'?'−'+hero.maxResource+' ～ +'+hero.maxResource:hero.maxResource}</strong></div>${hero.secondaryName?`<div><span>${esc(hero.secondaryName)}上限</span><strong>${hero.maxSecondary||6}</strong></div>`:''}<div><span>每场技能位</span><strong>5</strong></div></div><section class="journal-mechanism"><h4>怎样运用他的能力</h4><p>${esc(heroResourceDescription(hero))}</p><h4>${esc(passive.name)} · 被动</h4><p>${esc(passive.description)}</p><ul>${passive.facts.map(text=>`<li>${esc(text)}</li>`).join('')}</ul></section><div class="journal-section-heading"><h4>完整技能</h4><span>共 ${SKILLS[hero.id].length} 项技能 · 每场装配 ${equipped.length} 项。</span></div><div class="journal-skills">${skills}</div><section class="journal-growth"><h4>可获得的成长奖励<span class="journal-growth-count">已获得 ${growth.filter(reward=>owned.includes(reward.id)).length} / ${growth.length} 项</span></h4>${growth.map(reward=>`<article data-growth-reward="${reward.id}"><strong>${esc(reward.name)}<span>${reward.kind==='skill'?'新技能 · ':'条件强化 · '}${owned.includes(reward.id)?'本次远征已获得':'战斗奖励'}</span></strong><p>${esc(reward.description)}</p></article>`).join('')}<p class="journal-note">角色解锁会保留。教学从少量技能开始，正式 BOSS 流程所有同伴至少拥有四招；第五招可以在沿途小战或间章操练中学会；自由挑战开放完整基础技能。新技能和条件强化属于本次远征的成长，需要在战斗奖励中选择；图鉴只供查阅，不会直接发放奖励。</p></section>`;
+    content+=`<p class="journal-bio">${esc(selected.bio)}</p><div class="journal-stats"><div><span>基础生命上限</span><strong>${selected.maxHp}</strong></div><div><span>${esc(hero.resourceName)}上限</span><strong>${hero.id==='ric'?'−'+hero.maxResource+' ～ +'+hero.maxResource:hero.maxResource}</strong></div>${hero.secondaryName?`<div><span>${esc(hero.secondaryName)}上限</span><strong>${hero.maxSecondary||6}</strong></div>`:''}<div><span>每场技能位</span><strong>4</strong></div></div><section class="journal-mechanism"><h4>角色特性</h4><p>${esc(heroConceptDescription(hero))}</p>${hero.secondaryName?manaRecoveryView(hero):`<p>${esc(heroResourceDescription(hero))}</p>`}</section><div class="journal-section-heading"><h4>完整技能</h4><span>共 ${SKILLS[hero.id].length} 项技能 · 每场装配 ${equipped.length} 项。</span></div><div class="journal-skills">${skills}</div><section class="journal-growth"><h4>可获得的成长奖励<span class="journal-growth-count">已获得 ${growth.filter(reward=>owned.includes(reward.id)).length} / ${growth.length} 项</span></h4>${growth.map(reward=>`<article data-growth-reward="${reward.id}"><strong>${esc(reward.name)}<span>${reward.kind==='skill'?'新技能 · ':'条件强化 · '}${owned.includes(reward.id)?'本次远征已获得':'战斗奖励'}</span></strong><p>${esc(reward.description)}</p></article>`).join('')}<p class="journal-note">角色解锁会保留。教学从两项技能开始，先学习输出循环，再学习防护；正式 BOSS 流程所有同伴至少拥有四招，每场最多装配四招，其余已学技能可在营地替换；自由挑战开放完整基础技能。新技能和条件强化属于本次远征的成长，需要在战斗奖励中选择；图鉴只供查阅，不会直接发放奖励。</p></section>`;
   }
   return `<div class="modal-eyebrow">同行者档案</div><h2>角色图鉴</h2><p class="modal-lead">已解锁 ${unlocked.length} / ${HEROES.length} 位角色。了解他们的资源循环、技能用途与成长条件，再决定怎样组队。</p><div class="hero-journal"><nav class="journal-navigation" aria-label="选择要查看的角色">${navigation}</nav><section class="journal-detail" aria-label="${esc(selected.name)}的角色资料">${content}</section></div>`;
 }

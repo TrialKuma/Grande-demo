@@ -50,6 +50,6 @@ export function challengePartyView(ids,unlocked,slot=0){
   return `<div class="modal-eyebrow">自由挑战</div><h2>调整出战队伍</h2><p class="modal-lead">先选择要替换的位置，再点击角色。选择已在队伍中的角色会交换位置。</p>
     <div class="challenge-party-slots" role="group" aria-label="出战位置">${party.map((id,i)=>`<button data-challenge-slot="${i}" class="${slot===i?'selected':''}" aria-pressed="${slot===i}"><small>位置 ${i+1}</small>${portrait(id)}<strong>${hero(id).short}</strong></button>`).join('')}</div>
     <div class="challenge-roster" role="group" aria-label="可出战角色">${HEROES.map(h=>`<button data-challenge-hero="${h.id}" ${available.has(h.id)?'':'disabled'} class="${party.includes(h.id)?'in-party':''}">${portrait(h.id)}<span><strong>${h.name}</strong><small>${available.has(h.id)?`${h.resourceName} · ${h.role}`:'尚未解锁'}</small></span><b>${party.includes(h.id)?'位置 '+(party.indexOf(h.id)+1):available.has(h.id)?'换入':'待解锁'}</b></button>`).join('')}</div>
-    <p class="gm-status">自由挑战使用每人的初始五项技能，${party.length} 人队伍每轮获得基础 ${{1:3,2:4,3:6}[party.length]} AP，剩余点数最多保留 2 点到下一轮。队伍会自动保存。</p>
+    <p class="gm-status">自由挑战使用每人的初始四项技能，${party.length} 人队伍每轮获得基础 ${{1:3,2:4,3:6}[party.length]} AP，剩余点数最多保留 2 点到下一轮。队伍会自动保存。</p>
     <button class="primary" data-action="close-modal">队伍准备好了 ${icon('check')}</button>`;
 }

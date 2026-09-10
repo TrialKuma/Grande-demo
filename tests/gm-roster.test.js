@@ -39,7 +39,7 @@ test('GM roster: all seven companions can swap at camp and restore without grant
     for(const heroId of all){
       assert.equal(replacePartyMember(run,0,heroId),true);assert.equal(new Set(run.partyIds).size,3);
       assert.equal(run.partyIds[0],heroId);restore(run);
-      const battle=battleForRun(run);assert.equal(battle.heroes[0].id,heroId);assert.equal(activeSkills(battle,heroId).length,5);
+      const battle=battleForRun(run);assert.equal(battle.heroes[0].id,heroId);assert.equal(activeSkills(battle,heroId).length,4);
     }
     const locked=equipSkill(run,'patch',0,'revelation');
     assert.equal(locked.ok,false);assert.match(locked.error,/尚未通过战斗奖励解锁/);

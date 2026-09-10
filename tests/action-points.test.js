@@ -128,7 +128,7 @@ test('AP saves: v6 and v7 saves without carry migrate once with their old base b
   for(const mode of ['party','solo'])for(const version of [6,7]){
     const old=make(mode);old.version=version;old.round=3;old.ap=2;delete old.roundCarry;
     const migrated=normalizeSave(old);assert.ok(migrated);
-    assert.equal(migrated.version,10);assert.equal(migrated.roundCarry,0);assert.equal(migrated.ap,2);assert.equal(migrated.maxAp,baseActionPoints(mode));
+    assert.equal(migrated.version,11);assert.equal(migrated.roundCarry,0);assert.equal(migrated.ap,2);assert.equal(migrated.maxAp,baseActionPoints(mode));
     endRound(migrated);assert.equal(migrated.roundCarry,2);assert.equal(migrated.ap,baseActionPoints(mode)+2);
     assert.ok(normalizeSave(migrated));
   }

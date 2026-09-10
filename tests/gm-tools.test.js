@@ -40,7 +40,7 @@ test('challenge roster: selected nonstarter trio enters, acts, restores and rest
   assert.deepEqual(state.heroes.map(h=>h.id),partyIds);assert.equal(state.maxAp,6);
   assert.deepEqual(state.upgrades,[]);
   for(const id of partyIds){
-    assert.equal(state.loadouts[id].length,5);
+    assert.equal(state.loadouts[id].length,4);
     assert.ok(state.loadouts[id].every(key=>!SKILLS[id].find(s=>s.id===key).unlockKey));
     assert.equal(useSkill(state,id,state.loadouts[id][0]).ok,true);
   }

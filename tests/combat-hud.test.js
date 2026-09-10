@@ -10,9 +10,9 @@ test('combat HUD moves intent and targeted ally health out of the retired sideba
  assert.doesNotMatch(html,/class="tactics-panel"|class="party-protection"/);assert.deepEqual(s,before);
 });
 test('shield outline and temporary BUFFs appear and expire with actual combat state',()=>{
- const s=createBattle('standard','golem');useSkill(s,'ric','shelter');useSkill(s,'knibbs','cover');
+ const s=createBattle('standard','golem',{loadouts:{knibbs:['shot','focus','breathe','cover']}});heroOf(s,'knibbs').intuition=3;useSkill(s,'ric','shelter');useSkill(s,'knibbs','cover');
  let html=render(s);assert.match(html,/class="hp-shield" style="width:18.75%" aria-label="护盾 30"/);
- assert.match(html,/data-detail="cover"/);assert.match(html,/data-detail="protection"/);
+ assert.match(html,/data-detail="cover"/);assert.match(html,/data-detail="harmony"/);
  endRound(s);html=render(s);assert.doesNotMatch(html,/data-tooltip="status"[^>]*data-detail="(?:cover|protection)"/);
  assert.equal(heroOf(s,'ric').shield,30);assert.match(html,/class="hp-shield"/);
 });

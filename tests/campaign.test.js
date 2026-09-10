@@ -22,7 +22,7 @@ for(const rewardIndex of [0,1,2])test(`campaign: all six chapters restore at eve
   for(let chapter=0;chapter<6;chapter++){
     assert.equal(run.chapter,chapter);assert.equal(run.phase,'dialogue');assert.equal(run.dialogue,'before');run=restore(run);
     assert.ok(runDialogue(run).length>1);assert.equal(advanceDialogue(run),true);assert.equal(run.line,1);run=restore(run);
-    beforeToBattle(run);run=restore(run);assert.equal(run.battle.boss.id,CHAPTERS[chapter].bossId);assert.equal(run.battle.version,10);
+    beforeToBattle(run);run=restore(run);assert.equal(run.battle.boss.id,CHAPTERS[chapter].bossId);assert.equal(run.battle.version,11);
     fixtureWin(run);assert.equal(run.phase,'dialogue');assert.equal(run.dialogue,'after');assert.equal(run.history.length,chapter+1);run=restore(run);
     assert.equal(run.unlockedHeroes.includes('haart'),chapter>=1);assert.equal(run.unlockedHeroes.includes('qianxing'),chapter>=2);
     advanceDialogue(run,true);run=restore(run);
@@ -30,11 +30,11 @@ for(const rewardIndex of [0,1,2])test(`campaign: all six chapters restore at eve
     assert.equal(run.phase,'reward');const options=rewardOptions(run);assert.equal(options.length,3);
     const reward=options[rewardIndex],result=claimReward(run,reward.id);assert.equal(result.ok,true);obtained.push(reward.id);
     assert.equal(run.phase,'camp');assert.equal(run.chapter,chapter+1);assert.deepEqual(run.upgrades,obtained);run=restore(run);
-    if(reward.kind==='skill'){assert.equal(run.loadouts[reward.heroId][4],reward.skillId);assert.ok(run.lastReward.replaced);}
+    if(reward.kind==='skill'){assert.equal(run.loadouts[reward.heroId][3],reward.skillId);assert.ok(run.lastReward.replaced);}
     if(chapter===1)assert.equal(replacePartyMember(run,0,'haart'),true);
     if(chapter===2)assert.equal(replacePartyMember(run,1,'qianxing'),true);
     const next=battleForRun(run);assert.deepEqual(next.heroes.map(h=>h.id),run.partyIds);assert.deepEqual(next.upgrades,run.upgrades);
-    for(const hero of next.heroes)assert.equal(activeSkills(next,hero.id).length,5);
+    for(const hero of next.heroes)assert.equal(activeSkills(next,hero.id).length,4);
     run=restore(run);assert.equal(startNextChapter(run),true);
   }
   assert.equal(run.history.length,6);assert.equal(run.upgrades.length,5);assert.equal(run.unlockedHeroes.length,7);
@@ -53,14 +53,14 @@ test('campaign: failure and duplicate completion cannot advance chapters or awar
   assert.equal(claimReward(run,'knibbs_ricochet').ok,false);assert.deepEqual(run,claimed);
 });
 
-test('campaign: recruitment gates party changes and unlocked reward skills occupy exactly five slots',()=>{
+test('campaign: recruitment gates party changes and unlocked reward skills occupy exactly four slots',()=>{
   const run=beforeToBattle(createRun());fixtureWin(run);advanceDialogue(run,true);
   assert.ok(rewardOptions(run).some(reward=>reward.id==='knibbs_ricochet'));
   assert.equal(claimReward(run,'knibbs_ricochet').ok,true);
   assert.equal(replacePartyMember(run,0,'haart'),false);
   assert.equal(equipSkill(run,'apeilia',0,'overture').ok,false);
-  assert.equal(equipSkill(run,'knibbs',0,'ricochet').ok,true);assert.equal(new Set(run.loadouts.knibbs).size,5);
-  assert.equal(equipSkill(run,'knibbs',4,'cover').ok,true);assert.equal(run.loadouts.knibbs[0],'ricochet');
+  assert.equal(equipSkill(run,'knibbs',0,'ricochet').ok,true);assert.equal(new Set(run.loadouts.knibbs).size,4);
+  assert.equal(equipSkill(run,'knibbs',3,'cover').ok,true);assert.equal(run.loadouts.knibbs[0],'ricochet');
   assert.equal(equipSkill(run,'knibbs',1,'ricochet').ok,true);assert.equal(run.loadouts.knibbs[1],'ricochet');
   const before=[...run.partyIds];assert.equal(replacePartyMember(run,0,'ric'),true);assert.deepEqual(run.partyIds,['ric',before[1],before[0]]);restore(run);
 });
@@ -72,6 +72,21 @@ test('campaign: malformed progress and rewards cannot be restored, a missing bat
   assert.equal(normalizeRun({...start,partyIds:['haart','apeilia','ric']}),null);
   assert.equal(normalizeRun({...start,upgrades:['haart_network']}),null);
   advanceDialogue(start,true);const restored=normalizeRun(start);assert.ok(restored);assert.equal(restored.phase,'camp');assert.equal(restored.history.length,0);
+});
+
+test('campaign: old non-tutorial default loadouts gain an ammo loader without resetting a live fight',()=>{
+  for(const legacyRoute of [false,true])for(const customized of [false,true]){
+    const run=createCurrentRun('standard',{legacyRoute,skipTutorial:true});
+    const oldPreset=customized?['shot','scatter','breathe','cover']:['shot','focus','breathe','cover'];
+    run.loadouts.knibbs=[...oldPreset];delete run.knibbsRevision;
+    beforeToBattle(run);delete run.battle.knibbsRevision;
+    const hero=run.battle.heroes.find(h=>h.id==='knibbs');hero.hp=79;hero.resource=3;hero.intuition=2;run.battle.ap=1;
+    const copy=normalizeRun(structuredClone(run));assert.ok(copy);assert.equal(copy.phase,'battle');assert.equal(copy.knibbsRevision,1);
+    const expected=customized?oldPreset:['shot','focus','loadburst','cover'];
+    assert.deepEqual(copy.loadouts.knibbs,expected);assert.deepEqual(copy.battle.loadouts.knibbs,expected);
+    const resumed=copy.battle.heroes.find(h=>h.id==='knibbs');assert.equal(resumed.hp,79);assert.equal(resumed.resource,3);assert.equal(resumed.intuition,2);assert.equal(copy.battle.ap,1);
+    assert.deepEqual(normalizeRun(structuredClone(copy)),copy,'migration is idempotent');
+  }
 });
 
 test('campaign: canonical rewards provide thirty-five distinct choices, ten new skills and twenty-five upgrades',()=>{
@@ -105,13 +120,13 @@ test('campaign migration: v1 recruitment, earned rewards and custom slots surviv
   assert.deepEqual(run.partyIds,['qianxing','haart','ric']);
   assert.deepEqual(run.unlockedHeroes,['knibbs','apeilia','ric','youmu','haart','qianxing']);
   assert.deepEqual(run.upgrades,['knibbs_ricochet','haart_network','qianxing_nova']);
-  assert.deepEqual(run.loadouts.haart,['page','network','soothe','rest','relay']);
-  assert.deepEqual(run.loadouts.qianxing,['spike','beam','nova','repair','armor']);
+  assert.deepEqual(run.loadouts.haart,['page','network','soothe','rest']);
+  assert.deepEqual(run.loadouts.qianxing,['spike','beam','nova','repair']);
   assert.deepEqual(run.lastReward,{id:'qianxing_nova',replaced:'repair'});assert.equal(run.focusHero,'qianxing');
   assert.deepEqual(run.history[2].partyIds,['haart','knibbs','ric']);restore(run);
-  const battle=battleForRun(run);assert.equal(battle.boss.id,'golem');assert.equal(battle.version,10);
-  assert.deepEqual(activeSkills(battle,'haart').map(s=>s.id),['page','network','soothe','rest','relay']);
-  assert.deepEqual(activeSkills(battle,'qianxing').map(s=>s.id),['spike','beam','nova','repair','armor']);
+  const battle=battleForRun(run);assert.equal(battle.boss.id,'golem');assert.equal(battle.version,11);
+  assert.deepEqual(activeSkills(battle,'haart').map(s=>s.id),['page','network','soothe','rest']);
+  assert.deepEqual(activeSkills(battle,'qianxing').map(s=>s.id),['spike','beam','nova','repair']);
   const cannotSkip=structuredClone(old);cannotSkip.upgrades[1]='voss_furnace';assert.equal(normalizeRun(cannotSkip),null,'migration must still enforce chapter reward pools');
   const cannotRecruit=structuredClone(old);cannotRecruit.chapter=1;cannotRecruit.history=old.history.slice(0,1);cannotRecruit.upgrades=['knibbs_ricochet'];
   assert.equal(normalizeRun(cannotRecruit),null,'old IDs cannot bypass recruitment gates');
@@ -131,7 +146,7 @@ test('campaign migration: an ongoing v1 chapter resumes its v3 battle with new r
   old.phase='battle';old.battle=battle;
   const before=structuredClone(old),run=normalizeRun(old);assert.deepEqual(old,before);
   assert.ok(run);assert.equal(run.phase,'battle','valid old active combat must not silently fall back to camp');assert.equal(run.chapter,3);
-  assert.equal(run.battle.version,10);assert.equal(run.battle.round,4);assert.equal(run.battle.elapsed,84);
+  assert.equal(run.battle.version,11);assert.equal(run.battle.round,4);assert.equal(run.battle.elapsed,84);
   assert.equal(run.battle.ap,6);assert.equal(run.battle.maxAp,6);
   assert.equal(run.battle.boss.stagger,run.battle.boss.maxStagger/2);assert.equal(run.battle.boss.exposed,false);
   assert.deepEqual(run.battle.heroes.map(h=>h.id),['qianxing','haart','ric']);

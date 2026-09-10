@@ -1,4 +1,4 @@
-import {enemyIntentModels,enemyTargetOfTargetView} from './enemy-intent-ui.js';
+import {enemyIntentModels,enemyTargetOfTargetView,enemyAttributeBadgesView} from './enemy-intent-ui.js';
 import {enemyTargets,enemyThreats} from './combat.js';
 import {icon} from './icons.js';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -6,7 +6,7 @@ const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;
 export function enemyTargetView(state,busy=false){
   const targets=enemyTargets(state,{includeDefeated:true}),intents=enemyIntentModels(state);
   if(targets.length<2)return '';
-  return `<section class="enemy-targets" aria-label="选择技能目标"><div class="target-heading"><span>攻击目标 · 点击敌人或下方卡片</span><span><kbd>Tab</kbd> 切换</span></div><div class="target-cards">${targets.map(enemy=>`<button class="enemy-target ${enemy.selected?'selected':''} ${enemy.defeated?'defeated':''}" data-enemy-target="${esc(enemy.id)}" aria-pressed="${enemy.selected}" ${busy||enemy.defeated?'disabled':''}><span class="enemy-target-title"><b>${esc(enemy.name)}</b><small>${enemy.defeated?'已击败':enemy.role==='device'?'装置':enemy.role==='minion'?'随从':'主敌'}</small></span><span class="enemy-target-hp"><i style="width:${Math.max(0,enemy.hp/enemy.maxHp*100)}%"></i></span><span class="enemy-target-values">${Math.ceil(enemy.hp/enemy.maxHp*100)}%<small>韧性 ${enemy.stagger}</small></span>${enemyTargetOfTargetView(intents.find(item=>item.id===enemy.id))}</button>`).join('')}</div></section>`;
+  return `<section class="enemy-targets" aria-label="选择技能目标"><div class="target-heading"><span>攻击目标 · 点击敌人或下方卡片</span><span><kbd>Tab</kbd> 切换</span></div><div class="target-cards">${targets.map(enemy=>`<button class="enemy-target ${enemy.selected?'selected':''} ${enemy.defeated?'defeated':''}" data-enemy-target="${esc(enemy.id)}" aria-pressed="${enemy.selected}" ${busy||enemy.defeated?'disabled':''}><span class="enemy-target-title"><b>${esc(enemy.name)}</b><small>${enemy.defeated?'已击败':enemy.role==='device'?'装置':enemy.role==='minion'?'随从':'主敌'}</small></span><span class="enemy-target-hp"><i style="width:${Math.max(0,enemy.hp/enemy.maxHp*100)}%"></i></span><span class="enemy-target-values">${Math.ceil(enemy.hp/enemy.maxHp*100)}%<small>韧性 ${enemy.stagger}</small></span>${enemyTargetOfTargetView(intents.find(item=>item.id===enemy.id))}${enemyAttributeBadgesView((state.enemies||[state.boss]).find(unit=>(unit.unitId||'boss')===enemy.id),state)}</button>`).join('')}</div></section>`;
 }
 
 export function additionalThreatsView(state,busy=false){

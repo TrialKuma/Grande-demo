@@ -7,7 +7,7 @@ import {LEARNING_ORDER} from '../src/training.js';
 import {bossCodexView} from '../src/boss-codex.js';
 
 const act=(state,id,skill)=>{const result=useSkill(state,id,skill);assert.equal(result.ok,true,result.error);return result;};
-const finalState=id=>{const state=createBattle('standard','final',{mode:'solo',partyIds:[id]});Object.assign(state.boss,{hp:0,finale:true,finaleHits:2,finaleFresh:false,seals:0});return state;};
+const finalState=id=>{const state=createBattle('standard','final',{mode:'solo',partyIds:[id],loadouts:{knibbs:['shot','loadburst','breathe','cover']}});if(id==='knibbs')act(state,id,'loadburst');Object.assign(state.boss,{hp:0,finale:true,finaleHits:2,finaleFresh:false,seals:0});return state;};
 
 test('v37: one/two/three-member parties get 3/4/6 base AP, solo still gets 5 and unused AP carries at most 2',()=>{
  for(const [ids,ap] of [[['knibbs'],3],[['knibbs','haart'],4],[['knibbs','haart','ric'],6]]){
@@ -25,8 +25,8 @@ test('v37: learned skill permissions constrain loadouts, UI enumeration and dire
  const before=structuredClone(s);assert.match(canUse(s,'knibbs','cover'),/尚未学会/);assert.equal(useSkill(s,'knibbs','cover').ok,false);assert.deepEqual(s,before);
  assert.deepEqual(normalizeSave(s).skillAccess,skillAccess);
  s.skillAccess.knibbs.push('cover');s.loadouts=normalizeLoadouts(s.upgrades,s.loadouts,s.skillAccess);
- assert.deepEqual(activeSkills(s,'knibbs').map(x=>x.id),['shot','breathe','cover']);assert.equal(canUse(s,'knibbs','cover'),'');assert.ok(normalizeSave(s));
- assert.equal(activeSkills(createBattle(),'knibbs').length,5,'ordinary challenges keep full default skills');
+ assert.deepEqual(activeSkills(s,'knibbs').map(x=>x.id),['shot','breathe','cover']);assert.match(canUse(s,'knibbs','cover'),/直感不足/);heroOf(s,'knibbs').intuition=3;assert.equal(canUse(s,'knibbs','cover'),'');assert.ok(normalizeSave(s));
+ assert.equal(activeSkills(createBattle(),'knibbs').length,4,'ordinary challenges use four default skills');
 });
 
 test('v37: tutorial enemies have exactly two moves, no half-health phase and predictable low damage',()=>{
@@ -36,8 +36,8 @@ test('v37: tutorial enemies have exactly two moves, no half-health phase and pre
   s.boss.hp=Math.ceil(s.boss.maxHp*.5)+1;act(s,'knibbs','shot');assert.equal(s.boss.stage,0);assert.equal(s.boss.phasePending,false);assert.ok(normalizeSave(s));
   const easy=createBattle('story',id,{partyIds:['knibbs']});assert.equal(s.boss.maxHp,easy.boss.maxHp,'teaching health does not rise with formal difficulty');
  }
- assert.equal(createBattle('standard','conduit',{partyIds:['haart']}).boss.maxHp,84);
- assert.equal(createBattle('standard','conduit',{partyIds:['haart','knibbs','ric']}).boss.maxHp,468);
+ assert.equal(createBattle('standard','conduit',{partyIds:['haart']}).boss.maxHp,100);
+ assert.equal(createBattle('standard','conduit',{partyIds:['haart','knibbs','ric']}).boss.maxHp,558);
 });
 
 test('v37: each character can win a short personal lesson with only their first two skills and no potion',()=>{
@@ -61,19 +61,19 @@ test('v37: generic guard and tactical responses are rejected without altering an
  const s=createBattle();const before=structuredClone(s);
  assert.equal(guard(s,'knibbs').ok,false);for(const id of ['parry','evade','counter'])assert.equal(prepareResponse(s,id,'knibbs').ok,false);
  assert.deepEqual(responseOptions(s),[]);assert.deepEqual(s,before);
- s.response={id:'parry',actor:'knibbs'};endRound(s);assert.equal(heroOf(s,'knibbs').hp,85,'a forged legacy response cannot reduce damage');assert.equal(s.response,null);
+ const plain=structuredClone(s);endRound(plain);s.response={id:'parry',actor:'knibbs'};endRound(s);assert.equal(heroOf(s,'knibbs').hp,heroOf(plain,'knibbs').hp,'a forged legacy response cannot reduce damage');assert.equal(s.response,null);
 });
 
 test('v39: cover fire uses a skill slot and AP to counter before the next enemy attack',()=>{
- const s=createBattle();assert.equal(skillPreview(s,'knibbs','cover').coverFire,true);act(s,'knibbs','cover');
- assert.equal(s.ap,4);assert.equal(heroOf(s,'knibbs').resource,7);assert.ok(s.heroes.every(h=>h.protection===0&&h.shield===0));
- endRound(s);assert.equal(heroOf(s,'knibbs').hp,127);assert.equal(s.boss.cover,null);
- s.boss.intent='slam';s.boss.intentTarget='knibbs';endRound(s);assert.equal(heroOf(s,'knibbs').hp,42);
+ const s=createBattle();assert.equal(skillPreview(s,'knibbs','cover').coverFire,true);act(s,'knibbs','loadburst');act(s,'knibbs','cover');
+ assert.equal(s.ap,3);assert.equal(heroOf(s,'knibbs').resource,4);assert.equal(heroOf(s,'knibbs').intuition,0);assert.ok(s.heroes.every(h=>h.protection===0&&h.shield===0));
+ endRound(s);assert.equal(heroOf(s,'knibbs').hp,170-(85-18));assert.equal(s.boss.cover,null);
+ s.boss.intent='slam';s.boss.intentTarget='knibbs';endRound(s);assert.equal(heroOf(s,'knibbs').hp,170-(85-18)-85);
  const omitted=createBattle('standard','golem',{loadouts:{knibbs:['shot','focus','scatter','breathe','ricochet']},upgrades:['knibbs_ricochet']});assert.match(canUse(omitted,'knibbs','cover'),/尚未装配/);
 });
 
 test('v39: evasion and covering fire are independent preparations; repeated cover cannot stack',()=>{
- const s=createBattle();act(s,'apeilia','reboot');act(s,'knibbs','cover');
+ const s=createBattle();act(s,'apeilia','reboot');act(s,'knibbs','loadburst');act(s,'knibbs','cover');
  assert.equal(heroOf(s,'apeilia').evasion,1);assert.ok(s.heroes.every(h=>h.protection===0));
  const before=structuredClone(s);assert.equal(useSkill(s,'knibbs','cover').ok,false);assert.deepEqual(s,before);
 });
@@ -82,7 +82,7 @@ test('v39: Haart spends a single thread to rewrite the selected enemy action wit
  const s=createBattle('standard','golem',{partyIds:['haart','knibbs','apeilia']});heroOf(s,'haart').secondary=1;
  assert.equal(skillPreview(s,'haart','soothe').confuse,true);act(s,'haart','soothe');
  assert.ok(s.heroes.every(h=>h.protection===0&&h.shield===0));assert.equal(s.boss.confusion.actor,'haart');assert.equal(heroOf(s,'haart').secondary,0);assert.ok(normalizeSave(s));
- endRound(s);assert.equal(heroOf(s,'haart').hp,112);assert.equal(s.boss.confusion,null);
+ endRound(s);assert.equal(heroOf(s,'haart').hp,150-(85-16));assert.equal(s.boss.confusion,null);
 });
 
 test('v37: role retaliation cannot add an unannounced phase attack and core exposure receives exactly two full turns',()=>{
@@ -114,7 +114,7 @@ test('v37: the finale requires active character protection, not a potion, pure c
  const s=finalState('knibbs');s.response={id:'evade',actor:'knibbs'};act(s,'knibbs','breathe');assert.equal(s.boss.finaleProtected,false);endRound(s);
  assert.equal(s.mode,'playing');assert.equal(s.boss.finaleTurns,1);assert.equal(s.boss.finaleProtected,false);
  act(s,'knibbs','cover');endRound(s);assert.equal(s.mode,'victory');
- const prepared=finalState('haart');act(prepared,'haart','rest');assert.equal(prepared.boss.finaleProtected,false,'pure bulk preparation is not defense');
+ const prepared=finalState('haart');prepared.loadouts.haart=['page','soothe','anchor','rest'];act(prepared,'haart','rest');assert.equal(prepared.boss.finaleProtected,false,'pure bulk preparation is not defense');
 });
 
 test('v37: final protection and current HP cannot skip missing hits, and protection must be renewed next round',()=>{
@@ -124,9 +124,10 @@ test('v37: final protection and current HP cannot skip missing hits, and protect
 });
 
 test('v37: mana emergency conversion cannot preserve armor or defensive flags for free',()=>{
- const s=finalState('qianxing'),h=s.heroes[0];h.resource=0;h.secondary=0;s.upgrades=['qianxing_nova','qianxing_lock'];s.loadouts.qianxing=['beam','armor','pulse','nova','lock'];
- const preview=skillPreview(s,'qianxing','armor');assert.equal(preview.defensive,false);assert.equal(preview.protection,0);
- act(s,'qianxing','armor');assert.equal(h.secondary,1);assert.equal(h.shield,0);assert.equal(h.protection,0);assert.equal(s.boss.finaleProtected,false);
+ const s=finalState('qianxing'),h=s.heroes[0];h.resource=0;h.secondary=0;
+ const before=structuredClone(s);assert.equal(useSkill(s,'qianxing','armor').ok,false);assert.deepEqual(s,before,'armor remains an unavailable defense, never a resource builder');
+ const preview=skillPreview(s,'qianxing','repair');assert.equal(preview.defensive,false);assert.equal(preview.protection,0);assert.equal(preview.ap,2);
+ act(s,'qianxing','repair');assert.equal(h.secondary,1);assert.equal(h.shield,0);assert.equal(h.protection,0);assert.equal(s.boss.finaleProtected,false);
 });
 
 test('v37: armor pays and refunds once; physical reflection does not refund again',()=>{
@@ -137,7 +138,7 @@ test('v37: armor pays and refunds once; physical reflection does not refund agai
 
 test('v37: v8 saves retain three-member semantics and refund pending generic responses exactly once',()=>{
  const old=createBattle();old.version=8;delete old.skillAccess;delete old.boss.finaleProtected;old.heroes.forEach(h=>delete h.protection);old.ap=4;old.response={id:'parry',actor:'knibbs'};old.heroes[0].guard=true;
- const restored=normalizeSave(old);assert.ok(restored);assert.equal(restored.version,10);assert.equal(restored.ap,5);assert.equal(restored.response,null);assert.equal(restored.heroes[0].guard,false);assert.equal(restored.heroes[0].protection,55);assert.equal(restored.skillAccess,null);
+ const restored=normalizeSave(old);assert.ok(restored);assert.equal(restored.version,11);assert.equal(restored.ap,5);assert.equal(restored.response,null);assert.equal(restored.heroes[0].guard,false);assert.equal(restored.heroes[0].protection,55);assert.equal(restored.skillAccess,null);
  assert.equal(normalizeSave(restored).ap,5);old.heroes.pop();assert.equal(normalizeSave(old),null);
 });
 
